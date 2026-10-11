@@ -388,3 +388,6 @@ body:has(.stickybar){padding-bottom:3.6rem}}
 /* Film — vidéo seule, bord à bord */
 .film-only{padding:0}
 .film-only .player{margin:0}
+.player.auto video{cursor:default}
+.player .sound{position:absolute;right:1.2rem;bottom:1.2rem;font-family:var(--label);font-size:.56rem;letter-spacing:.3em;text-transform:uppercase;color:#fff;background:rgba(10,8,6,.4);border:1px solid rgba(255,255,255,.7);border-radius:999px;padding:.7rem 1.2rem;cursor:pointer;backdrop-filter:blur(8px)}
+.player .sound:hover{background:rgba(10,8,6,.65)}
