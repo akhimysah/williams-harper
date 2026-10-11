@@ -1,0 +1,6 @@
+dist/
+site-src/
+.claude/
+.DS_Store
+pdf/magazine-williams-harper.pdf
+models/test-cube.glb

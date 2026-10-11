@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Maquette 3D — Williams &amp; Harper</title>
+<meta name="description" content="Maquettes 3D interactives des villas Chloé, Céline et Margaux, construites d'après les plans.">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="canonical" href="https://akhimysah.github.io/williams-harper/maquette-3d.html">
+<link rel="alternate" hreflang="fr" href="https://akhimysah.github.io/williams-harper/maquette-3d.html">
+<link rel="alternate" hreflang="en" href="https://akhimysah.github.io/williams-harper/en/maquette-3d.html">
+<link rel="alternate" hreflang="x-default" href="https://akhimysah.github.io/williams-harper/maquette-3d.html">
+<meta property="og:type" content="website"><meta property="og:site_name" content="Williams &amp; Harper">
+<meta property="og:title" content="Maquette 3D — Williams &amp; Harper"><meta property="og:description" content="Maquettes 3D interactives des villas Chloé, Céline et Margaux, construites d'après les plans.">
+<meta property="og:image" content="https://akhimysah.github.io/williams-harper/img/photo-21.jpg"><meta property="og:url" content="https://akhimysah.github.io/williams-harper/maquette-3d.html"><meta property="og:locale" content="fr_FR">
+<meta name="twitter:card" content="summary_large_image"><meta name="theme-color" content="#f7f5f0">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300;1,400&family=Jost:wght@300;400&display=swap">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<a class="skip" href="#main" style="position:absolute;left:-999px">Aller au contenu</a>
+<header id="top">
+  <div class="wrap">
+    <a class="brand" href="index.html" aria-label="Williams &amp; Harper, accueil"><img class="w" src="img/logo.png" alt="Williams &amp; Harper" width="132" height="46"><img class="d" src="img/logo-dark.png" alt="" width="132" height="46"></a>
+    <nav class="nav" aria-label="Navigation">
+      <a href="index.html#villas">Les villas</a>
+      <a href="domaine.html">Le domaine</a>
+      <a href="maquette-3d.html">Maquette 3D</a>
+      <a href="galerie.html">Galerie</a>
+      <a href="catalogue.html">Intérieurs</a>
+      <a href="localisation.html">Localisation</a>
+      <a href="index.html#contact">Contact</a>
+      <a class="hcta" href="index.html#contact">Prendre rendez-vous</a>
+      <div class="lang" role="group" aria-label="Langue"><button id="lang-fr" aria-pressed="true" lang="fr">FR</button><button id="lang-en" aria-pressed="false" lang="en">EN</button></div>
+    </nav>
+    <button class="burger" id="burger" aria-label="Menu" aria-expanded="false"><span></span><span></span></button>
+  </div>
+</header>
+<main id="main">
+
+<section style="padding-top:10rem;padding-bottom:3rem">
+  <div class="wrap reveal">
+    <div class="label">Maquette 3D</div>
+    <h1 style="font-size:clamp(2.4rem,5vw,4.4rem);margin-top:1rem">Tourner autour <em>des villas</em></h1>
+    <p class="muted" style="max-width:52ch;margin-top:1.2rem">Maquettes blanches construites d'après les plans de vente. Faites-les pivoter du doigt ou à la souris, zoomez, ouvrez le rez-de-chaussée ou l'étage pour lire les plans en volume.</p>
+  </div>
+</section>
+
+<section style="padding-top:0">
+  <div class="wrap">
+    <div class="m3d-tabs reveal" role="group" aria-label="Choisir une villa"><button type="button" data-villa="chloe" aria-pressed="true">Villa Chloé</button><button type="button" data-villa="celine" aria-pressed="false">Villa Céline</button><button type="button" data-villa="margaux" aria-pressed="false">Villa Margaux</button></div>
+    <div class="m3d m3d-page reveal" data-model="chloe" data-manual>
+      <div class="m3d-ui" role="group" aria-label="Vues de la maquette"><button type="button" data-view="all" aria-pressed="true">Volumes</button><button type="button" data-view="rdc" aria-pressed="false">Rez-de-chaussée</button><button type="button" data-view="etage" aria-pressed="false">Étage</button><button type="button" data-night aria-pressed="false" class="m3d-night">Nuit</button><button type="button" data-vr aria-pressed="false" class="m3d-vr" hidden>Entrer en VR</button><button type="button" data-reset class="m3d-reset" aria-label="Recentrer">↻</button></div>
+      <noscript><p class="note">La maquette interactive nécessite JavaScript.</p></noscript>
+    </div>
+    <div class="m3d-foot reveal">
+      <p class="note">Maquettes d'étude, non contractuelles : volumes et ouvertures simplifiés, d'après les plans de vente. Les maquettes des architectes remplaceront ces volumes dès réception.</p>
+      <p><a class="link" id="m3d-link" href="villa-chloe.html">Découvrir la villa</a></p>
+    </div>
+  </div>
+</section>
+<script type="importmap">{"imports":{"three":"./js/vendor/three.module.min.js"}}</script>
+<script type="module">
+import { mount } from './js/villa3d.js';
+const box = document.querySelector('.m3d-page'), link = document.getElementById('m3d-link');
+let cur = mount(box);
+document.querySelectorAll('.m3d-tabs [data-villa]').forEach((b) => b.addEventListener('click', () => {
+  if (b.disabled || b.getAttribute('aria-pressed') === 'true') return;
+  document.querySelectorAll('.m3d-tabs [data-villa]').forEach((x) => x.setAttribute('aria-pressed', x === b));
+  cur && cur.dispose(); box.dataset.model = b.dataset.villa; cur = mount(box);
+  box.querySelectorAll('[data-view]').forEach((x) => x.setAttribute('aria-pressed', x.dataset.view === 'all'));
+  link.href = 'villa-' + b.dataset.villa + '.html';
+}));
+</script>
+</main>
+<footer>
+  <div class="wrap">
+    <a class="brand" href="index.html"><img src="img/logo-dark.png" alt="Williams &amp; Harper" width="110" height="38"></a>
+    <nav aria-label="Pied de page"><a href="index.html#villas">Les villas</a><a href="domaine.html">Le domaine</a><a href="maquette-3d.html">Maquette 3D</a><a href="galerie.html">Galerie</a><a href="catalogue.html">Intérieurs</a><a href="localisation.html">Localisation</a><a href="index.html#contact">Contact</a><a href="mentions-legales.html">Mentions légales</a><a href="confidentialite.html">Confidentialité</a></nav>
+    <div>© 2026 Williams &amp; Harper</div>
+  </div>
+</footer>
+<div class="lb" id="lb" hidden role="dialog" aria-modal="true" aria-label="Photo en grand"><button class="x" id="lb-x" aria-label="Fermer">✕</button><button class="prev" id="lb-prev" aria-label="Précédente">‹</button><img id="lb-img" alt=""><button class="next" id="lb-next" aria-label="Suivante">›</button><div class="cap" id="lb-cap" aria-live="polite"></div></div>
+<script src="config.js"></script>
+<script src="i18n.js"></script>
+<script>
+const hdr=document.querySelector('header'),burger=document.getElementById('burger');
+burger.addEventListener('click',()=>{const o=hdr.classList.toggle('open');burger.setAttribute('aria-expanded',o)});
+document.querySelectorAll('.nav a').forEach(a=>a.addEventListener('click',()=>hdr.classList.remove('open')));
+let lastY=0;const onScroll=()=>{hdr.classList.toggle('solid',scrollY>40||!document.querySelector('.full'));hdr.classList.toggle('hide',scrollY>lastY&&scrollY>400&&!hdr.classList.contains('open'));lastY=scrollY};addEventListener('scroll',onScroll,{passive:true});onScroll();
+const lbImgs=[...document.querySelectorAll('.gal img,.mosaic img,.plans img,.tri img,.cat img')],lb=document.getElementById('lb'),lbi=document.getElementById('lb-img'),lbc=document.getElementById('lb-cap');let cur=0,lastFocus=null;
+function show(i){cur=(i+lbImgs.length)%lbImgs.length;lbi.src=lbImgs[cur].currentSrc||lbImgs[cur].src;lbi.alt=lbImgs[cur].alt;lbc.textContent=(cur+1)+' / '+lbImgs.length+'  ·  '+lbImgs[cur].alt;lb.hidden=false;document.body.style.overflow='hidden';lastFocus=document.activeElement;document.getElementById('lb-x').focus()}
+function hide(){lb.hidden=true;document.body.style.overflow='';if(lastFocus)lastFocus.focus()}
+lbImgs.forEach((im,i)=>im.addEventListener('click',()=>show(i)));
+document.getElementById('lb-x').onclick=hide;document.getElementById('lb-prev').onclick=()=>show(cur-1);document.getElementById('lb-next').onclick=()=>show(cur+1);
+lb.addEventListener('click',e=>{if(e.target===lb)hide()});
+addEventListener('keydown',e=>{if(lb.hidden)return;if(e.key==='Escape')hide();if(e.key==='ArrowLeft')show(cur-1);if(e.key==='ArrowRight')show(cur+1)});
+document.querySelectorAll('.player').forEach(p=>{const fp=p.querySelector('video'),fb=p.querySelector('.play');if(!fp||!fb)return;fb.addEventListener('click',()=>{fp.play()});fp.addEventListener('play',()=>fb.hidden=true);fp.addEventListener('pause',()=>fb.hidden=false);fp.addEventListener('ended',()=>fb.hidden=false)});
+const hv=document.querySelector('.hero-video video.bg');if(hv&&matchMedia('(prefers-reduced-motion: reduce)').matches){hv.remove()}
+let tx=null;lb.addEventListener('touchstart',e=>{tx=e.touches[0].clientX},{passive:true});lb.addEventListener('touchend',e=>{if(tx===null)return;const d=e.changedTouches[0].clientX-tx;if(Math.abs(d)>50)show(cur+(d<0?1:-1));tx=null});
+const EN=window.WH_EN||{},FR={};for(const k in EN)FR[EN[k]]=k;
+const nodes=[];(function walk(n){for(const c of n.childNodes){if(c.nodeType===3){if(c.nodeValue.trim())nodes.push(c)}else if(c.nodeType===1&&!['SCRIPT','STYLE'].includes(c.tagName))walk(c)}})(document.body);
+function setLang(l){const map=l==='en'?EN:FR;nodes.forEach(n=>{const raw=n.nodeValue,t=raw.trim();if(map[t]!==undefined)n.nodeValue=raw.replace(t,map[t])});document.querySelectorAll('[alt],[aria-label],[placeholder]').forEach(e=>{for(const a of ['alt','aria-label','placeholder']){const v=e.getAttribute(a);if(v&&map[v])e.setAttribute(a,map[v])}});
+  document.documentElement.lang=l;document.dispatchEvent(new CustomEvent('wh:lang',{detail:l}));document.getElementById('lang-fr').setAttribute('aria-pressed',l==='fr');document.getElementById('lang-en').setAttribute('aria-pressed',l==='en');try{localStorage.setItem('wh-lang',l)}catch(e){}}
+document.getElementById('lang-fr').onclick=()=>setLang('fr');document.getElementById('lang-en').onclick=()=>setLang('en');
+try{const sv=localStorage.getItem('wh-lang');if(sv==='en'||(sv===null&&!/^fr/i.test(navigator.language||'')))setLang('en')}catch(e){}
+</script>
+<script>
+(()=>{const mos=[...document.querySelectorAll('.adv .mo')],ims=[...document.querySelectorAll('.adv-media picture')];if(!mos.length)return;let cur=-1,hover=false;
+const act=i=>{if(i===cur)return;cur=i;mos.forEach((m,j)=>m.classList.toggle('on',j===i));ims.forEach((p,j)=>p.classList.toggle('on',j===i))};
+const pick=()=>{if(hover)return;const c=innerHeight*0.42;let best=0,bd=1e9;mos.forEach((m,j)=>{const r=m.getBoundingClientRect(),d=Math.abs((r.top+r.bottom)/2-c);if(d<bd){bd=d;best=j}});act(best)};
+let t=0;addEventListener('scroll',()=>{if(t)return;t=setTimeout(()=>{t=0;pick()},80)},{passive:true});addEventListener('resize',pick);
+mos.forEach(m=>{m.addEventListener('mouseenter',()=>{hover=true;act(+m.dataset.i)});m.addEventListener('mouseleave',()=>{hover=false})});pick()})();
+</script>
+<script src="forms.js"></script>
+<script src="fx.js"></script>
+</body>
+</html>
