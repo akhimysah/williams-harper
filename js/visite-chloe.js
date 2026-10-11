@@ -4,6 +4,7 @@
 // bassin en mosaïque, mobilier cuir vert et cognac, bibliothèque noire aux fonds cuivre, cheminée linéaire, sculpture dorée.
 import * as THREE from 'three';
 import { mergeGeometries } from './vendor/BufferGeometryUtils.js';
+import { GLTFLoader } from './vendor/GLTFLoader.js';
 
 const $ = id => document.getElementById(id);
 const V = (x, y, z) => new THREE.Vector3(x, y, z);
@@ -413,7 +414,18 @@ box('fabric', -2.6, 2.8, SL + 0.02, SL + 0.04, 5.8, 9.6);
 // ---------------------------------------------------------------- flammes animées et assemblage des maillages
 const flames = []; { const fx = -2.0; for (let i = 0; i < 16; i++) { const f = new THREE.Mesh(new THREE.ConeGeometry(0.06 + rnd() * 0.04, 0.28 + rnd() * 0.22, 6), M.flame); f.position.set(fx + (rnd() - 0.5) * 0.3, F0 + 0.58, 6.9 + i * 0.17); f.userData.p = rnd() * 6; f.userData.h = f.scale.y; flames.push(f); scene.add(f); } }
 const world = new THREE.Group(); scene.add(world);
-for (const [key, geos] of Object.entries(buckets)) { const geo = mergeGeometries(geos, false); const mesh = new THREE.Mesh(geo, M[key]); if (!NO_SHADOW.has(key)) { mesh.castShadow = true; mesh.receiveShadow = true; } else if (key === 'lawn' || key === 'curtain') mesh.receiveShadow = true; if (key === 'glass' || key === 'railGlass' || key === 'water' || key === 'waterDark' || key === 'fall') mesh.renderOrder = 10; world.add(mesh); }
+for (const [key, geos] of Object.entries(buckets)) { const geo = mergeGeometries(geos, false); const mesh = new THREE.Mesh(geo, M[key]); mesh.name = key; if (!NO_SHADOW.has(key)) { mesh.castShadow = true; mesh.receiveShadow = true; } else if (key === 'lawn' || key === 'curtain') mesh.receiveShadow = true; if (key === 'glass' || key === 'railGlass' || key === 'water' || key === 'waterDark' || key === 'fall') mesh.renderOrder = 10; world.add(mesh); }
+// éclairage cuit dans Blender (Cycles) : models/chloe-baked.glb porte, pour chaque maillage, une lightmap sur l'UV 1 ;
+// on garde nos textures (UV 0) et on les multiplie par la lightmap — ombres douces, rebonds, lumière du ciel, sans calcul en direct.
+const NOT_BAKED = new Set(['gold', 'bronze', 'mirror', 'jar']); let bakedOn = false;
+const BAKE_VERSION = '4'; const LM_GAIN = Math.PI * 2.0; // MeshBasicMaterial divise la lightmap par π
+new GLTFLoader().load('models/chloe-baked.glb?v=' + BAKE_VERSION, g => {
+  let n = 0; g.scene.traverse(o => { if (!o.isMesh) return; const key = o.name.split('.')[0]; if (NOT_BAKED.has(key)) return; const target = world.children.find(m => m.name === key); const lm = o.material && o.material.emissiveMap; if (!target || !lm || !o.geometry.attributes.uv1) return;
+    lm.channel = 1; lm.colorSpace = THREE.SRGBColorSpace; lm.anisotropy = 4; const src = M[key];
+    const mat = new THREE.MeshBasicMaterial({ map: src.map || null, color: src.color, lightMap: lm, lightMapIntensity: LM_GAIN, transparent: !!src.transparent, opacity: src.opacity ?? 1, side: src.side ?? THREE.FrontSide, toneMapped: true });
+    target.geometry.dispose(); target.geometry = o.geometry; target.material = mat; target.receiveShadow = false; n++; });
+  bakedOn = n > 0; console.log('éclairage cuit :', n, 'maillages'); if (bakedOn) { sun.intensity *= 0.35; hemi.intensity *= 0.5; }
+}, undefined, e => console.warn('pas d\'éclairage cuit', e));
 // éclairages ponctuels (allumés au crépuscule)
 const lamps = []; const lamp = (x, y, z, col, dist, pow) => { const l = new THREE.PointLight(col, 0, dist, 2); l.position.set(x, y, z); l.userData.pow = pow; scene.add(l); lamps.push(l); return l; };
 lamp(-1.9, 1.0, 8.2, '#ff8a3a', 9, 18); lamp(1.2, 3.4, 7.6, '#ffc890', 10, 14); lamp(0.4, 5.4, -1.8, '#ffd3a0', 14, 26); lamp(5.6, 2.9, -8.2, '#ffcf96', 11, 18);
@@ -460,7 +472,7 @@ canvas.addEventListener('touchend', endTouch); canvas.addEventListener('touchcan
 // points de visite
 const SPOTS = { jardin: [-4.4, 18.6, 0.08, 0.02], entree: [-4.5, 8.6, 0.0, 0.05], salon: [1.6, 7.9, PI / 2, 0.02], hall: [-0.4, 0.4, -PI / 2 + 0.3, 0.12], dinner: [0.2, -3.0, 0, 0.05], sejour: [5.6, -7.3, 0.4, 0.02], terrasse: [6.0, 9.2, 0.0, 0.03], piscine: [10.4, 11.0, 0.15, 0.06], suite: [-1.0, 7.8, PI / 2 + 0.4, 0.03], etage: [5.4, 5.6, -PI / 2, -0.1], chambre: [-0.6, -6.0, -0.2, 0.02], facade: [16.5, 1.2, PI / 2 + 0.55, 0.14] };
 const INSIDE = new Set(['salon', 'hall', 'dinner', 'sejour', 'suite', 'chambre']);
-function goTo(name) { if (INSIDE.has(name)) { if (PANOS.length) { enterPano(panoById[name] || panoById.hall || PANOS[0]); } else openTour(); return; } const s = SPOTS[name]; if (!s) return; $('fade').classList.add('on'); setTimeout(() => { P.x = s[0]; P.z = s[1]; P.yaw = s[2]; P.pitch = s[3]; P.y = floorAt(P.x, P.z, name === 'suite' || name === 'etage' || name === 'chambre' ? SL : 0); if (renderer.xr.isPresenting) { rig.position.set(P.x, P.y, P.z); rig.rotation.y = P.yaw; } $('fade').classList.remove('on'); }, 260); }
+function goTo(name) { if (INSIDE.has(name) && (panoById[name] || !PANOS.length)) { if (PANOS.length) enterPano(panoById[name]); else openTour(); return; } if (pano) exitPano(); const s = SPOTS[name]; if (!s) return; $('fade').classList.add('on'); setTimeout(() => { P.x = s[0]; P.z = s[1]; P.yaw = s[2]; P.pitch = s[3]; P.y = floorAt(P.x, P.z, name === 'suite' || name === 'etage' || name === 'chambre' ? SL : 0); if (renderer.xr.isPresenting) { rig.position.set(P.x, P.y, P.z); rig.rotation.y = P.yaw; } $('fade').classList.remove('on'); }, 260); }
 document.querySelectorAll('[data-spot]').forEach(b => b.addEventListener('click', () => goTo(b.dataset.spot)));
 // ---------------------------------------------------------------- vues 360° du studio placées dans la maison (même scène, même commandes, VR comprise)
 // PANOS : une entrée par vue — id, titre, fichier équirectangulaire, position dans la villa (x, z, hauteur d'œil), rotation d'alignement (rad),
@@ -480,14 +492,14 @@ const hotMat = new THREE.MeshBasicMaterial({ color: '#f0cf7a', transparent: true
 const hotGeo = new THREE.RingGeometry(0.16, 0.24, 36), hotCore = new THREE.CircleGeometry(0.07, 24);
 const hotspots = new THREE.Group(); hotspots.renderOrder = 60; scene.add(hotspots);
 const panoTex = {}; const loadPano = (src, srgb = true) => src ? (panoTex[src] || (panoTex[src] = new Promise(res => { new THREE.TextureLoader().load(src, t => { if (srgb) t.colorSpace = THREE.SRGBColorSpace; t.minFilter = THREE.LinearFilter; t.magFilter = THREE.LinearFilter; t.generateMipmaps = false; t.anisotropy = 8; res(t); }); }))) : Promise.resolve(null);
-let pano = null, panoFade = 0, panoTarget = 0, panoArmed = false; // armé une fois les commandes relâchées : on ne ressort pas sur la lancée de l'entrée
-async function enterPano(def) { if (!def) return; $('fade').classList.add('on'); const [t, dm] = await Promise.all([loadPano(def.src), loadPano(def.depth, false)]); setTimeout(() => $('fade').classList.remove('on'), 320);
+let pano = null, panoFade = 0, panoTarget = 0, panoArmed = false, panoReq = 0; // armé une fois les commandes relâchées : on ne ressort pas sur la lancée de l'entrée
+async function enterPano(def) { if (!def) return; const req = ++panoReq; $('fade').classList.add('on'); const [t, dm] = await Promise.all([loadPano(def.src), loadPano(def.depth, false)]); setTimeout(() => $('fade').classList.remove('on'), 320); if (req !== panoReq) return; // annulé entre-temps
   pano = def; panoArmed = false; panoMat.uniforms.map.value = t; panoMat.uniforms.depth.value = dm; panoMat.uniforms.hasDepth.value = dm ? 1 : 0; panoSphere.rotation.y = def.rot || 0; panoSphere.position.set(def.x, def.y, def.z); panoSphere.visible = true; panoTarget = 1; world.visible = false; flames.forEach(f => { f.visible = false; });
   P.x = def.x; P.z = def.z; P.y = Math.max(0, def.y - EYE); if (renderer.xr.isPresenting) rig.position.set(P.x, P.y, P.z);
   hotspots.clear(); for (const l of def.links) { const g = new THREE.Group(); g.add(new THREE.Mesh(hotGeo, hotMat)); g.add(new THREE.Mesh(hotCore, hotMat)); g.children.forEach(m => { m.renderOrder = 60; }); g.userData.to = l.to; g.userData.dir = V(-Math.sin(l.yaw) * Math.cos(l.pitch), Math.sin(l.pitch), -Math.cos(l.yaw) * Math.cos(l.pitch)); hotspots.add(g); }
   $('panoName').textContent = def.title; $('panoBar').classList.add('on'); }
 let panoLeft = null; // vue que l'on vient de quitter : pas de ré-entrée tant qu'on ne s'en est pas éloigné
-function exitPano() { if (!pano) return; panoLeft = pano; pano = null; panoTarget = 0; world.visible = true; flames.forEach(f => { f.visible = true; }); hotspots.clear(); $('panoBar').classList.remove('on'); }
+function exitPano() { panoReq++; if (!pano) return; panoLeft = pano; pano = null; panoTarget = 0; world.visible = true; flames.forEach(f => { f.visible = true; }); hotspots.clear(); $('panoBar').classList.remove('on'); }
 function panoFrame(dt) { panoFade = damp(panoFade, panoTarget, 8, dt); panoMat.uniforms.opacity.value = panoFade; if (panoFade < 0.01 && !pano) panoSphere.visible = false;
   const eye = renderer.xr.isPresenting ? V().setFromMatrixPosition(renderer.xr.getCamera().matrixWorld) : camera.position;
   for (const g of hotspots.children) { g.position.copy(eye).addScaledVector(g.userData.dir, 5); g.lookAt(eye); g.scale.setScalar(1 + 0.12 * Math.sin(performance.now() / 300)); } }
@@ -556,5 +568,12 @@ renderer.setAnimationLoop(() => {
   renderer.render(scene, camera);
 });
 $('loader').classList.add('off');
+// export de la villa vers Blender (cuisson de l'éclairage) : ?export → GLB envoyé au serveur local site-src/save_server.py
+if (location.search.includes('export')) import('./vendor/GLTFExporter.js').then(async ({ GLTFExporter }) => {
+  const glb = await new Promise((res, rej) => new GLTFExporter().parse(world, res, rej, { binary: true, onlyVisible: false }));
+  let b = ''; const u8 = new Uint8Array(glb); for (let i = 0; i < u8.length; i += 8192) b += String.fromCharCode.apply(null, u8.subarray(i, i + 8192));
+  const r = await fetch('http://127.0.0.1:8767/', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: 'glb/chloe-scene', data: 'data:model/gltf-binary;base64,' + btoa(b) }) });
+  console.log('export', r.status, u8.length);
+});
 window.WHV = { scene, M, P, goTo, applyMode, renderer, floors, solids, openTour, closeTour, enterPano, exitPano, PANOS };
 if (isTouch) $('intro').classList.remove('on');
