@@ -464,10 +464,9 @@ document.querySelectorAll('[data-spot]').forEach(b => b.addEventListener('click'
 // ---------------------------------------------------------------- vues 360° du studio placées dans la maison (même scène, même commandes, VR comprise)
 // PANOS : une entrée par vue — id, titre, fichier équirectangulaire, position dans la villa (x, z, hauteur d'œil), rotation d'alignement (rad),
 // liens vers d'autres vues (direction yaw/pitch où afficher le repère). Tant que la liste est vide, la porte ouvre le tour Kuula.
-const PANOS = (location.search.includes('test360') ? [
-  { id: 'hall', title: 'Hall', src: 'img/vr/suite-chloe-pano.jpg', x: -4.5, z: 4.2, y: 1.6, rot: 0, links: [{ to: 'salon', yaw: -1.2, pitch: -0.1 }] },
-  { id: 'salon', title: 'Salon', src: 'img/vr/suite-chloe-pano.jpg', x: 1.0, z: 7.8, y: 1.6, rot: 1.5, links: [{ to: 'hall', yaw: 1.4, pitch: -0.1 }] },
-] : []);
+const PANOS = [
+  { id: 'hall', title: 'Salon · double hauteur', src: 'img/vr/chloe/hall.jpg', x: -0.4, z: -0.3, y: 1.6, rot: PI, links: [] },
+];
 const panoById = Object.fromEntries(PANOS.map(p => [p.id, p]));
 const panoSphere = new THREE.Mesh(new THREE.SphereGeometry(12, 64, 32), new THREE.MeshBasicMaterial({ side: THREE.BackSide, depthWrite: false, depthTest: false, transparent: true, opacity: 0, toneMapped: false }));
 panoSphere.renderOrder = 50; panoSphere.visible = false; panoSphere.scale.x = -1; scene.add(panoSphere);
@@ -475,9 +474,9 @@ const hotMat = new THREE.MeshBasicMaterial({ color: '#f0cf7a', transparent: true
 const hotGeo = new THREE.RingGeometry(0.16, 0.24, 36), hotCore = new THREE.CircleGeometry(0.07, 24);
 const hotspots = new THREE.Group(); hotspots.renderOrder = 60; scene.add(hotspots);
 const panoTex = {}; const loadPano = src => panoTex[src] || (panoTex[src] = new Promise(res => { new THREE.TextureLoader().load(src, t => { t.colorSpace = THREE.SRGBColorSpace; t.minFilter = THREE.LinearFilter; t.generateMipmaps = false; t.anisotropy = 8; res(t); }); }));
-let pano = null, panoFade = 0, panoTarget = 0;
+let pano = null, panoFade = 0, panoTarget = 0, panoArmed = false; // armé une fois les commandes relâchées : on ne ressort pas sur la lancée de l'entrée
 async function enterPano(def) { if (!def) return; $('fade').classList.add('on'); const t = await loadPano(def.src); setTimeout(() => $('fade').classList.remove('on'), 320);
-  pano = def; panoSphere.material.map = t; panoSphere.material.needsUpdate = true; panoSphere.rotation.y = def.rot || 0; panoSphere.visible = true; panoTarget = 1;
+  pano = def; panoArmed = false; panoSphere.material.map = t; panoSphere.material.needsUpdate = true; panoSphere.rotation.y = def.rot || 0; panoSphere.visible = true; panoTarget = 1;
   P.x = def.x; P.z = def.z; P.y = Math.max(0, def.y - EYE); if (renderer.xr.isPresenting) rig.position.set(P.x, P.y, P.z);
   hotspots.clear(); for (const l of def.links) { const g = new THREE.Group(); g.add(new THREE.Mesh(hotGeo, hotMat)); g.add(new THREE.Mesh(hotCore, hotMat)); g.children.forEach(m => { m.renderOrder = 60; }); g.userData.to = l.to; g.userData.dir = V(-Math.sin(l.yaw) * Math.cos(l.pitch), Math.sin(l.pitch), -Math.cos(l.yaw) * Math.cos(l.pitch)); hotspots.add(g); }
   $('panoName').textContent = def.title; $('panoBar').classList.add('on'); }
@@ -519,7 +518,7 @@ function xrUpdate(dt) { const s = renderer.xr.getSession(); if (!s) return;
   const xrCam = renderer.xr.getCamera(); const fwd = V(); xrCam.getWorldDirection(fwd); fwd.y = 0; fwd.normalize(); const right = V().crossVectors(fwd, V(0, 1, 0));
   for (const src of s.inputSources) { const g = src.gamepad; if (!g || g.axes.length < 4) continue; const ax = g.axes[2], ay = g.axes[3];
     if (src.handedness === 'right') { snapT -= dt; if (Math.abs(ax) > 0.6 && snapT <= 0) { snapT = 0.35; P.yaw -= Math.sign(ax) * PI / 6; rig.rotation.y = P.yaw; } continue; }
-    if (Math.abs(ax) < 0.15 && Math.abs(ay) < 0.15) continue; if (pano) exitPano(); const v = 1.8 * dt; move((fwd.x * -ay + right.x * ax) * v, (fwd.z * -ay + right.z * ax) * v, dt); rig.position.set(P.x, P.y, P.z); }
+    if (Math.abs(ax) < 0.15 && Math.abs(ay) < 0.15) { if (pano) panoArmed = true; continue; } if (pano) { if (!panoArmed) continue; exitPano(); } const v = 1.8 * dt; move((fwd.x * -ay + right.x * ax) * v, (fwd.z * -ay + right.z * ax) * v, dt); rig.position.set(P.x, P.y, P.z); }
   let shown = false; for (const c of ctrls) { const h = ctrlHit(c); if (h) { marker.position.copy(h.p).y += 0.02; shown = true; break; } } marker.visible = shown; }
 renderer.xr.addEventListener('sessionstart', () => { rig.position.set(P.x, P.y, P.z); rig.rotation.y = P.yaw; camera.rotation.set(0, 0, 0); camera.position.set(0, 0, 0); document.body.classList.add('xr'); });
 renderer.xr.addEventListener('sessionend', () => { rig.position.set(0, 0, 0); rig.rotation.y = 0; marker.visible = false; document.body.classList.remove('xr'); $('vr').setAttribute('aria-pressed', 'false'); });
@@ -539,7 +538,7 @@ renderer.setAnimationLoop(() => {
   else {
     let fx = 0, fz = 0; if (K('KeyW', 'KeyZ', 'ArrowUp')) fz -= 1; if (K('KeyS', 'ArrowDown')) fz += 1; if (K('KeyA', 'KeyQ', 'ArrowLeft')) fx -= 1; if (K('KeyD', 'ArrowRight')) fx += 1;
     fx += stick.dx; fz += stick.dy; const len = Math.hypot(fx, fz); if (len > 1) { fx /= len; fz /= len; }
-    if (len > 0.02 && pano) exitPano();
+    if (pano) { if (len > 0.02) { if (panoArmed) exitPano(); else { fx = fz = 0; } } else panoArmed = true; }
     if (len > 0.02) { const sp = (K('ShiftLeft', 'ShiftRight') ? 4.2 : 2.3) * dt; const c = Math.cos(P.yaw), s = Math.sin(P.yaw); move((fx * c - fz * s) * sp, (fx * s + fz * c) * sp, dt); bob += dt * (K('ShiftLeft') ? 11 : 7); } else P.y = damp(P.y, floorAt(P.x, P.z, P.y), 10, dt);
     camera.position.set(P.x, P.y + EYE + Math.sin(bob) * 0.025, P.z); camera.rotation.set(P.pitch, P.yaw, 0);
   }
