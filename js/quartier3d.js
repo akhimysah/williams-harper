@@ -1,6 +1,7 @@
 // Le Quartier 3D — Domaine Red Stone. Open-world walk / drive in the estate.
 import * as THREE from 'three';
 import { mergeGeometries, mergeVertices } from './vendor/BufferGeometryUtils.js';
+import { GLTFLoader } from './vendor/GLTFLoader.js';
 
 const $ = id => document.getElementById(id);
 const isTouch = matchMedia('(pointer:coarse)').matches;
@@ -690,6 +691,14 @@ function build911(hex) {
 }
 MAT.carGloss = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.22, metalness: 0.45 });
 const CAR_NAMES = { 3: 'Audi RS6-R ABT', 4: 'Porsche 911 Cabriolet' };
+const paintCache = {};
+function paintMat(base, hex) {
+  const k = base.name + hex;
+  if (!paintCache[k]) { const m = base.clone(); m.color.set(hex); m.metalness = 0.55; m.roughness = 0.28; paintCache[k] = m; }
+  return paintCache[k];
+}
+// detailed models (Sketchfab, see credits in the pause menu), decimated and re-oriented with Blender
+const CAR_MODELS = { 3: { url: 'models/audi-rs6.glb', paint: ['BKit2_Paint_Geo_lodASG1'] }, 4: { url: 'models/porsche911.glb', paint: ['body'] } };
 const cars = [];
 class Car {
   constructor(x, z, h, hex, kind = 0) {
@@ -706,7 +715,23 @@ class Car {
     this.wheels = G.wp.map(([wx, wy, wz]) => { const p = new THREE.Group(); p.position.set(wx, wy, wz); const m = new THREE.Mesh(G.wheelGeo, MAT.car); m.castShadow = true; p.add(m); this.dynG.add(p); return p; });
     this.dyn = null; this.setDyn(false); this.sync(); cars.push(this);
   }
-  setDyn(on) { if (on === this.dyn) return; this.dyn = on; this.g.remove(on ? this.stat : this.dynG); this.g.add(on ? this.dynG : this.stat); }
+  // swap the procedural body for the detailed Sketchfab model once it has loaded
+  useModel(tpl) {
+    const m = tpl.scene.clone(true);
+    m.traverse(o => {
+      if (!o.isMesh) return;
+      o.castShadow = true;
+      if (o.material && tpl.paint.includes(o.material.name)) o.material = paintMat(o.material, this.hex);
+    });
+    this.wheels = ['wheel_LF', 'wheel_RF', 'wheel_LB', 'wheel_RB'].map(n => {
+      const w = m.getObjectByName(n), p = new THREE.Group(); p.position.copy(w.position); w.position.set(0, 0, 0);
+      m.add(p); p.add(w); return p;
+    });
+    this.g.remove(this.stat); this.g.remove(this.dynG); this.g.add(m);
+    this.stat = this.dynG = m; this.dyn = true; this.model = true;
+    this.tailM = new THREE.Mesh(); this.headM = new THREE.Mesh();
+  }
+  setDyn(on) { if (this.model) return; if (on === this.dyn) return; this.dyn = on; this.g.remove(on ? this.stat : this.dynG); this.g.add(on ? this.dynG : this.stat); }
   sync() { this.g.position.set(this.x, 0, this.z); this.g.rotation.y = this.h; }
   get fx() { return Math.sin(this.h); } get fz() { return Math.cos(this.h); }
   circles() { const o = this.half - 0.85, fx = this.fx, fz = this.fz; return [[this.x + fx * o, this.z + fz * o], [this.x, this.z], [this.x - fx * o, this.z - fz * o]]; }
@@ -732,6 +757,16 @@ function spawnTraffic(n) {
   }
 }
 spawnTraffic(26);
+{
+  const loader = new GLTFLoader();
+  for (const [kind, def] of Object.entries(CAR_MODELS)) {
+    loader.load(def.url, gltf => {
+      const tpl = { scene: gltf.scene, paint: def.paint };
+      for (const c of cars) if (c.kind === +kind) c.useModel(tpl);
+      if (sketch) applySketch();
+    }, undefined, () => { /* keep the procedural car if the model fails to load */ });
+  }
+}
 
 /* ================= people ================= */
 const SKIN = ['#f1c9a5', '#c99b7a', '#8d5a3b', '#5c3a26', '#e0b48f'];
@@ -1040,9 +1075,10 @@ const edgeCache = new Map();
 let inked = false;
 function applySketch() {
   document.body.classList.toggle('sketch', sketch);
-  if (sketch && !inked) {
+  if (sketch) {
     inked = true;
-    const meshes = []; scene.traverse(o => { if (o.isMesh && !o.userData.noInk && o.userData.key !== 'grass') meshes.push(o); });
+    const meshes = []; scene.traverse(o => { if (o.isMesh && !o.userData.noInk && !o.userData.inked && o.userData.key !== 'grass') meshes.push(o); });
+    meshes.forEach(m => m.userData.inked = true);
     for (const m of meshes) {
       let eg = edgeCache.get(m.geometry); if (!eg) { eg = new THREE.EdgesGeometry(m.geometry, 24); edgeCache.set(m.geometry, eg); }
       const l = new THREE.LineSegments(eg, ink); l.userData.ink = true; l.raycast = () => {}; m.add(l);
@@ -1431,9 +1467,9 @@ function updateDrive(c, dt) {
   if (hit > 2.5) { audio.crash(hit); shake = Math.min(1, hit / 12); }
   c.along = c.vx * nfx + c.vz * nfz;
   for (let i = 0; i < 4; i++) { const w = c.wheels[i]; w.children[0].rotation.x += c.along * dt / 0.37; if (i < 2) w.rotation.y = c.steer; }
-  if (c.kind === 4) { // cabriolet: the driver stays visible
+  if (c.kind === 4 && !c.model) { // procedural cabriolet: the driver stays visible (the Sketchfab model has its soft top up)
     hero.root.visible = true;
-    hero.root.position.set(c.x + c.fz * 0.36 - c.fx * 0.22, -0.02, c.z - c.fx * 0.36 - c.fz * 0.22); hero.root.position.y = 0.1; hero.root.rotation.y = c.h;
+    hero.root.position.set(c.x + c.fz * 0.36 - c.fx * 0.22, -0.02, c.z - c.fx * 0.36 - c.fz * 0.22); hero.root.position.y = c.model ? -0.4 : 0.1; hero.root.rotation.y = c.h;
     animatePerson(hero, 0, 0); hero.legL.rotation.x = hero.legR.rotation.x = -1.45; hero.armL.rotation.x = hero.armR.rotation.x = -1.15;
     hero.armL.rotation.z = -0.25; hero.armR.rotation.z = 0.25; hero.body.position.y = 0;
   }

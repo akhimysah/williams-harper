@@ -1,0 +1,10 @@
+porsche911.glb
+  "Porsche 911 4S Cabriolet (992)" (https://sketchfab.com/3d-models/porsche-911-4s-cabriolet-992-7a610a63e04a4a778d53cd139c729843)
+  by Burak Ozkan (https://sketchfab.com/arquitectoos), licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/).
+  Changes: decimated to ~50k triangles, textures resized, wheels split into four nodes, re-oriented and scaled.
+
+audi-rs6.glb
+  "2020 ABT Sportline Audi RS6-R" (https://sketchfab.com/3d-models/2020-abt-sportline-audi-rs6-r-8efe6fd313234bef9b63c64293114dbf)
+  by Ddiaz Design (https://sketchfab.com/ddiaz-design), licensed under CC-BY-NC-SA-4.0 (http://creativecommons.org/licenses/by-nc-sa/4.0/).
+  Changes: engine removed, decimated to ~45k triangles, textures resized, wheels split, re-oriented and scaled.
+  This adapted model is shared under the same CC BY-NC-SA 4.0 license.

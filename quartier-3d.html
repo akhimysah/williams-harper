@@ -78,6 +78,7 @@ body.sketch #area,body.sketch #banner,body.sketch #sub,body.sketch #radio{color:
 .side button.main{background:var(--paper);color:#111;border-color:var(--paper)}
 .side a{color:var(--paper);font-size:13px;opacity:.8}
 .ctrl{font-size:13px;line-height:2;opacity:.9}
+.credits{font-size:11px;line-height:1.6;opacity:.6}.credits a{font-size:inherit;opacity:1}
 .ctrl div{display:flex;justify-content:space-between;gap:10px;border-bottom:1px solid rgba(255,255,255,.08)}
 #pause.maponly .side .ctrl{display:none}
 @media (max-width:760px){#pause{grid-template-columns:1fr;grid-template-rows:minmax(0,1fr) auto}.side{max-height:40vh}#pause .ctrl{display:none}}
@@ -162,6 +163,7 @@ body.touch #kmh{font-size:44px}
       <div><span>Croquis · Son</span><span><kbd>C</kbd> · <kbd>O</kbd></span></div>
     </div>
     <a href="index.html">← Retour au site Williams &amp; Harper</a>
+    <p class="credits">Modèles 3D : <a href="https://sketchfab.com/3d-models/porsche-911-4s-cabriolet-992-7a610a63e04a4a778d53cd139c729843" target="_blank" rel="noopener">« Porsche 911 4S Cabriolet (992) »</a> par <a href="https://sketchfab.com/arquitectoos" target="_blank" rel="noopener">Burak Ozkan</a>, licence <a href="http://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a> · <a href="https://sketchfab.com/3d-models/2020-abt-sportline-audi-rs6-r-8efe6fd313234bef9b63c64293114dbf" target="_blank" rel="noopener">« 2020 ABT Sportline Audi RS6-R »</a> par <a href="https://sketchfab.com/ddiaz-design" target="_blank" rel="noopener">Ddiaz Design</a>, licence <a href="http://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank" rel="noopener">CC BY-NC-SA 4.0</a>. Modèles allégés et réorientés pour le jeu.</p>
     <button type="button" id="p-reset" style="font-size:11px;padding:9px;opacity:.6">Effacer la progression</button>
   </div>
 </div>
@@ -181,6 +183,7 @@ body.touch #kmh{font-size:44px}
     </div>
     <div class="sw-l">Votre tenue</div>
     <button id="go" type="button" disabled>Chargement…</button>
+    <div class="keys-l" style="font-size:11px;opacity:.45">Voitures : Porsche 911 par Burak Ozkan (CC BY 4.0), Audi RS6-R ABT par Ddiaz Design (CC BY-NC-SA 4.0), via Sketchfab.</div>
     <div class="keys-l" data-help>ZQSD pour marcher · F pour conduire · souris pour regarder · M pour la carte · son conseillé</div>
   </div>
 </div>
