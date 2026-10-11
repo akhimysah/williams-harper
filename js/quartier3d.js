@@ -1910,7 +1910,6 @@ function frame() {
   camera.position.lerp(camPos, started ? Math.min(1, dt * (car ? 8 : 12)) : 1);
   if (shake > 0) { camera.position.x += (Math.random() - 0.5) * shake * 0.5; camera.position.y += (Math.random() - 0.5) * shake * 0.5; shake = Math.max(0, shake - dt * 2.5); }
   camera.lookAt(look);
-  if (window.__camLock) { camera.position.set(...window.__camLock[0]); camera.lookAt(...window.__camLock[1]); } // DEBUG
   const fov = car ? 58 + clamp(Math.abs(car.along) * 0.45, 0, 16) : 58;
   if (Math.abs(camera.fov - fov) > 0.05) { camera.fov = damp(camera.fov, fov, 3, dt); camera.updateProjectionMatrix(); }
   sky.position.copy(camera.position); stars.position.copy(camera.position);
@@ -1969,4 +1968,3 @@ hero.root.position.set(P.x, 0, P.z); hero.root.rotation.y = P.heading;
 applySketch();
 requestAnimationFrame(frame);
 go.disabled = false; go.textContent = 'Jouer';
-window.__q = { P, cars, lots, doors, setTod: v => tod = v, tp: (x, z) => { P.x = x; P.z = z; }, cam: (y, p, d) => { yaw = y; pitch = p; camDist = d; } };
