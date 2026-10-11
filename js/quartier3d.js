@@ -2,6 +2,13 @@
 import * as THREE from 'three';
 import { mergeGeometries, mergeVertices } from './vendor/BufferGeometryUtils.js';
 import { GLTFLoader } from './vendor/GLTFLoader.js';
+import { RGBELoader } from './vendor/jsm/loaders/RGBELoader.js';
+import { EffectComposer } from './vendor/jsm/postprocessing/EffectComposer.js';
+import { RenderPass } from './vendor/jsm/postprocessing/RenderPass.js';
+import { GTAOPass } from './vendor/jsm/postprocessing/GTAOPass.js';
+import { UnrealBloomPass } from './vendor/jsm/postprocessing/UnrealBloomPass.js';
+import { SMAAPass } from './vendor/jsm/postprocessing/SMAAPass.js';
+import { OutputPass } from './vendor/jsm/postprocessing/OutputPass.js';
 
 const $ = id => document.getElementById(id);
 const isTouch = matchMedia('(pointer:coarse)').matches;
@@ -37,11 +44,24 @@ const scene = new THREE.Scene();
 scene.fog = new THREE.Fog(0xcfe0ea, 90, 320);
 const camera = new THREE.PerspectiveCamera(58, innerWidth / innerHeight, 0.1, 900);
 const rig = new THREE.Group(); scene.add(rig); // VR: the visitor's body; the headset camera rides inside
+/* ---- post-processing: ambient occlusion, bloom for the lights, anti-aliasing (desktop only) ---- */
+let hq = !isTouch;
+const FX_DPR = Math.min(devicePixelRatio, 1.5);
+const composer = new EffectComposer(renderer); composer.setPixelRatio(FX_DPR);
+composer.addPass(new RenderPass(scene, camera));
+const gtao = new GTAOPass(scene, camera, innerWidth, innerHeight); gtao.output = GTAOPass.OUTPUT.Default;
+gtao.updateGtaoMaterial({ radius: 0.7, distanceExponent: 1.2, thickness: 1.2, scale: 1, samples: 12, distanceFallOff: 1, screenSpaceRadius: false });
+gtao.updatePdMaterial({ lumaPhi: 10, depthPhi: 2, normalPhi: 3, radius: 4, radiusExponent: 1, rings: 2, samples: 12 });
+gtao.blendIntensity = 0.85; composer.addPass(gtao);
+const bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.32, 0.55, 0.88); composer.addPass(bloom);
+composer.addPass(new OutputPass());
+const smaa = new SMAAPass(innerWidth * FX_DPR, innerHeight * FX_DPR); composer.addPass(smaa);
+function resizeFX() { composer.setSize(innerWidth, innerHeight); gtao.setSize(innerWidth, innerHeight); bloom.setSize(innerWidth, innerHeight); smaa.setSize(innerWidth * FX_DPR, innerHeight * FX_DPR); }
 
 const hemi = new THREE.HemisphereLight('#f4f1ea', '#6f7c58', 1);
 const sun = new THREE.DirectionalLight('#fff3df', 2.2);
 sun.castShadow = true;
-sun.shadow.mapSize.set(2048, 2048);
+sun.shadow.mapSize.set(isTouch ? 2048 : 4096, isTouch ? 2048 : 4096);
 Object.assign(sun.shadow.camera, { left: -55, right: 55, top: 55, bottom: -55, near: 1, far: 260 });
 sun.shadow.bias = -0.0004; sun.shadow.normalBias = 0.04;
 scene.add(hemi, sun, sun.target);
@@ -55,7 +75,9 @@ scene.add(hemi, sun, sun.target);
   eg.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
   es.add(new THREE.Mesh(eg, new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.BackSide })));
   const sunBlob = new THREE.Mesh(new THREE.SphereGeometry(1.2, 12, 8), new THREE.MeshBasicMaterial({ color: new THREE.Color(6, 5.5, 4.5) })); sunBlob.position.set(-5, 6, 4); es.add(sunBlob);
-  scene.environment = pm.fromScene(es, 0.03).texture; pm.dispose();
+  scene.environment = pm.fromScene(es, 0.03).texture;
+  // real sky: HDR environment for reflections and ambient light (Poly Haven, CC0)
+  new RGBELoader().load('textures/sky.hdr', t => { t.mapping = THREE.EquirectangularReflectionMapping; scene.environment = pm.fromEquirectangular(t).texture; t.dispose(); pm.dispose(); }, undefined, () => pm.dispose());
 }
 /* sky dome + stars */
 const skyU = { top: { value: new THREE.Color() }, hor: { value: new THREE.Color() }, sunDir: { value: V(0, 1, 0) }, sunCol: { value: new THREE.Color() }, glow: { value: 1 } };
@@ -134,6 +156,65 @@ MAT.metal = new THREE.MeshLambertMaterial({ color: '#1d1e21' });
 for (const [k, c] of [['signA', '#b08d57'], ['signB', '#2f4a6e'], ['signC', '#c4643f'], ['signD', '#3f6340']]) MAT[k] = new THREE.MeshLambertMaterial({ color: c, emissive: c, emissiveIntensity: 0.25 });
 MAT.sofa = new THREE.MeshLambertMaterial({ color: '#efe9de' });
 MAT.rock = new THREE.MeshLambertMaterial({ color: '#6f6d6a', flatShading: true });
+/* ---- photo textures (ambientCG, CC0): PBR materials tiled in world space ---- */
+const texLoader = new THREE.TextureLoader();
+const TEX = {};
+function tex(name, srgb = false) {
+  const k = name + (srgb ? 's' : '');
+  if (!TEX[k]) { const t = texLoader.load('textures/' + name + '.webp'); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = 8; if (srgb) t.colorSpace = THREE.SRGBColorSpace; TEX[k] = t; }
+  return TEX[k];
+}
+const TEX_SCALE = {}; // metres per tile, per material key
+function pbr(key, name, metres, o = {}) {
+  const m = new THREE.MeshStandardMaterial({ map: tex(name + '_c', true), normalMap: tex(name + '_n'), roughnessMap: tex(name + '_r'), roughness: 1, metalness: o.metalness ?? 0, color: o.color ?? '#ffffff', ...(o.extra || {}) });
+  if (o.normalScale !== undefined) m.normalScale.set(o.normalScale, o.normalScale);
+  if (o.emissive) { m.emissive = new THREE.Color(o.emissive); m.emissiveMap = tex(name + '_c', true); m.emissiveIntensity = o.emissiveIntensity ?? 0.4; }
+  MAT[key] = m; TEX_SCALE[key] = 1 / metres; return m;
+}
+pbr('grass', 'grass', 3); pbr('groof', 'grass', 2, { color: '#c9d9a8' });
+pbr('asphalt', 'asphalt', 4, { color: '#9a9a9c' });
+pbr('side', 'concrete', 2, { color: '#e6e1d6' }); pbr('curb', 'concrete', 1, { color: '#d8d2c6' });
+pbr('pave', 'stone', 2, { color: '#e8e2d6' }); pbr('stoneT', 'stone', 1.5, { color: '#dcd8d0' }); pbr('floorIn', 'stone', 2, { color: '#f0ebe2', emissive: '#8a7a62', emissiveIntensity: 0.35 });
+pbr('sand', 'gravel', 1.5, { color: '#e9dcc2' });
+pbr('wall', 'concrete', 2.5, { color: '#f6f3ee' }); pbr('wall2', 'concrete', 2.5, { color: '#e9e4da' });
+pbr('slab', 'concrete', 2, { color: '#cfcac0' }); pbr('slab2', 'gravel', 1.5, { color: '#6c6862' });
+pbr('wood', 'wood', 1.6, { color: '#c9a37c' }); pbr('deck', 'wood', 1.6, { color: '#c49a72' }); pbr('woodS', 'wood', 0.9, { color: '#d2aa80' });
+pbr('woodIn', 'woodfloor', 2, { color: '#e3c7a6', emissive: '#c08a4a', emissiveIntensity: 0.5 });
+pbr('marbleL', 'travertine', 2.5, { color: '#f2ede4' }); pbr('coping', 'travertine', 2, { color: '#f0ebe2' });
+pbr('marbleD', 'marbled', 2, { color: '#8e9096', metalness: 0.05 });
+pbr('trunk', 'bark', 1); pbr('ptrunk', 'bark', 1, { color: '#c9b79a' });
+pbr('rock', 'rock', 1.5, { color: '#b9b4ac' });
+pbr('sofa', 'fabric', 0.8, { color: '#f5efe3' }); pbr('table', 'fabric', 0.8, { color: '#f7f3ea' });
+pbr('fence', 'concrete', 1.5, { color: '#5e574f' });
+// pool: fine mosaic under moving water; ponds: dark water with the same ripples
+{
+  const wnj = texLoader.load('textures/waternormals.jpg'); wnj.wrapS = wnj.wrapT = THREE.RepeatWrapping; TEX.water = wnj;
+  MAT.waterC = new THREE.MeshStandardMaterial({ map: tex('tiles_c', true), color: '#49bcd0', normalMap: wnj, roughness: 0.06, metalness: 0.08, emissive: '#06384a', emissiveIntensity: 0.35, transparent: true, opacity: 0.96 });
+  MAT.waterC.normalScale.set(0.35, 0.35); TEX_SCALE.waterC = 1 / 0.6;
+  MAT.water = new THREE.MeshStandardMaterial({ color: '#3a8fa3', normalMap: wnj, roughness: 0.05, metalness: 0.1, emissive: '#0b3d4a', emissiveIntensity: 0.3 });
+  MAT.water.normalScale.set(0.5, 0.5); TEX_SCALE.water = 1 / 6;
+}
+// foliage: real leaf cut-outs on the tree crowns and palm fronds
+{
+  const leafC = tex('leaf_c', true), leafN = tex('leaf_n'), frondC = tex('frond_c', true), frondN = tex('frond_n');
+  const fol = (map, nmap, color) => new THREE.MeshStandardMaterial({ map, normalMap: nmap, color, roughness: 0.85, alphaTest: 0.45, side: THREE.DoubleSide, alphaToCoverage: false });
+  const dense = color => new THREE.MeshStandardMaterial({ map: leafC, normalMap: leafN, color, roughness: 0.9, normalScale: new THREE.Vector2(1.4, 1.4) });
+  MAT.leaf = dense('#7fa553'); MAT.leaf2 = dense('#9bbd62');
+  MAT.pine = new THREE.MeshStandardMaterial({ map: leafC, normalMap: leafN, color: '#3f6038', roughness: 0.9, side: THREE.DoubleSide });
+  MAT.palm = new THREE.MeshStandardMaterial({ map: frondC, normalMap: frondN, color: '#7fa54a', roughness: 0.85, side: THREE.DoubleSide });
+  TEX_SCALE.leaf = 1 / 0.8; TEX_SCALE.leaf2 = 1 / 0.8; TEX_SCALE.pine = 1 / 0.7; TEX_SCALE.palm = 1 / 1.0;
+}
+// world-space tiling: project each face onto its dominant axis so textures tile by metres across every box
+function worldUV(geo, sc) {
+  const pos = geo.attributes.position, nor = geo.attributes.normal; if (!nor) return;
+  const uv = new Float32Array(pos.count * 2);
+  for (let i = 0; i < pos.count; i++) {
+    const x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i), nx = Math.abs(nor.getX(i)), ny = Math.abs(nor.getY(i)), nz = Math.abs(nor.getZ(i));
+    let u, v; if (ny >= nx && ny >= nz) { u = x; v = z; } else if (nx >= nz) { u = z; v = y; } else { u = x; v = y; }
+    uv[i * 2] = u * sc; uv[i * 2 + 1] = v * sc;
+  }
+  geo.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
+}
 MAT.glass = new THREE.MeshStandardMaterial({ color: '#3b4a55', roughness: 0.15, metalness: 0.6 });
 MAT.glassLit = new THREE.MeshStandardMaterial({ color: '#3b4a55', roughness: 0.15, metalness: 0.6, emissive: '#ffc77a', emissiveIntensity: 0 });
 MAT.water = new THREE.MeshStandardMaterial({ color: '#4fb6cc', roughness: 0.08, metalness: 0.1, emissive: '#0b3d4a', emissiveIntensity: 0.4 });
@@ -193,8 +274,10 @@ function mat4(x, y, z, rx = 0, ry = 0, rz = 0, sx = 1, sy = 1, sz = 1) {
 
 function tree(x, z, s = 1) {
   put('trunk', new THREE.CylinderGeometry(0.12 * s, 0.18 * s, 2.6 * s, 6), mat4(x, 1.3 * s, z));
-  put(rnd() < 0.5 ? 'leaf' : 'leaf2', new THREE.IcosahedronGeometry(1.7 * s, 1), mat4(x, 3.5 * s, z, 0, rnd() * 6, 0, 1, 0.85, 1));
-  put('leaf', new THREE.IcosahedronGeometry(1.1 * s, 0), mat4(x + 0.8 * s, 2.9 * s, z + 0.4 * s, 0, rnd() * 6));
+  const k = rnd() < 0.5 ? 'leaf' : 'leaf2';
+  put(k, new THREE.IcosahedronGeometry(1.7 * s, 3), mat4(x, 3.5 * s, z, 0, rnd() * 6, 0, 1, 0.85, 1));
+  put(k, new THREE.IcosahedronGeometry(1.15 * s, 3), mat4(x + 0.8 * s, 2.9 * s, z + 0.4 * s, 0, rnd() * 6));
+  put(k, new THREE.IcosahedronGeometry(1.0 * s, 3), mat4(x - 0.7 * s, 3.1 * s, z - 0.5 * s, 0, rnd() * 6));
   solid(x - 0.3, x + 0.3, z - 0.3, z + 0.3, 4);
 }
 function palm(x, z, h = 6) {
@@ -213,7 +296,7 @@ function pine(x, z, h = 9) {
   put('trunk', new THREE.CylinderGeometry(0.15, 0.3, h * 0.35, 6), mat4(x, h * 0.17, z));
   for (let i = 0; i < 4; i++) {
     const r = (1 - i / 4.6) * h * 0.28, y = h * 0.25 + i * h * 0.18;
-    put('pine', new THREE.ConeGeometry(r, h * 0.32, 8), mat4(x, y + h * 0.16, z, 0, rnd() * 6));
+    put('pine', new THREE.ConeGeometry(r, h * 0.32, 14), mat4(x, y + h * 0.16, z, 0, rnd() * 6));
   }
   solid(x - 0.4, x + 0.4, z - 0.4, z + 0.4, 4);
 }
@@ -695,7 +778,8 @@ for (let i = 0; i < 90; i++) {
 
 const worldMeshes = [];
 for (const [k, list] of Object.entries(buckets)) {
-  const mesh = new THREE.Mesh(mergeGeometries(list), MAT[k]);
+  const geo = mergeGeometries(list); if (TEX_SCALE[k]) worldUV(geo, TEX_SCALE[k]);
+  const mesh = new THREE.Mesh(geo, MAT[k]);
   mesh.receiveShadow = true; mesh.castShadow = !NO_SHADOW.has(k);
   mesh.matrixAutoUpdate = false; mesh.userData.key = k;
   scene.add(mesh); worldMeshes.push(mesh);
@@ -1320,14 +1404,15 @@ function updateSky() {
   }
   const night = 1 - day;
   MAT.glassLit.emissiveIntensity = sketch ? 0 : night * 1.4;
-  MAT.bulb.color.set(night > 0.5 && !sketch ? '#ffe2a8' : '#e6e0d0');
+  MAT.bulb.color.set(night > 0.5 && !sketch ? '#ffe2a8' : '#e6e0d0'); if (night > 0.5 && !sketch) MAT.bulb.color.multiplyScalar(1.8);
   MAT.head.color.set(night > 0.5 && !sketch ? '#fffbe8' : '#d8d4c8');
   MAT.tail.color.set(night > 0.5 && !sketch ? '#ff3a24' : '#5a1010');
   MAT.water.emissiveIntensity = 0.4 + night * 0.9;
   MAT.waterC.emissiveIntensity = 0.35 + night * 1.1;
   MAT.led.color.set(sketch ? '#e6e0d0' : night > 0.5 ? '#ffe2b0' : '#ffd9a0');
-  for (const m of [MAT.glass, MAT.glassLit, MAT.water, MAT.glassC, MAT.rail, MAT.gold, MAT.marbleD, MAT.car]) m.envMapIntensity = 0.12 + 0.88 * day;
-  MAT.waterC.envMapIntensity = 0.1 + 0.4 * day;
+  for (const m of Object.values(MAT)) if (m.isMeshStandardMaterial) m.envMapIntensity = 0.1 + 0.9 * day;
+  MAT.waterC.envMapIntensity = 0.1 + 0.5 * day; MAT.marbleD.envMapIntensity = 0.15 + 0.6 * day;
+  MAT.led.color.setRGB(1 + night * 1.2, 0.85 + night * 0.9, 0.63 + night * 0.5);
   MAT.woodIn.emissiveIntensity = sketch ? 0 : 0.4 + night * 0.5; MAT.floorIn.emissiveIntensity = sketch ? 0 : 0.3 + night * 0.4;
   renderer.toneMappingExposure = sketch ? 1 : 1 + night * 0.25;
   return night;
@@ -1513,6 +1598,7 @@ addEventListener('keydown', e => {
   if (e.code === 'KeyR' && P.car) radioNext();
   if (e.code === 'KeyV') { camDist = camDist === 0 ? 6.5 : camDist < 5 ? 0 : camDist < 8 ? 10 : 4.2; hint(camDist === 0 ? 'Vue à la première personne (V pour changer)' : 'Vue à la troisième personne', 2); }
   if (e.code === 'KeyO') { const m = audio.toggleMute(); hint(m ? 'Son coupé (O)' : 'Son activé', 2); }
+  if (e.code === 'KeyG') { hq = !hq; hint(hq ? 'Qualité élevée (G) : occlusion ambiante, bloom, anticrénelage' : 'Qualité réduite (G)', 3); }
 });
 addEventListener('keyup', e => { keys.delete(e.code); if (e.code === 'KeyH') hornHeld = false; });
 addEventListener('blur', () => { keys.clear(); hornHeld = false; });
@@ -2053,9 +2139,10 @@ function frame() {
     if (vis) { nt.el.style.left = (tmp.x * 0.5 + 0.5) * innerWidth + 'px'; nt.el.style.top = (-tmp.y * 0.5 + 0.5) * innerHeight + 'px'; nt.el.style.opacity = Math.min(1, (70 - dd) / 20); }
   }
   drawMinimap();
-  renderer.render(scene, camera);
+  if (TEX.water) { TEX.water.offset.x += dt * 0.012; TEX.water.offset.y += dt * 0.008; }
+  if (hq && !renderer.xr.isPresenting && !sketch) composer.render(); else renderer.render(scene, camera);
 }
-addEventListener('resize', () => { renderer.setSize(innerWidth, innerHeight); camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); if (paused) drawBigmap(); });
+addEventListener('resize', () => { renderer.setSize(innerWidth, innerHeight); camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); resizeFX(); if (paused) drawBigmap(); });
 
 /* ================= VR ================= */
 let vrSnap = 0;
