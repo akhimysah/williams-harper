@@ -9,6 +9,7 @@ import { GTAOPass } from './vendor/jsm/postprocessing/GTAOPass.js';
 import { UnrealBloomPass } from './vendor/jsm/postprocessing/UnrealBloomPass.js';
 import { SMAAPass } from './vendor/jsm/postprocessing/SMAAPass.js';
 import { OutputPass } from './vendor/jsm/postprocessing/OutputPass.js';
+import { ShaderPass } from './vendor/jsm/postprocessing/ShaderPass.js';
 
 const $ = id => document.getElementById(id);
 const isTouch = matchMedia('(pointer:coarse)').matches;
@@ -44,6 +45,7 @@ const scene = new THREE.Scene();
 scene.fog = new THREE.Fog(0xcfe0ea, 90, 320);
 const camera = new THREE.PerspectiveCamera(58, innerWidth / innerHeight, 0.1, 900);
 const rig = new THREE.Group(); scene.add(rig); // VR: the visitor's body; the headset camera rides inside
+const propMeshes = [];
 /* ---- post-processing: ambient occlusion, bloom for the lights, anti-aliasing (desktop only) ---- */
 let hq = !isTouch;
 const FX_DPR = Math.min(devicePixelRatio, 1.5);
@@ -55,6 +57,15 @@ gtao.updatePdMaterial({ lumaPhi: 10, depthPhi: 2, normalPhi: 3, radius: 4, radiu
 gtao.blendIntensity = 0.85; composer.addPass(gtao);
 const bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.32, 0.55, 0.88); composer.addPass(bloom);
 composer.addPass(new OutputPass());
+const grade = new ShaderPass({
+  uniforms: { tDiffuse: { value: null }, vignette: { value: 0.32 }, contrast: { value: 1.08 }, saturation: { value: 0.9 }, warmth: { value: 0.02 } },
+  vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+  fragmentShader: `uniform sampler2D tDiffuse; uniform float vignette, contrast, saturation, warmth; varying vec2 vUv;
+  void main(){ vec4 c = texture2D(tDiffuse, vUv); vec3 col = c.rgb;
+    col = (col - 0.5) * contrast + 0.5; float l = dot(col, vec3(0.299, 0.587, 0.114)); col = mix(vec3(l), col, saturation);
+    col += vec3(warmth, warmth * 0.4, -warmth); vec2 d = vUv - 0.5; col *= 1.0 - vignette * dot(d, d) * 2.2;
+    gl_FragColor = vec4(clamp(col, 0.0, 1.0), c.a); }`
+}); composer.addPass(grade);
 const smaa = new SMAAPass(innerWidth * FX_DPR, innerHeight * FX_DPR); composer.addPass(smaa);
 function resizeFX() { composer.setSize(innerWidth, innerHeight); gtao.setSize(innerWidth, innerHeight); bloom.setSize(innerWidth, innerHeight); smaa.setSize(innerWidth * FX_DPR, innerHeight * FX_DPR); }
 
@@ -272,7 +283,9 @@ function mat4(x, y, z, rx = 0, ry = 0, rz = 0, sx = 1, sy = 1, sz = 1) {
   return new THREE.Matrix4().compose(V(x, y, z), new THREE.Quaternion().setFromEuler(new THREE.Euler(rx, ry, rz, 'YXZ')), V(sx, sy, sz));
 }
 
+const PLACE = { tree: [], pine: [], shrub: [] }; // where the real scanned models go once loaded
 function tree(x, z, s = 1) {
+  PLACE.tree.push([x, z, s, rnd() * 6.28]);
   put('trunk', new THREE.CylinderGeometry(0.12 * s, 0.18 * s, 2.6 * s, 6), mat4(x, 1.3 * s, z));
   const k = rnd() < 0.5 ? 'leaf' : 'leaf2';
   put(k, new THREE.IcosahedronGeometry(1.7 * s, 3), mat4(x, 3.5 * s, z, 0, rnd() * 6, 0, 1, 0.85, 1));
@@ -293,6 +306,7 @@ function palm(x, z, h = 6) {
   solid(x - 0.3, x + 0.3, z - 0.3, z + 0.3, 4);
 }
 function pine(x, z, h = 9) {
+  PLACE.pine.push([x, z, h / 9, rnd() * 6.28]);
   put('trunk', new THREE.CylinderGeometry(0.15, 0.3, h * 0.35, 6), mat4(x, h * 0.17, z));
   for (let i = 0; i < 4; i++) {
     const r = (1 - i / 4.6) * h * 0.28, y = h * 0.25 + i * h * 0.18;
@@ -452,6 +466,7 @@ function lotAt(lx, lz, ry, vname, sc = 1) {
 }
 // Villa Céline, after the architect's renders: L-shaped two-storey glass villa, black marble bands with
 // warm LED lines, wood soffits, marble pillars, mosaic pool facing the garden with the gold sculpture.
+function bush(x, z, r) { PLACE.shrub.push([x, z, r / 0.5, rnd() * 6.28]); put('leaf', new THREE.IcosahedronGeometry(r, 1), mat4(x, r * 0.8, z)); }
 function bananaPlant(x, z, sc = 1) {
   for (let i = 0; i < 7; i++) {
     const a = i / 7 * Math.PI * 2 + rnd(), g = new THREE.BoxGeometry(0.42 * sc, 0.03, 1.5 * sc); g.translate(0, 0, 0.75 * sc);
@@ -471,7 +486,7 @@ function margaux(ry, s, B, lb, W, rect, ls, vname, vurl, record) {
   lb('marbleD', 9.4, 11.8, 0, 0.45, 0, 0.35); ls(9.4, 11.8, 0, 0.35, 0.45);
   for (let v = 1.2; v < 8.6; v += 1.4) { const p = W(7.9, v); put('marbleL', new THREE.CylinderGeometry(0.5, 0.5, 0.05, 12), mat4(p.x, 0.025, p.z)); }
   for (const [u, v, r] of [[-8.6, 3.2, 0.75], [-7.4, 3.9, 0.45], [3.6, 2.4, 0.55], [10.2, 7.6, 0.8], [-10.8, 8.4, 0.5], [9.8, 8.6, 0.45]]) { const p = W(u, v); put('rock', new THREE.IcosahedronGeometry(r, 0), mat4(p.x, r * 0.5, p.z, rnd(), rnd() * 6, 0, 1.4, 0.75, 1)); }
-  for (const [u, v, r] of [[-5.2, 5.4, 0.5], [-2.6, 6.8, 0.42], [1.4, 4.2, 0.55], [4.6, 7.4, 0.45], [-9.4, 5.8, 0.4], [10.6, 4.6, 0.45], [6.2, 8.8, 0.38], [0.4, 8.4, 0.4]]) { const p = W(u, v); put('leaf', new THREE.IcosahedronGeometry(r, 1), mat4(p.x, r * 0.8, p.z)); }
+  for (const [u, v, r] of [[-5.2, 5.4, 0.5], [-2.6, 6.8, 0.42], [1.4, 4.2, 0.55], [4.6, 7.4, 0.45], [-9.4, 5.8, 0.4], [10.6, 4.6, 0.45], [6.2, 8.8, 0.38], [0.4, 8.4, 0.4]]) { const p = W(u, v); bush(p.x, p.z, r); }
   { const a = W(-11.2, 1.4); pine(a.x, a.z, 14); const b = W(11.2, 2.2); pine(b.x, b.z, 12); }
   // infinity pool across the whole front: light stone coping, LED under the far edge, stepping stones, dark water feature
   lb('marbleL', -11.2, 11.2, 0, 0.2, 9.2, 9.5); lb('marbleL', -11.2, 11.2, 0, 0.2, 13.2, 13.5);
@@ -552,7 +567,7 @@ function celine(ry, s, B, lb, W, rect, ls, vname, vurl, record) {
   for (let i = 0, v = 0.9; v < 12.4; i++, v += 1.05) { const u = 9.4 + (i % 2) * 0.9; put('rock', new THREE.CylinderGeometry(0.42, 0.42, 0.06, 14), mat4(...P3(u, 0.03, v).applyMatrix4(B).toArray())); }
   for (const [u, v] of [[-2, 2.2], [-0.8, 3.1], [0.6, 3.8], [2.1, 4.4], [3.6, 4.9], [5.2, 5.3]]) { const p = W(u, v); put('rock', new THREE.CylinderGeometry(0.38, 0.38, 0.05, 12), mat4(p.x, 0.025, p.z)); }
   for (const [u, v, r] of [[-5.6, 3.4, 0.7], [-4.7, 3.9, 0.45], [-6.3, 4.1, 0.38], [4.2, 2.2, 0.5]]) { const p = W(u, v); put('rock', new THREE.IcosahedronGeometry(r, 0), mat4(p.x, r * 0.55, p.z, rnd(), rnd() * 6, 0, 1.3, 0.8, 1)); }
-  for (const [u, v, r] of [[-8.5, 4.6, 0.55], [-2.8, 5.3, 0.45], [1.5, 5.7, 0.5], [6.8, 3.6, 0.6], [-9.6, 5.6, 0.4], [7.6, 5.4, 0.42]]) { const p = W(u, v); put('leaf', new THREE.IcosahedronGeometry(r, 1), mat4(p.x, r * 0.8, p.z)); }
+  for (const [u, v, r] of [[-8.5, 4.6, 0.55], [-2.8, 5.3, 0.45], [1.5, 5.7, 0.5], [6.8, 3.6, 0.6], [-9.6, 5.6, 0.4], [7.6, 5.4, 0.42]]) { const p = W(u, v); bush(p.x, p.z, r); }
   { const p = W(-8.6, 2.6); bananaPlant(p.x, p.z, 1.2); const q = W(5.6, 5.6); bananaPlant(q.x, q.z, 1); }
   { const p = W(-10.6, 1.4); pine(p.x, p.z, 13); }
   // pool (mosaic) with black marble coping
@@ -762,7 +777,7 @@ lotAt(222, 0, 0, 'Margaux', 1.5); lotAt(203, 66, Math.PI / 2, 'Margaux', 1.5);
 lotAt(-110, 166, 0, 'Margaux', 1.5); lotAt(-154, 236, -Math.PI / 2, 'Margaux', 1.5);
 
 // pines outside the site, a few trees in the unbuilt margins inside
-for (let i = 0; i < 420; i++) {
+for (let i = 0; i < 300; i++) {
   const x = WORLD.x0 + rnd() * (WORLD.x1 - WORLD.x0), z = WORLD.z0 + rnd() * (WORLD.z1 - WORLD.z0);
   if (inPoly(SITE_POLY, x, z) || nearRoad(x, z, 8)) continue;
   rnd() < 0.8 ? pine(x, z, 8 + rnd() * 7) : palm(x, z, 6 + rnd() * 3);
@@ -1082,7 +1097,8 @@ class Car {
   circles() { const o = this.half - 0.85, fx = this.fx, fz = this.fz; return [[this.x + fx * o, this.z + fz * o], [this.x, this.z], [this.x - fx * o, this.z - fz * o]]; }
   speed() { return Math.hypot(this.vx, this.vz); }
 }
-for (const [x, z, h] of parkedSpots) new Car(x, z, h, pick(CAR_COLORS), rnd() < 0.25 ? 1 : 0);
+const REAL_KINDS = [3, 4, 5], REAL_COLORS = { 3: ['#8a8d8f', '#1f1f1f', '#2f4a6e', '#d9d6cf'], 4: ['#a51c24', '#d9d6cf', '#c9a227', '#1f1f1f', '#4a5a6e'], 5: ['#141414', '#e9e7e2', '#4b5244', '#2c2f38'] };
+for (const [x, z, h] of parkedSpots) { const k = pick(REAL_KINDS); new Car(x, z, h, pick(REAL_COLORS[k]), k); }
 new Car(15.2, 170.5, 0, '#a51c24', 4); // race car, at the parking next to the course marker
 new Car(18.4, 170.5, 0, '#8a8d8f', 3);
 new Car(21.6, 170.5, 0, '#d9d6cf', 4);
@@ -1096,12 +1112,45 @@ function spawnTraffic(n) {
   for (let i = 0; i < n; i++) {
     const rd = pick(segs), dir = rnd() < 0.5 ? 1 : -1, along = 10 + rnd() * (rd.L - 20), laneOff = rd.w >= 10 ? 2.5 : 1.9;
     const fx = rd.dx * dir, fz = rd.dz * dir, rx = -fz, rz = fx;
-    const hk = i % 8 === 1 ? 3 : i % 8 === 4 ? 4 : i % 8 === 6 ? 5 : rnd() < 0.3 ? 1 : 0;
-    const c = new Car(rd.p0[0] + rd.dx * along + rx * laneOff, rd.p0[1] + rd.dz * along + rz * laneOff, Math.atan2(fx, fz), hk === 3 ? pick(['#8a8d8f', '#1f1f1f', '#2f4a6e']) : hk === 4 ? pick(['#a51c24', '#d9d6cf', '#c9a227']) : hk === 5 ? pick(['#141414', '#e9e7e2', '#4b5244']) : pick(CAR_COLORS), hk);
+    const hk = REAL_KINDS[i % 3];
+    const c = new Car(rd.p0[0] + rd.dx * along + rx * laneOff, rd.p0[1] + rd.dz * along + rz * laneOff, Math.atan2(fx, fz), pick(REAL_COLORS[hk]), hk);
     c.ai = { seg: rd, dir, dx: fx, dz: fz, v: 8, cruise: 9 + rnd() * 4, prev: 0 }; c.setDyn(true);
   }
 }
 spawnTraffic(16);
+/* ---- real scanned vegetation (Poly Haven, CC0), GPU-instanced over the placements ---- */
+const PROPS = { tree: ['models/props/island_tree_02.glb', 'models/props/tree_small_02.glb'], pine: ['models/props/fir_sapling_medium.glb'], shrub: ['models/props/shrub_01.glb', 'models/props/shrub_04.glb'] };
+function instanceProp(gltf, places, heightM, hideKeys) {
+  const root = gltf.scene; root.updateMatrixWorld(true);
+  const bb = new THREE.Box3().setFromObject(root), h = bb.max.y - bb.min.y || 1, base = bb.min.y;
+  const meshes = []; root.traverse(o => { if (o.isMesh) meshes.push(o); });
+  const M = new THREE.Matrix4(), T = new THREE.Matrix4();
+  for (const m of meshes) {
+    const mat = m.material; mat.side = THREE.DoubleSide; mat.envMapIntensity = 0.6;
+    const leafy = mat.transparent || mat.alphaTest > 0 || /leaf|leaves|twig|foli/i.test(mat.name);
+    if (leafy) { mat.transparent = false; mat.alphaTest = 0.4; mat.depthWrite = true; mat.roughness = 0.75; mat.emissive = new THREE.Color('#ffffff'); mat.emissiveMap = mat.map; mat.emissiveIntensity = 0.32; mat.envMapIntensity = 1.0; mat.userData.leafy = true; }
+    const inst = new THREE.InstancedMesh(m.geometry, mat, places.length);
+    if (leafy) { inst.customDepthMaterial = new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking, map: mat.map, alphaTest: 0.4 }); inst.receiveShadow = false; }
+    m.updateWorldMatrix(true, false);
+    places.forEach(([x, z, sc, rot], i) => {
+      const k = heightM * sc / h;
+      T.compose(V(x, -base * k, z), new THREE.Quaternion().setFromAxisAngle(V(0, 1, 0), rot), V(k, k, k));
+      M.multiplyMatrices(T, m.matrixWorld); inst.setMatrixAt(i, M);
+    });
+    inst.instanceMatrix.needsUpdate = true; inst.castShadow = true; if (!leafy) inst.receiveShadow = true; inst.computeBoundingSphere(); inst.userData.noInk = true;
+    scene.add(inst); propMeshes.push(inst);
+  }
+  for (const m of worldMeshes) if (hideKeys.includes(m.userData.key)) m.visible = false;
+}
+{
+  const loader = new GLTFLoader();
+  const half = (arr, i) => arr.filter((_, k) => k % 2 === i);
+  loader.load(PROPS.tree[0], g => instanceProp(g, half(PLACE.tree, 0).map(p => [p[0], p[1], p[2] * 1.0, p[3]]), 7.5, ['leaf', 'leaf2', 'trunk']), undefined, () => {});
+  loader.load(PROPS.tree[1], g => instanceProp(g, half(PLACE.tree, 1), 7.0, ['leaf', 'leaf2']), undefined, () => {});
+  loader.load(PROPS.pine[0], g => instanceProp(g, PLACE.pine, 11, ['pine', 'trunk']), undefined, () => {});
+  loader.load(PROPS.shrub[0], g => instanceProp(g, half(PLACE.shrub, 0), 0.9, []), undefined, () => {});
+  loader.load(PROPS.shrub[1], g => instanceProp(g, half(PLACE.shrub, 1), 0.8, []), undefined, () => {});
+}
 {
   const loader = new GLTFLoader();
   for (const [kind, def] of Object.entries(CAR_MODELS)) {
@@ -1413,6 +1462,7 @@ function updateSky() {
   for (const m of Object.values(MAT)) if (m.isMeshStandardMaterial) m.envMapIntensity = 0.1 + 0.9 * day;
   MAT.waterC.envMapIntensity = 0.1 + 0.5 * day; MAT.marbleD.envMapIntensity = 0.15 + 0.6 * day;
   MAT.led.color.setRGB(1 + night * 1.2, 0.85 + night * 0.9, 0.63 + night * 0.5);
+  for (const m of propMeshes) if (m.material.userData.leafy) m.material.emissiveIntensity = 0.05 + 0.3 * day;
   MAT.woodIn.emissiveIntensity = sketch ? 0 : 0.4 + night * 0.5; MAT.floorIn.emissiveIntensity = sketch ? 0 : 0.3 + night * 0.4;
   renderer.toneMappingExposure = sketch ? 1 : 1 + night * 0.25;
   return night;
@@ -1998,7 +2048,7 @@ function frame() {
 
   if (started) { if (P.car) updateDrive(P.car, dt); else { updateFoot(dt); audio.update(false, 0, 0, night > 0.5, dt); audio.horn(false); } }
   updateTraffic(dt, simT);
-  for (const c of cars) if (c.model) c.setLod(c === P.car || (c.x - camera.position.x) ** 2 + (c.z - camera.position.z) ** 2 < 6400);
+  for (const c of cars) if (c.model) c.setLod(c === P.car || (c.x - camera.position.x) ** 2 + (c.z - camera.position.z) ** 2 < (hq ? 16900 : 6400));
   updatePeds(dt);
 
   // collectibles
