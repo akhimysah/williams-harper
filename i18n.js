@@ -368,4 +368,6 @@ window.WH_EN = {
 "Une sophistication":"A sophistication","Chaque villa est pensée comme une fusion harmonieuse entre architecture et environnement.":"Each villa is conceived as a seamless fusion of architecture and landscape.","Des matériaux nobles, des finitions soignées, des lignes épurées et des jeux de lumière savamment orchestrés confèrent à chaque résidence une signature unique. Un domaine privé de huit hectares, à quelques minutes de Guéliz et de l'aéroport, où le luxe se fait quotidien : conciergerie, sécurité permanente, salle de sport, terrains de padel, café.":"Noble materials, refined finishes, clean lines and carefully orchestrated light give each residence a unique signature. A private eight-hectare estate, minutes from Guéliz and the airport, where luxury is everyday: concierge, round-the-clock security, gym, padel courts, café.","Villa sur sa pelouse, Domaine Red Stone":"Villa on its lawn, Red Stone Estate","Le jardin de rocaille":"The rock garden"
 ,
 "Activer le son":"Sound on","Couper le son":"Mute"
+,
+"Touchez l'écran pour le son":"Tap the screen for sound"
 };
