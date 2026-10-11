@@ -106,6 +106,7 @@ body.sketch #area,body.sketch #banner,body.sketch #sub,body.sketch #radio{color:
 body.touch #stick{display:block}body.touch #mbtns{display:grid}
 body.touch #mm-wrap{width:130px;height:130px;left:auto;right:14px;bottom:auto;top:calc(max(10px,env(safe-area-inset-top)) + 96px)}
 body.touch #tools{display:none}
+body.touch #tools:has(#b-vr:not([hidden])){display:flex}body.touch #tools button:not(#b-vr){display:none}
 body.touch #area{right:auto;left:16px;text-align:left;bottom:auto;top:calc(max(12px,env(safe-area-inset-top)) + 40px)}
 body.touch #speedo{bottom:auto;top:calc(max(10px,env(safe-area-inset-top)) + 236px);right:18px}
 body.touch #kmh{font-size:44px}
@@ -122,7 +123,7 @@ body.touch #kmh{font-size:44px}
   <div id="money">€ 0 000 000</div>
   <div id="keys"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><circle cx="7" cy="12" r="4"/><path d="M11 12h11M18 12v4M21 12v3"/></svg><span id="keys-n">0/12</span></div>
 </div>
-<div id="tools" class="hud"><button type="button" id="b-map">Carte · M</button><button type="button" id="b-sketch" aria-pressed="false">Croquis · C</button></div>
+<div id="tools" class="hud"><button type="button" id="b-map">Carte · M</button><button type="button" id="b-sketch" aria-pressed="false">Croquis · C</button><button type="button" id="b-vr" aria-pressed="false" hidden>Entrer en VR</button><button type="button" id="b-fp">Vue · V</button></div>
 <div id="timer" class="hud sh"></div>
 <div id="radio" class="hud sh"></div>
 <div id="banner" class="hud sh"><div class="t"></div><div class="s"></div></div>
@@ -158,7 +159,7 @@ body.touch #kmh{font-size:44px}
       <div><span>Radio</span><span><kbd>R</kbd></span></div>
       <div><span>Action / visiter</span><span><kbd>E</kbd></span></div>
       <div><span>Carte · Pause</span><span><kbd>M</kbd> · <kbd>Échap</kbd></span></div>
-      <div><span>Caméra</span><span><kbd>V</kbd></span></div>
+      <div><span>Caméra · vue à la 1<sup>re</sup> personne</span><span><kbd>V</kbd></span></div>
       <div><span>Jour / nuit · Temps rapide</span><span><kbd>N</kbd> · <kbd>T</kbd></span></div>
       <div><span>Croquis · Son</span><span><kbd>C</kbd> · <kbd>O</kbd></span></div>
     </div>
@@ -183,6 +184,7 @@ body.touch #kmh{font-size:44px}
     </div>
     <div class="sw-l">Votre tenue</div>
     <button id="go" type="button" disabled>Chargement…</button>
+    <div id="vr-intro" hidden style="margin-top:12px;font-size:12px;letter-spacing:.14em;text-transform:uppercase;opacity:.8">Casque détecté : <button type="button" id="go-vr" style="font:inherit;background:none;border:1px solid rgba(255,255,255,.5);border-radius:999px;color:inherit;padding:6px 14px;cursor:pointer">Entrer en VR</button></div>
     <div class="keys-l" style="font-size:11px;opacity:.45">Voitures : Porsche 911 par Burak Ozkan (CC BY 4.0), Audi RS6-R ABT par Ddiaz Design (CC BY-NC-SA 4.0), Mercedes G63 par ceron_alex (CC BY-NC 4.0), via Sketchfab.</div>
     <div class="keys-l" data-help>ZQSD pour marcher · F pour conduire · souris pour regarder · M pour la carte · son conseillé</div>
   </div>

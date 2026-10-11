@@ -32,9 +32,11 @@ renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.xr.enabled = true; renderer.xr.setReferenceSpaceType('local-floor');
 const scene = new THREE.Scene();
 scene.fog = new THREE.Fog(0xcfe0ea, 90, 320);
 const camera = new THREE.PerspectiveCamera(58, innerWidth / innerHeight, 0.1, 900);
+const rig = new THREE.Group(); scene.add(rig); // VR: the visitor's body; the headset camera rides inside
 
 const hemi = new THREE.HemisphereLight('#f4f1ea', '#6f7c58', 1);
 const sun = new THREE.DirectionalLight('#fff3df', 2.2);
@@ -1509,7 +1511,7 @@ addEventListener('keydown', e => {
   if (e.code === 'KeyN') { tod = dayF > 0.5 ? 22 : 10; hint(dayF > 0.5 ? 'La nuit tombe sur le domaine.' : 'Le jour se lève.', 2.5); }
   if (e.code === 'KeyT') { timeScale = timeScale > 0.1 ? 1 / 30 : 1; hint(timeScale > 0.1 ? 'Accéléré du temps : activé (T)' : 'Temps normal', 2.5); }
   if (e.code === 'KeyR' && P.car) radioNext();
-  if (e.code === 'KeyV') { camDist = camDist < 5 ? 6.5 : camDist < 8 ? 10 : 4.2; }
+  if (e.code === 'KeyV') { camDist = camDist === 0 ? 6.5 : camDist < 5 ? 0 : camDist < 8 ? 10 : 4.2; hint(camDist === 0 ? 'Vue à la première personne (V pour changer)' : 'Vue à la troisième personne', 2); }
   if (e.code === 'KeyO') { const m = audio.toggleMute(); hint(m ? 'Son coupé (O)' : 'Son activé', 2); }
 });
 addEventListener('keyup', e => { keys.delete(e.code); if (e.code === 'KeyH') hornHeld = false; });
@@ -1522,13 +1524,13 @@ canvas.addEventListener('pointerdown', e => {
   drag = { id: e.pointerId, x: e.clientX, y: e.clientY }; canvas.setPointerCapture(e.pointerId);
 });
 canvas.addEventListener('pointermove', e => {
-  if (document.pointerLockElement === canvas) { yaw -= e.movementX * 0.0024; pitch = clamp(pitch + e.movementY * 0.002, -0.15, 1.2); lastMouse = performance.now() / 1000; return; }
+  if (document.pointerLockElement === canvas) { yaw -= e.movementX * 0.0024; pitch = clamp(pitch + e.movementY * 0.002, camDist === 0 ? -1.2 : -0.15, 1.2); lastMouse = performance.now() / 1000; return; }
   if (!drag || drag.id !== e.pointerId) return;
   yaw -= (e.clientX - drag.x) * 0.0055; pitch = clamp(pitch + (e.clientY - drag.y) * 0.004, -0.15, 1.2);
   drag.x = e.clientX; drag.y = e.clientY; lastMouse = performance.now() / 1000;
 });
 canvas.addEventListener('pointerup', () => drag = null); canvas.addEventListener('pointercancel', () => drag = null);
-canvas.addEventListener('wheel', e => { camDist = clamp(camDist * (1 + e.deltaY * 0.001), 2.5, 22); e.preventDefault(); }, { passive: false });
+canvas.addEventListener('wheel', e => { if (camDist === 0) { if (e.deltaY > 0) camDist = 2.6; } else { camDist = Math.min(22, camDist * (1 + e.deltaY * 0.001)); if (camDist < 2.3) camDist = 0; } e.preventDefault(); }, { passive: false });
 document.addEventListener('pointerlockchange', () => { if (!document.pointerLockElement && started && !paused && !suppressPause) setPause(true); suppressPause = false; });
 let suppressPause = false;
 
@@ -1632,6 +1634,7 @@ function inQuad(q, x, z) {
 }
 function inPool(x, z) { for (const p of pools) if (inQuad(p, x, z)) return true; return false; }
 
+const vrIn = { f: 0, s: 0, run: false, thr: 0, brk: 0, st: 0, on: false };
 function updateFoot(dt) {
   let f = 0, s = 0;
   if (press('KeyW') || press('ArrowUp')) f += 1;
@@ -1639,8 +1642,9 @@ function updateFoot(dt) {
   if (press('KeyD') || press('ArrowRight')) s += 1;
   if (press('KeyA') || press('ArrowLeft')) s -= 1;
   if (joy) { f = -jv.y; s = jv.x; }
+  if (vrIn.on) { f = vrIn.f; s = vrIn.s; }
   const mag = Math.min(1, Math.hypot(f, s));
-  const run = press('ShiftLeft') || press('ShiftRight') || runToggle || (joy && mag > 0.95);
+  const run = press('ShiftLeft') || press('ShiftRight') || runToggle || (joy && mag > 0.95) || vrIn.run;
   const swimming = P.swim;
   let target = P.down > 0 ? 0 : mag * (swimming ? 2.2 : run ? 7.6 : 3.6);
   P.speed = damp(P.speed, target, 8, dt);
@@ -1721,6 +1725,7 @@ function updateDrive(c, dt) {
   if (press('KeyA') || press('ArrowLeft')) st += 1;
   if (press('KeyD') || press('ArrowRight')) st -= 1;
   if (joy) { thr = clamp(-jv.y * 1.3, 0, 1); brk = clamp(jv.y * 1.3, 0, 1); st = -jv.x; }
+  if (vrIn.on) { thr = vrIn.thr; brk = vrIn.brk; st = vrIn.st; }
   const hand = press('Space');
   const fx = c.fx, fz = c.fz;
   let along = c.vx * fx + c.vz * fz;
@@ -1893,8 +1898,8 @@ const clock = new THREE.Clock();
 const look = V(0, 0, 0), camPos = V(0, 0, 0), tmp = V(0, 0, 0);
 let lastZone = '', areaT = 0, simT = 0;
 function frame() {
-  requestAnimationFrame(frame);
   const dt = Math.min(clock.getDelta(), 0.05);
+  if (renderer.xr.isPresenting) { readVR(dt); if (paused) setPause(false); }
   if (paused) return;
   simT += dt;
   if (started) tod = (tod + dt * timeScale) % 24;
@@ -1977,13 +1982,29 @@ function frame() {
   }
 
   // camera
-  const car = P.car;
+  const car = P.car, xr = renderer.xr.isPresenting, fp = xr || (camDist === 0 && started);
+  if (fp) hero.root.visible = false;
   const lookY = car ? 1.3 : P.y + (P.swim ? 1.0 : 1.55);
   look.set(car ? car.x : P.x, lookY, car ? car.z : P.z);
   const now = performance.now() / 1000;
-  if (car && now - lastMouse > 1.4 && Math.abs(car.along) > 1) { const back = car.along >= 0 ? car.h + Math.PI : car.h; yaw += wrapA(back - yaw) * Math.min(1, dt * 2.5); pitch = damp(pitch, 0.22, 1.5, dt); }
+  if (car && !xr && now - lastMouse > 1.4 && Math.abs(car.along) > 1) { const back = car.along >= 0 ? car.h + Math.PI : car.h; yaw += wrapA(back - yaw) * Math.min(1, dt * (fp ? 6 : 2.5)); pitch = damp(pitch, fp ? 0 : 0.22, 1.5, dt); }
   if (!started) yaw += dt * 0.06;
+  if (xr) { // the rig stands where the hero stands (or sits in the car); the headset does the looking
+    if (car) { rig.position.set(car.x + car.fz * 0.36 - car.fx * 0.2, 0.42, car.z - car.fx * 0.36 - car.fz * 0.2); rig.rotation.y = car.h + Math.PI; }
+    else { rig.position.set(P.x, P.y + (P.swim ? -0.5 : 0), P.z); }
+    const hd = new THREE.Vector3(); renderer.xr.getCamera().getWorldDirection(hd); yaw = Math.atan2(-hd.x, -hd.z);
+    sky.position.copy(rig.position); stars.position.copy(rig.position);
+  } else if (fp) { // first person: eyes at 1.62 m, or in the driver's seat
+    if (car) camera.position.set(car.x + car.fz * 0.36 + car.fx * 0.25, 1.18, car.z - car.fx * 0.36 + car.fz * 0.25);
+    else camera.position.set(P.x, P.y + (P.swim ? 0.9 : 1.62) + (P.speed > 0.5 ? Math.sin(P.phase * 2) * 0.025 : 0), P.z);
+    if (shake > 0) { camera.position.y += (Math.random() - 0.5) * shake * 0.3; shake = Math.max(0, shake - dt * 2.5); }
+    camera.lookAt(camera.position.x - Math.sin(yaw) * Math.cos(pitch), camera.position.y - Math.sin(pitch), camera.position.z - Math.cos(yaw) * Math.cos(pitch));
+    const fovF = car ? 70 + clamp(Math.abs(car.along) * 0.3, 0, 12) : 72;
+    if (Math.abs(camera.fov - fovF) > 0.05) { camera.fov = damp(camera.fov, fovF, 3, dt); camera.updateProjectionMatrix(); }
+    sky.position.copy(camera.position); stars.position.copy(camera.position);
+  }
   const dist = car ? 8.2 + Math.abs(car.along) * 0.06 : camDist;
+  if (!fp) {
   const cx = Math.sin(yaw) * Math.cos(pitch), cy = Math.sin(pitch), cz = Math.cos(yaw) * Math.cos(pitch);
   let d = dist;
   for (let t = 0.6; t < dist; t += 0.35) {
@@ -1999,6 +2020,7 @@ function frame() {
   const fov = car ? 58 + clamp(Math.abs(car.along) * 0.45, 0, 16) : 58;
   if (Math.abs(camera.fov - fov) > 0.05) { camera.fov = damp(camera.fov, fov, 3, dt); camera.updateProjectionMatrix(); }
   sky.position.copy(camera.position); stars.position.copy(camera.position);
+  }
 
   // night lights
   if (night > 0.45 && !sketch) {
@@ -2035,6 +2057,55 @@ function frame() {
 }
 addEventListener('resize', () => { renderer.setSize(innerWidth, innerHeight); camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); if (paused) drawBigmap(); });
 
+/* ================= VR ================= */
+let vrSnap = 0;
+const vrBtn = $('b-vr');
+if (navigator.xr && navigator.xr.isSessionSupported) navigator.xr.isSessionSupported('immersive-vr').then(ok => { vrBtn.hidden = !ok; $('vr-intro').hidden = !ok; }).catch(() => {});
+async function enterVR() {
+  if (renderer.xr.getSession()) { renderer.xr.getSession().end(); return; }
+  try {
+    const sess = await navigator.xr.requestSession('immersive-vr', { optionalFeatures: ['local-floor', 'bounded-floor', 'hand-tracking'] });
+    await renderer.xr.setSession(sess);
+    if (!started) go.click();
+  } catch (e) { hint('La VR n\'a pas pu démarrer : ' + e.message, 5); }
+}
+vrBtn.onclick = enterVR;
+$('go-vr').onclick = enterVR; $('b-fp').onclick = () => dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyV' }));
+renderer.xr.addEventListener('sessionstart', () => {
+  suppressPause = true; document.exitPointerLock?.(); setPause(false);
+  rig.add(camera); camera.position.set(0, 0, 0); camera.rotation.set(0, 0, 0);
+  rig.rotation.y = P.car ? P.car.h + Math.PI : P.heading + Math.PI; vrIn.on = true; vrBtn.setAttribute('aria-pressed', 'true');
+  audio.init();
+});
+renderer.xr.addEventListener('sessionend', () => {
+  scene.add(camera); vrIn.on = false; vrIn.f = vrIn.s = vrIn.thr = vrIn.brk = vrIn.st = 0; vrBtn.setAttribute('aria-pressed', 'false');
+  camera.fov = 58; camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); hero.root.visible = !P.car;
+});
+const vrBtnState = {};
+function readVR(dt) {
+  const sess = renderer.xr.getSession(); if (!sess) return;
+  const hd = new THREE.Vector3(); renderer.xr.getCamera().getWorldDirection(hd); hd.y = 0; hd.normalize();
+  vrIn.f = vrIn.s = vrIn.thr = vrIn.brk = vrIn.st = 0; vrIn.run = false;
+  for (const src of sess.inputSources) {
+    const g = src.gamepad; if (!g) continue;
+    const ax = g.axes.length >= 4 ? g.axes[2] : g.axes[0] || 0, ay = g.axes.length >= 4 ? g.axes[3] : g.axes[1] || 0;
+    const b = i => !!(g.buttons[i] && g.buttons[i].pressed);
+    if (src.handedness === 'left') {
+      if (P.car) { vrIn.thr = clamp(-ay, 0, 1); vrIn.brk = clamp(ay, 0, 1); vrIn.st = -ax; }
+      else if (Math.abs(ax) > 0.12 || Math.abs(ay) > 0.12) { vrIn.f = -ay; vrIn.s = ax; }
+      vrIn.run = b(0);
+      if (b(4) && !vrBtnState.x) toggleCar(); vrBtnState.x = b(4);
+    } else {
+      if (P.car) { vrIn.st = vrIn.st || -ax; if (b(0)) hornHeld = true; else if (vrBtnState.horn) hornHeld = false; vrBtnState.horn = b(0); }
+      if (Math.abs(ax) > 0.7 && vrSnap === 0) { vrSnap = Math.sign(ax); rig.rotation.y -= vrSnap * Math.PI / 6; } else if (Math.abs(ax) < 0.3) vrSnap = 0;
+      if (b(0) && !vrBtnState.trig && !P.car) act(); vrBtnState.trig = b(0);
+      if (b(4) && !vrBtnState.a) toggleCar(); vrBtnState.a = b(4);
+      if (b(1) && !vrBtnState.grip) wantJump = true; vrBtnState.grip = b(1);
+      if (b(5) && !vrBtnState.b) radioNext(); vrBtnState.b = b(5);
+    }
+  }
+}
+
 /* ================= intro ================= */
 const intro = $('intro'), go = $('go');
 intro.querySelectorAll('.sw button').forEach(b => b.onclick = () => {
@@ -2052,5 +2123,5 @@ document.querySelectorAll('[data-help]').forEach(el => el.hidden = isTouch);
 camera.position.set(P.x + 10, 8, P.z + 10);
 hero.root.position.set(P.x, 0, P.z); hero.root.rotation.y = P.heading;
 applySketch();
-requestAnimationFrame(frame);
+renderer.setAnimationLoop(frame);
 go.disabled = false; go.textContent = 'Jouer';
