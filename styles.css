@@ -385,3 +385,6 @@ body:has(.stickybar){padding-bottom:3.6rem}}
 .manif-figs b{display:block;font-family:var(--display);font-size:clamp(2rem,3vw,2.8rem);font-weight:300;line-height:1;font-variant-numeric:tabular-nums}
 .manif-figs span{font-size:.58rem;letter-spacing:.32em;text-transform:uppercase;color:var(--muted);display:block;margin-top:.6rem}
 @media (max-width:960px){.manif-grid{grid-template-columns:1fr}.manif-media{padding-right:14%;padding-bottom:16%}.manif-text h2{max-width:none}}
+/* Film — vidéo seule, bord à bord */
+.film-only{padding:0}
+.film-only .player{margin:0}
