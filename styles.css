@@ -301,9 +301,25 @@ footer .brand img{width:110px}
 .cmp-common{margin-top:2.4rem;color:var(--muted);font-size:.9rem;max-width:64ch}
 @media (max-width:960px){.cmp-cards{grid-template-columns:1fr;gap:3rem}.cmp-card figure{aspect-ratio:16/10}}
 /* Questions fréquentes */
-.faq-list{margin:clamp(2rem,5vw,4rem) 0 0;max-width:62rem;border-top:1px solid var(--line)}
-.faq-list dt{font-family:var(--display);font-size:1.5rem;font-weight:300;padding:1.4rem 0 .5rem}
-.faq-list dd{margin:0;padding:0 0 1.4rem;color:var(--muted);max-width:40rem;border-bottom:1px solid var(--line);line-height:1.7}
+.faq-grid{display:grid;grid-template-columns:minmax(0,.8fr) minmax(0,1.2fr);gap:clamp(2.5rem,7vw,7rem);align-items:start}
+.faq-intro{position:sticky;top:7rem}
+.faq-intro h2{font-size:clamp(2.2rem,3.6vw,3.4rem);margin-top:.8rem}
+.faq-intro p{color:var(--muted);margin-top:1.4rem;max-width:34ch}
+.faq-intro .btn{margin-top:2rem}
+.faq-acc{border-top:1px solid var(--line)}
+.faq-item{border-bottom:1px solid var(--line)}
+.faq-item summary{list-style:none;display:grid;grid-template-columns:3rem 1fr 2rem;align-items:baseline;gap:1rem;padding:1.5rem 0;cursor:pointer}
+.faq-item summary::-webkit-details-marker{display:none}
+.faq-n{font-family:var(--label);font-size:.6rem;letter-spacing:.3em;color:var(--champagne)}
+.faq-q{font-family:var(--display);font-size:clamp(1.35rem,1.9vw,1.75rem);font-weight:300;line-height:1.2;transition:color .3s}
+.faq-item summary:hover .faq-q{color:var(--champagne-dark,#7a6341)}
+.faq-x{position:relative;width:14px;height:14px;justify-self:end;align-self:center}
+.faq-x::before,.faq-x::after{content:"";position:absolute;left:0;top:6px;width:14px;height:1px;background:currentColor;transition:transform .4s}
+.faq-x::after{transform:rotate(90deg)}
+.faq-item[open] .faq-x::after{transform:rotate(0)}
+.faq-a{padding:0 2rem 1.8rem 4rem}
+.faq-a p{margin:0;color:var(--muted);line-height:1.75;max-width:52ch}
+@media (max-width:960px){.faq-grid{grid-template-columns:1fr;gap:2.5rem}.faq-intro{position:static}.faq-item summary{grid-template-columns:2.4rem 1fr 1.6rem}.faq-a{padding-left:3.4rem}}
 /* Contact rapide */
 .aside-contact{font-size:.85rem;color:var(--muted);margin-top:1rem}
 .aside-contact a{color:var(--ink);text-decoration:none;border-bottom:1px solid var(--champagne)}
