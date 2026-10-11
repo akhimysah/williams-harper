@@ -465,17 +465,40 @@ html.film-locked header{transform:translateY(-100%)}
 .nav .lang .sub a{font-family:var(--label);font-size:.66rem;letter-spacing:.24em;text-transform:uppercase;padding:.7rem 1.3rem}
 .nav .lang .sub a[aria-current="true"]{color:var(--champagne-dark,#7a6341)}
 @media (max-width:860px){.nav .lang{border-top:1px solid var(--line);padding-top:1rem}.nav .lang .lang-cur{display:none}.nav .lang .sub-in{border:0;padding:0;display:flex;gap:1.4rem}.nav .lang .sub a{padding:.2rem 0}}
-/* Localisation — plan de situation illustré + lieux en cartes */
-.loc-grid{display:block;margin-top:clamp(2.5rem,5vw,4rem)}
-.loc-map{margin:0 auto;max-width:1100px;position:static}
-.loc-map img{width:100%;height:auto;border:1px solid var(--line)}
-.loc-map figcaption{margin-top:1rem;font-size:.6rem;letter-spacing:.32em;text-transform:uppercase;color:var(--muted);text-align:center}
-.loc-list{display:grid;grid-template-columns:repeat(5,1fr);gap:clamp(1.2rem,2.5vw,2.5rem);margin-top:clamp(3rem,6vw,5rem);border-top:1px solid var(--line);padding-top:clamp(2rem,4vw,3rem)}
-.loc-row{display:block}
+/* Localisation — bandeau photo + ligne des distances + lieux */
+.loc-band h1{font-size:clamp(2.6rem,5.5vw,5rem);max-width:14ch;margin-top:1rem}
+.loc{padding-top:clamp(5rem,9vw,8rem)}
+.distline{position:relative;height:17rem;margin:0 clamp(1rem,6vw,6rem)}
+.dl-track{position:absolute;left:0;right:0;top:50%;height:1px;background:var(--champagne);opacity:.6}
+.dl-track::before,.dl-track::after{content:"";position:absolute;top:-3px;width:7px;height:7px;border-radius:50%;background:var(--champagne-deep)}
+.dl-track::before{left:-3px}.dl-track::after{right:-3px}
+.dn{position:absolute;left:var(--x);top:50%;width:0;display:flex;flex-direction:column;align-items:center}
+.dn::before{content:"";position:absolute;left:-3px;top:-3px;width:7px;height:7px;border-radius:50%;background:var(--ink)}
+.dn::after{content:"";position:absolute;left:0;width:1px;height:2.2rem;background:var(--champagne);opacity:.7}
+.dn.up::after{bottom:3px}.dn.down::after{top:3px}
+.dn b,.dn span{white-space:nowrap;position:absolute;left:50%;transform:translateX(-50%)}
+.dn b{font-family:var(--display);font-weight:300;font-size:clamp(2rem,3.4vw,3rem);line-height:1;font-variant-numeric:tabular-nums}
+.dn b small{font-family:var(--body);font-size:.6rem;letter-spacing:.24em;text-transform:uppercase;color:var(--champagne-deep);margin-left:.35rem}
+.dn span{font-size:.62rem;letter-spacing:.26em;text-transform:uppercase;color:var(--muted)}
+.dn.up b{bottom:3.6rem}.dn.up span{bottom:2.6rem}
+.dn.down b{top:3.2rem}.dn.down span{top:6.2rem}
+.dn.dn-0 b{display:none}.dn.dn-0 span{color:var(--ink)}
+.dn.dn-0{align-items:flex-start}.dn.dn-0 span{left:0;transform:none}
+.reveal.in .dn{animation:rise 1s cubic-bezier(.2,.7,.2,1) both}
+.loc-actions{display:flex;gap:1.6rem;align-items:center;flex-wrap:wrap;justify-content:center;margin-top:1.5rem}
+.loc-list{display:grid;grid-template-columns:repeat(5,1fr);gap:clamp(1.2rem,2.5vw,2.5rem);margin-top:clamp(4rem,8vw,7rem);border-top:1px solid var(--line);padding-top:clamp(2rem,4vw,3rem)}
 .loc-row img{width:100%;aspect-ratio:4/3;height:auto;object-fit:cover;display:block}
 .loc-row .label{margin-top:1.1rem}
-.loc-row h3{font-size:1.45rem;margin:.3rem 0 .5rem}
+.loc-row h3{font-size:1.4rem;margin:.3rem 0 .5rem}
 .loc-row p{color:var(--muted);font-size:.86rem;line-height:1.6}
-.loc-actions{grid-column:1/-1;display:flex;gap:1.6rem;align-items:center;flex-wrap:wrap;margin-top:.5rem}
 @media (max-width:1100px){.loc-list{grid-template-columns:repeat(3,1fr)}}
+@media (max-width:860px){
+  .distline{height:auto;margin:0}
+  .dl-track{left:3px;right:auto;top:0;bottom:0;width:1px;height:auto}
+  .dl-track::before{left:-3px;top:0}.dl-track::after{left:-3px;top:auto;bottom:0}
+  .dn{position:static;width:auto;flex-direction:row;align-items:baseline;gap:1rem;padding:.9rem 0 .9rem 1.6rem;animation:none}
+  .dn::before{left:0;top:auto;margin-top:.6rem}.dn::after{display:none}
+  .dn b,.dn span{position:static;transform:none}
+  .dn.dn-0 b{display:none}
+}
 @media (max-width:640px){.loc-list{grid-template-columns:1fr 1fr}}
