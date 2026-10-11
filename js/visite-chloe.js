@@ -82,8 +82,9 @@ const M = {
   stone: std({ map: T.stone, roughness: 0.55, metalness: 0.08, envMapIntensity: 0.6 }, 2.4),
   marbleG: std({ map: T.marbleG, roughness: 0.28, metalness: 0.04, envMapIntensity: 1.0 }, 2.0),
   marbleW: std({ map: T.marbleW, roughness: 0.32, metalness: 0.03, envMapIntensity: 0.8 }, 2.2),
-  marbleB: std({ map: T.marbleB, roughness: 0.18, metalness: 0.08, envMapIntensity: 1.2 }, 1.6),
+  marbleB: std({ map: T.marbleB, roughness: 0.22, metalness: 0.08, envMapIntensity: 0.7 }, 1.6),
   plaster: std({ map: T.plaster, roughness: 0.95, metalness: 0, envMapIntensity: 0.3 }, 3),
+  ceiling: std({ map: T.plaster, roughness: 0.95, metalness: 0, emissive: '#5a524a', emissiveIntensity: 0.35 }, 3),
   tile: std({ map: T.tile, roughness: 0.45, metalness: 0.02, envMapIntensity: 0.6 }, 1.2),
   slats: std({ map: T.slats, roughness: 0.7, metalness: 0, envMapIntensity: 0.4 }, 1.0),
   fence: std({ map: T.fence, roughness: 0.8, metalness: 0 }, 1.0),
@@ -93,7 +94,8 @@ const M = {
   pebble: std({ map: T.pebble, roughness: 0.85 }, 0.5),
   gravelD: std({ map: T.gravelD, roughness: 0.9 }, 0.7),
   paver: std({ map: T.paver, roughness: 0.8, metalness: 0.02 }, 1.5),
-  curtain: std({ map: T.curtain, roughness: 1, metalness: 0 }, 1.0),
+  curtain: std({ map: T.curtain, roughness: 1, metalness: 0, side: THREE.DoubleSide }, 1.0),
+  woodBall: std({ map: T.slats, roughness: 0.6, metalness: 0 }, 0.22),
   lattice: std({ map: T.lattice, roughness: 0.75, metalness: 0 }, 1.0),
   asphalt: std({ map: T.asphalt, roughness: 0.95 }, 3),
   bronze: std({ color: '#a8803f', roughness: 0.32, metalness: 0.95, envMapIntensity: 1.3 }),
@@ -127,7 +129,7 @@ const M = {
   water: new THREE.MeshPhysicalMaterial({ color: '#2fa9c4', transparent: true, opacity: 0.86, roughness: 0.04, metalness: 0.1, normalMap: T.ripple, normalScale: new THREE.Vector2(0.3, 0.3), envMapIntensity: 1.6, emissive: '#0a4a5e', emissiveIntensity: 0.35 }),
   waterDark: new THREE.MeshPhysicalMaterial({ color: '#0d1a20', transparent: true, opacity: 0.92, roughness: 0.03, metalness: 0.3, normalMap: T.ripple, normalScale: new THREE.Vector2(0.15, 0.15), envMapIntensity: 1.8 }),
   fall: new THREE.MeshBasicMaterial({ color: '#dfeef5', transparent: true, opacity: 0.55, alphaMap: T.fall, side: THREE.DoubleSide, depthWrite: false }),
-  flame: new THREE.MeshBasicMaterial({ color: new THREE.Color(3.5, 1.5, 0.3), transparent: true, opacity: 0.85 }),
+  flame: new THREE.MeshBasicMaterial({ color: new THREE.Color(1.0, 0.3, 0.03), transparent: true, opacity: 0.85, depthWrite: false, blending: THREE.AdditiveBlending, toneMapped: false }),
 };
 M.water.userData.unit = 4; M.waterDark.userData.unit = 3;
 const NO_SHADOW = new Set(['glass', 'railGlass', 'water', 'waterDark', 'fall', 'led', 'ledCool', 'bulb', 'lawn', 'asphalt', 'mountain', 'curtain']);
@@ -162,7 +164,7 @@ function glazing(axis, c, a0, a1, y0, y1, o = {}) {
   const B = (u0, u1, v0, v1, key = 'frame', d = 0.09) => axis === 'x' ? box(key, u0, u1, v0, v1, c - d / 2, c + d / 2) : box(key, c - d / 2, c + d / 2, v0, v1, u0, u1);
   B(lo, hi, y0, y0 + bar); B(lo, hi, y1 - bar, y1); B(lo, lo + bar, y0, y1); B(hi - bar, hi, y0, y1);
   const n = o.mullions ?? Math.max(1, Math.round(L / 1.45)); for (let i = 1; i < n; i++) { const u = lo + L * i / n; B(u - 0.025, u + 0.025, y0, y1, 'frame', 0.08); }
-  if (o.transom) B(lo, hi, o.transom - 0.03, o.transom + 0.03, 'frame', 0.08);
+  for (const tr of (o.transoms || (o.transom ? [o.transom] : []))) B(lo, hi, tr - 0.03, tr + 0.03, 'frame', 0.08);
   let segs = [[lo + bar, hi - bar]]; for (const [oa, ob] of (o.open || [])) segs = segs.flatMap(([s0, s1]) => [[s0, Math.min(s1, oa)], [Math.max(s0, ob), s1]].filter(([p, q]) => q - p > 0.05));
   for (const [s0, s1] of segs) { B(s0, s1, y0 + bar, y1 - bar, 'glass', 0.02); axis === 'x' ? solid(s0, s1, c - 0.1, c + 0.1, y0, y1) : solid(c - 0.1, c + 0.1, s0, s1, y0, y1); }
   for (const [oa, ob] of (o.open || [])) { // vantail coulissé : verre doublé à côté de l'ouverture
@@ -194,6 +196,30 @@ function sofa(x, z, w, d, ry, key = 'fabric', h = 0.42) { // canapé droit : ass
 function ottoman(x, z, w, d, key, h = 0.42, y = 0.15) { box(key, x - w / 2, x + w / 2, y + 0.1, y + h, z - d / 2, z + d / 2, true); box('frame', x - w / 2 + 0.05, x + w / 2 - 0.05, y, y + 0.1, z - d / 2 + 0.05, z + d / 2 - 0.05); const n = Math.round(w / 0.42); for (let i = 1; i < n; i++) box('steelBk', x - w / 2 + w * i / n - 0.006, x - w / 2 + w * i / n + 0.006, y + h - 0.004, y + h + 0.004, z - d / 2 + 0.02, z + d / 2 - 0.02); }
 function table(x, z, w, d, h, topKey, legKey = 'frame', y = 0.15, tt = 0.05) { box(topKey, x - w / 2, x + w / 2, y + h - tt, y + h, z - d / 2, z + d / 2); for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) box(legKey, x + sx * (w / 2 - 0.08) - 0.025, x + sx * (w / 2 - 0.08) + 0.025, y, y + h - tt, z + sz * (d / 2 - 0.08) - 0.025, z + sz * (d / 2 - 0.08) + 0.025); solid(x - w / 2, x + w / 2, z - d / 2, z + d / 2, y, y + h); }
 function chair(x, z, ry, seatKey = 'fabricD', y = 0.15) { const g = []; const add = (geo, lx, ly, lz) => { geo.applyMatrix4(mat4(lx, ly, lz)); g.push(geo); }; add(new THREE.BoxGeometry(0.5, 0.06, 0.5), 0, 0.45, 0); add(new THREE.BoxGeometry(0.5, 0.45, 0.05), 0, 0.72, -0.22); put(seatKey, mergeGeometries(g.map(a => a.toNonIndexed())), mat4(x, y, z, 0, ry)); const f = []; for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) { const c = new THREE.CylinderGeometry(0.015, 0.015, 0.44, 6); c.applyMatrix4(mat4(sx * 0.22, 0.22, sz * 0.22)); f.push(c.toNonIndexed()); } put('frame', mergeGeometries(f), mat4(x, y, z, 0, ry)); }
+// banquette / pouf capitonné à boudins (cuir vert, cognac, bouclé crème) ; back = dossier à boudins verticaux
+function tufted(x, z, w, d, ry, key, h = 0.42, back = false, y = F0) {
+  const g = []; const add = (geo, lx, ly, lz, rz = 0) => { geo.applyMatrix4(mat4(lx, ly, lz, 0, 0, rz)); g.push(geo.toNonIndexed()); };
+  add(new THREE.BoxGeometry(w - 0.1, h - 0.3, d - 0.1), 0, 0.12 + (h - 0.3) / 2, 0);
+  const r = 0.095, n = Math.max(2, Math.round(w / (r * 2.05))); for (let i = 0; i < n; i++) add(new THREE.CapsuleGeometry(r, d - 2 * r - 0.04, 3, 10), -w / 2 + r + 0.02 + i * (w - 2 * r - 0.04) / (n - 1), h - r, 0, PI / 2);
+  if (back) { const m = Math.max(2, Math.round(w / (r * 2.05))); for (let i = 0; i < m; i++) { const c = new THREE.CapsuleGeometry(r, 0.42, 3, 10); c.applyMatrix4(mat4(-w / 2 + r + 0.02 + i * (w - 2 * r - 0.04) / (m - 1), h + 0.26, -d / 2 + r + 0.02)); g.push(c.toNonIndexed()); } }
+  put(key, mergeGeometries(g), mat4(x, y, z, 0, ry)); box('frame', x - w / 2 + 0.06, x + w / 2 - 0.06, y, y + 0.12, z - d / 2 + 0.06, z + d / 2 - 0.06);
+  const c_ = Math.cos(ry), s_ = Math.sin(ry), ex = Math.abs(c_) * w / 2 + Math.abs(s_) * d / 2, ez = Math.abs(s_) * w / 2 + Math.abs(c_) * d / 2; solid(x - ex, x + ex, z - ez, z + ez, y, y + h + 0.3);
+}
+// fauteuil tressé cuir vert sur piètement noyer
+function armchair(x, z, ry, y = F0) { const g = (key, geo, lx, ly, lz, r = [0, 0, 0]) => put(key, geo, mat4(x, y, z, 0, ry).multiply(mat4(lx, ly, lz, r[0], r[1], r[2])));
+  g('leatherG', new THREE.BoxGeometry(0.62, 0.1, 0.6), 0, 0.42, 0.02); g('leatherG', new THREE.BoxGeometry(0.62, 0.62, 0.08), 0, 0.78, -0.3, [-0.12, 0, 0]);
+  for (const sx of [-1, 1]) { g('walnut', new THREE.BoxGeometry(0.05, 0.05, 0.66), sx * 0.33, 0.62, 0); g('walnut', new THREE.BoxGeometry(0.05, 0.64, 0.05), sx * 0.33, 0.32, 0.3); g('walnut', new THREE.BoxGeometry(0.05, 1.05, 0.05), sx * 0.33, 0.52, -0.3, [-0.12, 0, 0]); }
+  solid(x - 0.4, x + 0.4, z - 0.4, z + 0.4, y, y + 1.0); }
+// lampe à poser noire en dôme, lampadaire fin noir à tête inclinée
+function domeLamp(x, y, z, r = 0.16) { put('jar', new THREE.SphereGeometry(r, 18, 10, 0, PI * 2, 0, PI * 0.5), mat4(x, y + 0.22, z)); cyl('frame', x, y, y + 0.22, z, 0.012, 0.012, 6); cyl('jar', x, y, y + 0.015, z, r * 0.55, r * 0.55, 16); put('bulb', new THREE.SphereGeometry(r * 0.5, 10, 8), mat4(x, y + 0.2, z)); }
+function floorLamp(x, z, ry, y = F0, h = 2.3) { put('frame', new THREE.CylinderGeometry(0.16, 0.16, 0.025, 16), mat4(x, y + 0.012, z)); put('frame', new THREE.CylinderGeometry(0.011, 0.011, h, 6), mat4(x, y + h / 2, z, 0, 0, 0.03)); put('frame', new THREE.CylinderGeometry(0.11, 0.07, 0.18, 14), mat4(x + Math.sin(ry) * 0.2, y + h - 0.02, z + Math.cos(ry) * 0.2, 0.5, ry, 0)); put('bulb', new THREE.SphereGeometry(0.035, 8, 6), mat4(x + Math.sin(ry) * 0.24, y + h - 0.1, z + Math.cos(ry) * 0.24)); }
+// rideau en plis : ruban sinusoïdal du sol au plafond
+function curtain(axis, c, a0, a1, y0, y1, amp = 0.07, period = 0.34) {
+  const lo = Math.min(a0, a1), hi = Math.max(a0, a1), N = Math.max(8, Math.round((hi - lo) / 0.04)); const pos = [], idx = [];
+  for (let i = 0; i <= N; i++) { const u = lo + (hi - lo) * i / N, v = c + amp * Math.sin(u / period * PI * 2); const p0 = axis === 'x' ? [u, y0, v] : [v, y0, u], p1 = axis === 'x' ? [u, y1, v] : [v, y1, u]; pos.push(...p0, ...p1); if (i < N) { const k = i * 2; idx.push(k, k + 2, k + 1, k + 1, k + 2, k + 3); } }
+  const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); geo.setIndex(idx); geo.computeVertexNormals(); put('curtain', geo, null);
+  const rail = axis === 'x' ? box('frame', lo, hi, y1, y1 + 0.03, c - 0.02, c + 0.02) : box('frame', c - 0.02, c + 0.02, y1, y1 + 0.03, lo, hi);
+}
 function bed(x, z, ry, w = 2.0, l = 2.2) { const g = (key, geo, lx, ly, lz) => put(key, geo, mat4(x, 0, z, 0, ry).multiply(mat4(lx, ly, lz)));
   g('walnut', new THREE.BoxGeometry(w + 0.2, 0.25, l + 0.1), 0, 4.33, 0); g('linen', new THREE.BoxGeometry(w, 0.28, l - 0.15), 0, 4.6, 0.05); g('fabricD', new THREE.BoxGeometry(w, 0.12, 0.9), 0, 4.8, 0.55);
   g('walnut', new THREE.BoxGeometry(w + 0.6, 1.2, 0.08), 0, 4.8, -l / 2 - 0.02); g('linen', new THREE.BoxGeometry(w / 2 - 0.15, 0.16, 0.45), -w / 4, 4.82, -l / 2 + 0.35); g('linen', new THREE.BoxGeometry(w / 2 - 0.15, 0.16, 0.45), w / 4, 4.82, -l / 2 + 0.35);
@@ -242,7 +268,7 @@ crane(16.2, 3.0, -2.2, 1.0); crane(17.4, 4.4, -2.6, 0.85); { const x = 16.4, z =
 for (const [x, z, r] of [[15.0, -1.2, 0.5], [18.0, 0.4, 0.6], [15.8, 11.6, 0.45], [19.0, 9.2, 0.4]]) sph('leaf', x, r * 0.55, z, r, 1, 0.55);
 // grands sujets : palmiers, pins ; au-delà de la clôture, un rideau d'arbres ; au loin, l'Atlas
 for (const [x, z, h] of [[-9.6, 12.0, 7.5], [-10.8, 16.0, 6.2], [10.2, 17.4, 8.0], [13.4, 12.8, 6.6], [17.6, 16.4, 7.2], [-10.2, -15.2, 7], [15.8, -14.4, 6.5], [18.4, -5.6, 7.4], [-11.8, 6.4, 5.6]]) palmTree(x, z, h);
-for (const [x, z, h] of [[-11.6, -8.2, 12], [18.2, 13.2, 11], [-5.2, 18.8, 10], [19.0, -11.0, 12.5]]) pineTree(x, z, h);
+for (const [x, z, h] of [[-11.6, -8.2, 12], [18.2, 13.2, 11], [-11.9, 19.3, 10], [19.0, -11.0, 12.5]]) pineTree(x, z, h);
 for (let i = 0; i < 46; i++) { const a = i / 46 * PI * 2, r = 32 + rnd() * 18; const x = 3 + Math.cos(a) * r, z = 2 + Math.sin(a) * r; if (x < PLOT.x0 - 10 && Math.abs(z) < 26) continue; rnd() < 0.55 ? pineTree(x, z, 9 + rnd() * 6) : palmTree(x, z, 6 + rnd() * 4); }
 for (let i = 0; i < 16; i++) { const a = -0.3 + i * 0.16, r = 300 + rnd() * 60, h = 45 + rnd() * 45; put('mountain', new THREE.ConeGeometry(h * 1.9, h, 7), mat4(Math.cos(a) * r, h / 2 - 4, -Math.abs(Math.sin(a)) * r - 120, 0, rnd() * 3)); }
 
@@ -263,15 +289,15 @@ box('marbleB', 12.5, 13.6, -0.35, -0.3, -3.06, 10.0); put('fall', new THREE.Plan
 for (let i = 0; i < 3; i++) { const z1 = 1.6 - i * 0.6, z0 = z1 - 0.6, y = 0.17 - 0.3 * (i + 1); box('marbleW', 4.5, 8.0, -1.5, y, z0, z1); box('led', 4.55, 7.95, y - 0.02, y, z0 - 0.015, z0); }
 // RDC — murs extérieurs (pierre anthracite) et vitrages
 wall('z', -6.7, -13.4, 5.7, F0, Y1, -1); wall('x', -13.4, -6.7, -2.13, F0, Y1, -1); wall('z', -2.13, -13.4, -12.0, F0, Y1, -1);
-wall('x', -12.0, -2.13, 3.2, F0, Y1, -1); glazing('x', -12.0, 3.2, 8.5, F0, Y1, { open: [[5.0, 6.1]] });
-wall('z', 8.5, -12.0, -10.5, F0, Y1, 1); glazing('z', 8.5, -10.5, -4.26, F0, Y1, { open: [[-7.4, -6.3]] });
+wall('x', -12.0, -2.13, 3.2, F0, Y1, -1); glazing('x', -12.0, 3.2, 8.5, F0, Y1, { open: [[5.0, 6.1]], transoms: [1.4, 2.6], mullions: 5 });
+wall('z', 8.5, -12.0, -10.5, F0, Y1, 1); glazing('z', 8.5, -10.5, -4.26, F0, Y1, { open: [[-7.4, -6.3]], transoms: [1.4, 2.6], mullions: 5 });
 glazing('x', -4.26, 2.66, 8.5, F0, Y1, { open: [[3.0, 4.1]] });
 glazing('z', 2.66, -4.26, 2.66, F0, Y2, { transom: Y1 + 0.15, open: [[0.3, 1.4]], mullions: 5 });
 wall('x', 2.66, 2.66, 4.26, F0, Y1, -1); glazing('z', 4.26, 2.66, 10.1, F0, Y1, { open: [[4.2, 5.3]] });
 glazing('x', 10.1, 0.1, 3.2, F0, Y1, {}); wall('x', 10.1, -2.66, 0.1, F0, Y1, 1); wall('x', 10.1, 3.2, 4.26, F0, Y1, 1);
 wall('z', -2.66, 5.7, 10.1, F0, Y1, -1);
 wall('x', 5.7, -6.7, -5.1, F0, Y1, 1); wall('x', 5.7, -4.1, -2.66, F0, Y1, 1); // porte d'entrée en noyer, entrouverte
-box('frame', -5.16, -4.04, F0, 2.95, 5.52, 5.88); box('walnut', -5.12, -5.04, F0, 2.85, 4.72, 5.68, true); box('bronze', -5.14, -5.02, 0.9, 2.1, 5.5, 5.54);
+box('frame', -5.18, -5.1, F0, 2.95, 5.52, 5.88); box('frame', -4.1, -4.02, F0, 2.95, 5.52, 5.88); box('frame', -5.18, -4.02, 2.88, 2.95, 5.52, 5.88); box('walnut', -5.12, -5.04, F0, 2.85, 4.72, 5.68, true); box('bronze', -5.14, -5.02, 0.9, 2.1, 5.5, 5.54);
 // RDC — cloisons intérieures
 wall('x', -8.0, -6.7, -4.0, F0, Y1); wall('z', -2.13, -12.0, -8.0, F0, Y1); // cuisine fermée au sud (sauf passage x -4..-2.4) et à l'est
 wall('x', -8.0, -2.13, 0.7, F0, Y1); wall('x', -8.0, 1.7, 2.66, F0, Y1); wall('z', 2.66, -12.0, -8.0, F0, Y1); // local de service, porte ouverte
@@ -279,7 +305,7 @@ wall('z', -4.0, -8.0, -4.26, F0, Y1); wall('x', -4.26, -6.7, -4.0, F0, Y1); // W
 for (const [z0, z1] of [[-7.5, -6.6], [-5.6, -4.7]]) { box('walnut', -4.15, -4.11, F0, 2.4, z0, z1); box('bronze', -4.1, -4.08, 1.0, 1.1, z1 - 0.15, z1 - 0.1); }
 // étage — dalle (pierre en rive, lames de bois dessous à l'extérieur, plâtre dans les pièces)
 for (const [x0, x1, z0, z1] of [[-7.45, 9.2, -13.4, -3.7], [-6.9, -1.6, -3.7, 2.1], [-6.9, 7.3, 1.6, 10.1]]) { box('stone', x0, x1, Y1 + 0.03, SL, z0, z1); box('slats', x0 + 0.02, x1 - 0.02, Y1, Y1 + 0.03, z0 + 0.02, z1 - 0.02); }
-for (const [x0, x1, z0, z1] of [[-6.6, 8.3, -13.2, -4.4], [-6.6, 2.5, -4.4, 2.5], [-2.5, 4.1, 2.5, 9.9]]) box('plaster', x0, x1, Y1 - 0.03, Y1, z0, z1);
+for (const [x0, x1, z0, z1] of [[-6.6, 8.3, -13.2, -4.4], [-6.6, 2.5, -4.4, 2.5], [-2.5, 4.1, 2.5, 9.9]]) box('ceiling', x0, x1, Y1 - 0.03, Y1, z0, z1);
 box('stone', -7.45, 9.2, Y1 - 0.5, Y1 + 0.03, -13.4, -3.7); box('stone', -6.9, 7.3, Y1 - 0.5, Y1 + 0.03, 1.6, 10.1); // bandeau profond en rive
 ledRing(-7.45, 9.2, -13.4, -3.7, Y1 - 0.3); ledRing(-6.9, 7.3, 1.6, 10.1, Y1 - 0.3);
 for (const [x0, x1, z0, z1] of [[-7.45, 7.7, -13.4, -3.7], [-6.9, 3.7, 1.6, 10.1], [-6.4, -1.6, -3.7, 2.1]]) { box('tile', x0, x1, SL, SL + 0.02, z0, z1); floor(x0, x1, z0, z1, SL + 0.02); }
@@ -288,6 +314,7 @@ for (const [x0, x1, z0, z1] of [[-3.06, 9.2, -13.4, -12.1], [7.7, 9.2, -12.1, -3
 { const N = 21, rise = (SL + 0.02 - F0) / N, tread = 5.8 / N; for (let i = 0; i < N; i++) { const z1 = 2.5 - i * tread, z0 = z1 - tread, y = F0 + rise * (i + 1); box('marbleW', -6.4, -5.0, y - rise, y, z0, z1); box('led', -6.35, -5.05, y - 0.03, y - 0.01, z1 - 0.012, z1); box('marbleG', -5.05, -4.95, F0, Math.min(Y2 - 0.3, y + 1.05), z0, z1); }
   solid(-5.08, -4.92, -3.3, 2.5, F0, Y2); floor(-6.4, -5.0, -3.4, 2.5, 0, (x, z) => F0 + (SL + 0.02 - F0) * clamp((2.5 - z) / 5.8, 0, 1)); }
 railing('z', -1.6, -3.7, 1.6, SL + 0.02, 1.1); // passerelle sur le vide
+for (let x = -1.5; x < 2.6; x += 0.12) box('steelBk', x, x + 0.05, SL + 0.1, Y2 - 0.1, 1.38, 1.45); box('led', -1.5, 2.6, SL + 0.08, SL + 0.1, 1.4, 1.44);
 // étage — murs extérieurs et vitrages
 wall('z', -7.45, -13.4, -3.7, SL, Y2, -1); wall('x', -13.4, -7.45, -3.06, SL, Y2, -1); wall('z', -3.06, -13.4, -12.1, SL, Y2, -1);
 wall('x', -12.1, -3.06, -2.6, SL, Y2, -1); glazing('x', -12.1, -2.6, 7.3, SL, Y2, { open: [[0.2, 1.3]] }); wall('x', -12.1, 7.3, 7.7, SL, Y2, -1);
@@ -307,7 +334,7 @@ wall('z', -4.0, 1.6, 3.5, SL, Y2); wall('z', -4.0, 4.4, 5.0, SL, Y2); wall('x', 
 // toitures : dalle profonde en pierre, sous-face en lames de bois, plafonds plâtre dans les pièces, ligne LED en façade, gravillon sombre dessus
 const roofs = [[-7.85, 9.7, -14.0, -3.6, Y2, 9.3], [-6.9, 2.9, -3.6, 1.5, Y2, 8.5], [-7.3, 7.7, 1.5, 10.6, Y2, 8.7]];
 for (const [x0, x1, z0, z1, y0, y1] of roofs) { box('stone', x0, x1, y0 + 0.03, y1, z0, z1); box('slats', x0 + 0.02, x1 - 0.02, y0, y0 + 0.03, z0 + 0.02, z1 - 0.02); box('gravelD', x0 + 0.25, x1 - 0.25, y1, y1 + 0.03, z0 + 0.25, z1 - 0.25); ledRing(x0, x1, z0, z1, y0 + 0.28, 0.045); ledRing(x0, x1, z0, z1, y1 - 0.35, 0.03); }
-for (const [x0, x1, z0, z1] of [[-7.3, 7.55, -13.25, -3.85], [-6.75, 3.55, 1.75, 9.95]]) box('plaster', x0, x1, Y2 - 0.03, Y2, z0, z1);
+for (const [x0, x1, z0, z1] of [[-7.3, 7.55, -13.25, -3.85], [-6.75, 3.55, 1.75, 9.95]]) box('ceiling', x0, x1, Y2 - 0.03, Y2, z0, z1);
 // pylônes de marbre gris (lames de bronze éclairées), lames d'eau en bronze sur le pylône du bassin
 pylon(6.9, 8.0, 1.8, 4.8, 0, 8.7); pylon(6.9, 8.0, 9.4, 10.6, 0, 8.7); pylon(8.9, 9.84, -14.0, -9.6, 0, 9.3); pylon(8.9, 9.84, -5.0, -3.9, 0, 9.3); pylon(-7.3, -6.3, 9.5, 10.6, 0, 8.7); pylon(-7.3, -6.3, 5.6, 6.6, 0, 8.7);
 for (const z of [2.4, 3.3, 4.2]) { box('bronze', 8.0, 8.1, 0.2, 6.2, z - 0.09, z + 0.09); box('bronze', 8.0, 8.2, 6.0, 6.2, z - 0.12, z + 0.12); put('fall', new THREE.PlaneGeometry(0.12, 6.0).rotateY(PI / 2), mat4(8.14, 3.1, z)); }
@@ -326,18 +353,25 @@ table(0, -6.2, 3.2, 1.1, 0.75, 'marbleB', 'frame');
 for (let i = 0; i < 4; i++) { chair(-1.2 + i * 0.8, -6.95, 0, 'fabricD'); chair(-1.2 + i * 0.8, -5.45, PI, 'fabricD'); }
 put('gold', new THREE.SphereGeometry(0.75, 28, 10, 0, PI * 2, 0, PI * 0.45).scale(1, 0.4, 1), mat4(0, 2.0, -6.2)); cyl('frame', 0, 2.3, Y1, -6.2, 0.006, 0.006, 4);
 { const x = -2.5; for (let y = 0.6; y < 3.4; y += 0.65) { box('steelBk', x, x + 0.3, y, y + 0.03, -7.8, -4.5); box('led', x + 0.02, x + 0.28, y + 0.03, y + 0.05, -7.78, -4.52); for (let k = 0; k < 4; k++) if (rnd() < 0.7) box(rnd() < 0.5 ? 'book' : 'copper', x + 0.04, x + 0.26, y + 0.04, y + 0.3 + rnd() * 0.15, -7.6 + k * 0.8, -7.0 + k * 0.8 + rnd() * 0.3); } }
-// séjour : canapé crème d'angle, banquette en cuir vert, pouf cognac, table basse en marbre noir, lampe aux sphères dorées,
-// sphères en bois, lit de galets blancs, fauteuils tressés verts, rideaux lin de part et d'autre des baies
-box('fabric', 3.3, 8.1, F0, 0.2, -11.0, -8.0); box('fabricD', 3.3, 8.1, 0.2, 0.22, -11.0, -8.0); // tapis
-sofa(5.9, -10.2, 3.4, 1.0, 0, 'fabric'); sofa(3.6, -8.4, 2.2, 0.95, PI / 2, 'fabric');
-ottoman(5.5, -8.1, 1.6, 0.8, 'leatherC', 0.42); ottoman(6.6, -6.1, 2.6, 1.0, 'leatherG', 0.45);
-table(5.3, -9.0, 1.3, 0.7, 0.36, 'marbleB', 'steelBk', F0, 0.12); box('marbleB', 6.0, 6.6, F0 + 0.3, F0 + 0.34, -9.3, -8.7);
+// séjour d'après les rendus : banquette capitonnée cuir vert, pouf cognac sur socle noyer, grand canapé crème à boudins,
+// tables basses marbre noir et acier, lampe aux sphères dorées, sphères de bois sculpté, lit de galets, fauteuils tressés,
+// lampadaires noirs, niche en noyer éclairée, sculpture noire sur socle, rideaux en plis de part et d'autre des baies
+box('fabric', 3.3, 8.1, F0, 0.2, -11.0, -7.6); box('fabricD', 3.3, 8.1, 0.2, 0.215, -11.0, -7.6); // tapis
+tufted(6.0, -10.4, 3.6, 1.05, 0, 'fabric', 0.42, true); tufted(3.65, -8.6, 2.4, 1.0, PI / 2, 'fabric', 0.42, true);
+tufted(5.4, -8.2, 1.4, 0.95, 0, 'leatherC', 0.42); box('walnut', 4.55, 6.25, F0, F0 + 0.12, -8.75, -7.6);
+tufted(6.5, -5.9, 2.8, 1.05, 0, 'leatherG', 0.44);
+table(5.2, -9.1, 1.4, 0.75, 0.36, 'marbleB', 'steelBk', F0, 0.14); box('steelBk', 6.1, 6.9, F0 + 0.28, F0 + 0.32, -9.5, -8.75); box('steelBk', 6.1, 6.15, F0, F0 + 0.32, -9.5, -8.75); box('steelBk', 6.85, 6.9, F0, F0 + 0.32, -9.5, -8.75);
+domeLamp(5.0, F0 + 0.36, -9.3, 0.14); domeLamp(6.05, F0 + 0.42, -8.3, 0.12);
 { const x = 3.4, z = -11.4; cyl('gold', x, F0, F0 + 0.03, z, 0.28, 0.28, 24); cyl('bronze', x, F0, 2.3, z, 0.015, 0.015, 8); for (const [dx, dy, dz, r] of [[0, 2.35, 0, 0.3], [0.32, 2.0, 0.15, 0.22], [-0.25, 1.85, -0.1, 0.2], [0.1, 1.55, 0.25, 0.25], [-0.3, 1.45, 0.2, 0.17], [0.28, 1.2, -0.2, 0.19]]) put('gold', new THREE.SphereGeometry(r, 18, 14), mat4(x + dx, dy, z + dz)); }
-for (const [x, z, r] of [[7.6, -5.0, 0.42], [7.9, -5.7, 0.26], [3.3, -6.3, 0.3]]) { put('walnut', new THREE.SphereGeometry(r, 18, 14), mat4(x, F0 + r, z)); solid(x - r, x + r, z - r, z + r, 0, r * 2); }
+for (const [x, z, r] of [[7.5, -5.1, 0.46], [7.95, -5.9, 0.28], [3.2, -6.0, 0.32]]) { put('woodBall', new THREE.SphereGeometry(r, 24, 18), mat4(x, F0 + r, z, 0.3, rnd() * 3, 0.2)); solid(x - r, x + r, z - r, z + r, 0, r * 2); }
+put('walnut', new THREE.SphereGeometry(0.2, 18, 14), mat4(7.2, F0 + 0.2, -6.4));
 box('frame', 2.9, 3.5, F0 - 0.1, F0 + 0.02, -8.0, -4.6); box('pebble', 2.95, 3.45, F0 - 0.1, F0 + 0.06, -7.95, -4.65); sph('leaf2', 3.2, F0 + 0.3, -6.3, 0.26, 1, 0.8);
-for (const [x, z, r] of [[7.6, -7.4, 0.6], [7.6, -8.6, 3.75]]) chair(x, z, r, 'leatherG');
-plant(8.0, -11.4, F0, 1.1); plant(3.1, -4.9, F0, 0.9);
-for (const [x0, x1] of [[3.25, 4.4], [6.8, 7.95]]) box('curtain', x0, x1, F0, Y1 - 0.05, -11.78, -11.64); for (const [z0, z1] of [[-10.4, -9.3], [-5.3, -4.4]]) box('curtain', 8.14, 8.28, F0, Y1 - 0.05, z0, z1);
+armchair(7.7, -7.6, -PI / 2 + 0.3); armchair(7.7, -9.0, -PI / 2 - 0.2); armchair(4.1, -6.0, PI / 2 + 0.4);
+floorLamp(3.3, -9.9, 0.6); floorLamp(7.9, -4.7, -2.4, F0, 2.1);
+plant(7.9, -11.4, F0, 1.1); plant(3.1, -4.9, F0, 0.9);
+{ const x = 8.2; box('walnut', x, x + 0.33, F0 + 0.4, 2.6, -11.9, -10.6, true); box('jar', x + 0.02, x + 0.3, F0 + 0.45, 2.55, -11.88, -10.62); for (let y = 0.5; y < 2.3; y += 0.5) { box('walnut', x + 0.02, x + 0.31, F0 + y, F0 + y + 0.03, -11.88, -10.62); box('led', x + 0.04, x + 0.3, F0 + y + 0.03, F0 + y + 0.05, -11.87, -11.85); for (let k = 0; k < 3; k++) if (rnd() < 0.7) cyl(rnd() < 0.5 ? 'jar' : 'gold', x + 0.17, F0 + y + 0.03, F0 + y + 0.25 + rnd() * 0.15, -11.7 + k * 0.4, 0.035, 0.035, 8); } }
+{ const x = 3.0, z = -11.5; box('marbleB', x - 0.16, x + 0.16, F0, 1.1, z - 0.16, z + 0.16, true); for (let i = 0; i < 6; i++) put('steelBk', new THREE.BoxGeometry(0.18 + rnd() * 0.12, 0.26, 0.06), mat4(x + (rnd() - 0.5) * 0.08, 1.25 + i * 0.22, z, 0, rnd() * 1.2, (rnd() - 0.5) * 0.5)); }
+curtain('x', -11.72, 3.25, 4.4, F0, Y1 - 0.06); curtain('x', -11.72, 6.8, 7.95, F0, Y1 - 0.06); curtain('z', 8.22, -10.4, -9.3, F0, Y1 - 0.06); curtain('z', 8.22, -5.3, -4.4, F0, Y1 - 0.06);
 box('led', 2.9, 8.2, Y1 - 0.12, Y1 - 0.1, -11.75, -11.72); box('led', 2.9, 2.93, Y1 - 0.12, Y1 - 0.1, -11.7, -4.5); // gorge lumineuse
 // hall double hauteur : sculpture dorée en spirale sur socle de marbre noir, suspension en grappe, console
 { const pts = []; for (let i = 0; i <= 60; i++) { const t = i / 60, a = t * PI * 3.2; const r = 0.9 * (1 - t * 0.55); pts.push(V(0.4 + Math.cos(a) * r, 0.5 + t * 4.6, -1.0 + Math.sin(a) * r)); } put('gold', new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 160, 0.17, 10, false), null); box('marbleB', -0.5, 1.3, F0, 0.45, -1.9, -0.1, true); box('led', -0.52, 1.32, 0.4, 0.43, -1.92, -0.08);
@@ -346,17 +380,17 @@ table(-3.8, 4.4, 1.6, 0.45, 0.85, 'marbleB', 'bronze'); jar(-6.0, 4.3, 0.3, 0.7,
 box('marbleG', -6.55, -5.15, F0, 2.3, 2.6, 3.2, true); for (let y = 0.55; y < 2.2; y += 0.42) box('led', -6.5, -5.2, F0 + y, F0 + y + 0.015, 3.2, 3.215); // tableau d'étagères de marbre sous l'escalier
 // salon-cheminée : pilastres en plâtre gris, bibliothèque noire aux fonds cuivre et réglettes LED, foyer linéaire à galets,
 // poufs crème, tables basses noires, tapis, plantes, bibliothèque noire pleine hauteur
-{ const xw = -2.51; box('plaster', xw, xw + 0.45, F0, Y1, 6.1, 6.55); box('plaster', xw, xw + 0.45, F0, Y1, 9.65, 10.1); box('steelBk', xw, xw + 0.35, F0 + 0.6, Y1 - 0.25, 6.55, 9.65); box('plaster', xw, xw + 0.45, F0, F0 + 0.6, 6.55, 9.65); box('plaster', xw, xw + 0.45, Y1 - 0.25, Y1, 6.55, 9.65);
+{ const xw = -2.51; box('plaster', xw, xw + 0.45, F0, Y1, 6.1, 6.55); box('plaster', xw, xw + 0.45, F0, Y1, 9.65, 10.1); box('steelBk', xw, xw + 0.04, F0 + 0.6, Y1 - 0.25, 6.55, 9.65); box('steelBk', xw, xw + 0.42, F0 + 0.6, Y1 - 0.25, 6.55, 6.58); box('steelBk', xw, xw + 0.42, F0 + 0.6, Y1 - 0.25, 9.62, 9.65); box('plaster', xw, xw + 0.45, F0, F0 + 0.6, 6.55, 9.65); box('plaster', xw, xw + 0.45, Y1 - 0.25, Y1, 6.55, 9.65);
   const rows = [F0 + 0.6, 1.5, 2.3, 3.05, Y1 - 0.25]; for (let i = 0; i < rows.length; i++) { box('steelBk', xw + 0.02, xw + 0.42, rows[i] - 0.015, rows[i] + 0.015, 6.55, 9.65); if (i < rows.length - 1) { box('led', xw + 0.3, xw + 0.42, rows[i] + 0.015, rows[i] + 0.03, 6.6, 9.6); } }
-  for (const [y0, y1, z0, z1] of [[1.5, 2.3, 8.3, 9.65], [2.3, 3.05, 6.55, 7.6], [F0 + 0.6, 1.5, 7.8, 8.6], [3.05, Y1 - 0.25, 8.8, 9.65]]) { box('copper', xw + 0.03, xw + 0.06, y0 + 0.03, y1 - 0.03, z0 + 0.03, z1 - 0.03); box('led', xw + 0.06, xw + 0.42, y0 + 0.03, y1 - 0.03, z1 - 0.05, z1 - 0.03); }
+  for (const [y0, y1, z0, z1] of [[1.5, 2.3, 8.3, 9.65], [2.3, 3.05, 6.55, 7.6], [F0 + 0.6, 1.5, 7.8, 8.6], [3.05, Y1 - 0.25, 8.8, 9.65]]) { box('copper', xw + 0.04, xw + 0.07, y0 + 0.03, y1 - 0.03, z0 + 0.03, z1 - 0.03); box('led', xw + 0.06, xw + 0.42, y0 + 0.03, y1 - 0.03, z1 - 0.05, z1 - 0.03); }
   for (let i = 0; i < 14; i++) { const r = rows[i % 4], z = 6.7 + rnd() * 2.6; box('book', xw + 0.08, xw + 0.36, r + 0.03, r + 0.25 + rnd() * 0.18, z, z + 0.06 + rnd() * 0.12); }
   box('frame', xw + 0.45, xw + 0.95, F0, F0 + 0.45, 6.7, 9.5, true); box('pebble', xw + 0.5, xw + 0.9, F0 + 0.4, F0 + 0.47, 6.8, 9.4); box('steelBk', xw + 0.45, xw + 0.95, F0 + 0.45, F0 + 0.48, 6.7, 9.5); box('steelBk', xw + 0.45, xw + 0.95, F0 + 0.1, F0 + 0.12, 6.7, 6.72); }
-box('fabric', -0.4, 3.0, F0, 0.18, 6.0, 9.4); ottoman(0.3, 6.8, 1.3, 0.9, 'fabric', 0.42); ottoman(0.3, 8.9, 1.3, 0.9, 'fabric', 0.42); ottoman(2.6, 8.3, 1.6, 0.9, 'fabric', 0.42); ottoman(2.6, 6.5, 1.3, 0.9, 'fabric', 0.42);
-table(1.4, 7.8, 1.1, 0.7, 0.38, 'marbleB', 'steelBk', F0, 0.05); cyl('steelBk', 1.9, F0, F0 + 0.45, 8.6, 0.32, 0.32, 20); put('jar', new THREE.SphereGeometry(0.16, 14, 10), mat4(1.9, F0 + 0.6, 8.6));
+box('fabric', -0.4, 3.0, F0, 0.18, 6.0, 9.4); tufted(0.3, 6.8, 1.3, 0.9, 0, 'fabric', 0.42); tufted(0.3, 8.9, 1.3, 0.9, 0, 'fabric', 0.42); tufted(2.6, 8.3, 1.6, 0.9, 0, 'fabric', 0.42); tufted(2.6, 6.5, 1.3, 0.9, 0, 'fabric', 0.42);
+put('marbleB', new THREE.CylinderGeometry(0.62, 0.62, 0.05, 28), mat4(1.4, F0 + 0.36, 7.7)); put('steelBk', new THREE.CylinderGeometry(0.2, 0.3, 0.33, 14), mat4(1.4, F0 + 0.17, 7.7)); put('marbleB', new THREE.CylinderGeometry(0.4, 0.4, 0.05, 24), mat4(1.1, F0 + 0.28, 8.5)); put('steelBk', new THREE.CylinderGeometry(0.12, 0.2, 0.25, 12), mat4(1.1, F0 + 0.13, 8.5)); solid(0.7, 2.1, 7.0, 8.9, 0, 0.5); cyl('steelBk', 1.9, F0, F0 + 0.45, 8.6, 0.32, 0.32, 20);
 plant(-1.3, 5.9, F0, 1.2, 8); plant(3.6, 9.7, F0, 0.9);
-cyl('frame', 3.3, F0, 2.4, 6.3, 0.012, 0.012, 6); put('frame', new THREE.CylinderGeometry(0.1, 0.1, 0.05, 12), mat4(3.3, F0 + 0.03, 6.3)); put('bulb', new THREE.SphereGeometry(0.06, 8, 6), mat4(3.4, 2.35, 6.25));
+floorLamp(3.3, 6.3, -2.2, F0, 2.4); floorLamp(-1.6, 9.6, 2.6, F0, 2.2); domeLamp(1.9, F0 + 0.45, 8.6, 0.15);
 box('steelBk', 3.9, 4.1, F0, Y1, 2.8, 5.5); for (let y = 0.6; y < 3.5; y += 0.5) { box('steelBk', 3.75, 3.9, F0 + y, F0 + y + 0.02, 2.85, 5.45); box('led', 3.77, 3.88, F0 + y + 0.02, F0 + y + 0.035, 2.9, 5.4); }
-for (const [z0, z1] of [[2.9, 4.0], [9.0, 9.9]]) box('curtain', 4.0, 4.12, F0, Y1 - 0.05, z0, z1);
+curtain('z', 4.02, 2.9, 4.0, F0, Y1 - 0.06); curtain('z', 4.02, 9.0, 9.9, F0, Y1 - 0.06);
 // terrasse couverte : grande table de marbre, dix fauteuils tressés, deux suspensions dorées en coupole, lounge au bord du bassin
 table(6.0, 5.5, 1.1, 4.6, 0.75, 'marbleW', 'bronze', 0.17);
 for (let i = 0; i < 5; i++) { chair(5.25, 3.7 + i * 0.9, PI / 2, 'fabricD', 0.17); chair(6.75, 3.7 + i * 0.9, -PI / 2, 'fabricD', 0.17); }
@@ -366,12 +400,12 @@ for (const z of [3.0, 4.6, 6.2]) { box('fabric', 12.75, 13.55, 0.17, 0.5, z - 0.
 // figure de bronze marchant, adossée au pylône de la terrasse
 { const x = 6.95, z = 9.3, g = (geo, lx, ly, lz, r = [0, 0, 0]) => put('bronze', geo, mat4(x, 0.17, z).multiply(mat4(lx, ly, lz, r[0], r[1], r[2]))); g(new THREE.CapsuleGeometry(0.11, 0.6, 4, 10), 0, 1.6, 0); g(new THREE.SphereGeometry(0.11, 12, 9), 0, 2.12, 0); g(new THREE.CapsuleGeometry(0.05, 0.85, 3, 8), 0.0, 0.62, 0.28, [0.45, 0, 0]); g(new THREE.CapsuleGeometry(0.05, 0.85, 3, 8), 0.02, 0.62, -0.25, [-0.4, 0, 0]); g(new THREE.CapsuleGeometry(0.035, 0.6, 3, 8), 0.0, 1.5, 0.22, [0.7, 0, 0]); g(new THREE.CapsuleGeometry(0.035, 0.6, 3, 8), 0.0, 1.5, -0.22, [-0.7, 0, 0]); }
 // étage : chambres 1, 2, 3 et suite parentale, dressings en noyer, bains en marbre blanc, rideaux
-bed(-5.4, -9.6, PI / 2, 1.8, 2.1); bed(-0.4, -8.2, 0, 1.8, 2.1); bed(5.0, -8.5, 0, 1.8, 2.1); bed(-4.2, 7.9, -PI / 2, 2.0, 2.2);
-wardrobe(4.0, 7.4, -9.8, -9.2); wardrobe(-3.9, -3.3, 1.9, 4.9); wardrobe(-1.7, -1.1, 1.9, 4.9); wardrobe(-5.5, -5.0, -12.0, -10.0);
+bed(-5.4, -9.6, PI / 2, 1.8, 2.1); bed(-0.4, -8.2, 0, 1.8, 2.1); bed(5.0, -8.0, 0, 1.8, 2.1); bed(-4.6, 7.9, PI / 2, 2.0, 2.2);
+wardrobe(4.0, 7.4, -10.0, -9.4); wardrobe(-3.9, -3.3, 1.9, 4.9); wardrobe(-1.7, -1.1, 1.9, 4.9); wardrobe(-5.5, -5.0, -12.0, -10.0);
 for (const [x0, x1, z0, z1] of [[-7.3, -5.6, -7.35, -6.6], [-1.3, 0.5, -11.9, -11.3], [2.2, 4.4, -11.9, -11.3], [-6.7, -5.0, 1.8, 2.4]]) { box('marbleW', x0, x1, SL, SL + 0.85, z0, z1, true); box('white', x0 + 0.2, x1 - 0.2, SL + 0.85, SL + 0.95, z0 + 0.1, z1 - 0.1); box('led', x0, x1, SL + 1.6, SL + 1.62, z0 + 0.02, z0 + 0.04); }
 for (const [x, z] of [[-6.6, -5.5], [1.7, -10.4], [3.5, -10.4], [-6.4, 3.8]]) { put('white', new THREE.CylinderGeometry(0.8, 0.7, 0.55, 24).scale(1, 1, 0.6), mat4(x, SL + 0.28, z)); solid(x - 0.8, x + 0.8, z - 0.5, z + 0.5, SL, SL + 0.6); }
-for (const [x0, x1, z] of [[-2.2, -1.2, -11.86], [6.2, 7.2, -11.86]]) box('curtain', x0, x1, SL, Y2 - 0.05, z - 0.12, z); for (const [z0, z1] of [[2.2, 3.2], [8.8, 9.6]]) box('curtain', 3.44, 3.56, SL, Y2 - 0.05, z0, z1);
-sofa(0.5, 8.9, 2.0, 0.9, PI, 'leatherG', 0.4); table(0.5, 7.4, 0.9, 0.5, 0.4, 'marbleB', 'steelBk', SL, 0.04); plant(2.8, 9.4, SL + 0.02, 0.9); plant(-6.4, 9.4, SL + 0.02, 0.9);
+curtain('x', -11.82, -2.2, -1.2, SL, Y2 - 0.06); curtain('x', -11.82, 6.2, 7.2, SL, Y2 - 0.06); curtain('z', 3.5, 2.2, 3.2, SL, Y2 - 0.06); curtain('z', 3.5, 8.8, 9.6, SL, Y2 - 0.06);
+tufted(0.5, 8.9, 2.0, 0.9, PI, 'leatherG', 0.4, true, SL + 0.02); table(0.5, 7.4, 0.9, 0.5, 0.4, 'marbleB', 'steelBk', SL, 0.04); plant(2.8, 9.4, SL + 0.02, 0.9); plant(-6.4, 9.4, SL + 0.02, 0.9);
 for (const [x, z] of [[5.0, -6.0], [5.5, 3.0]]) { box('fabric', x - 0.35, x + 0.35, SL + 0.25, SL + 0.4, z - 0.9, z + 0.9); box('fabric', x - 0.35, x + 0.35, SL + 0.4, SL + 0.95, z - 0.9, z - 0.55); box('frame', x - 0.33, x + 0.33, SL, SL + 0.25, z - 0.85, z + 0.85, true); }
 for (const [x, z, r] of [[8.4, -12.6, 0.45], [8.4, -4.4, 0.4], [6.6, 9.6, 0.45], [-2.0, -12.9, 0.4]]) { cyl('pot', x, SL + 0.03, SL + 0.5, z, 0.32, 0.26, 14); sph('leaf', x, SL + 0.5 + r * 0.8, z, r, 1, 0.9); }
 box('fabric', -2.6, 2.8, SL + 0.02, SL + 0.04, 5.8, 9.6);
@@ -383,7 +417,7 @@ for (const [key, geos] of Object.entries(buckets)) { const geo = mergeGeometries
 // éclairages ponctuels (allumés au crépuscule)
 const lamps = []; const lamp = (x, y, z, col, dist, pow) => { const l = new THREE.PointLight(col, 0, dist, 2); l.position.set(x, y, z); l.userData.pow = pow; scene.add(l); lamps.push(l); return l; };
 lamp(-1.9, 1.0, 8.2, '#ff8a3a', 9, 18); lamp(1.2, 3.4, 7.6, '#ffc890', 10, 14); lamp(0.4, 5.4, -1.8, '#ffd3a0', 14, 26); lamp(5.6, 2.9, -8.2, '#ffcf96', 11, 18);
-lamp(6.0, 2.2, 4.4, '#ffc27a', 8, 14); lamp(6.0, 2.2, 6.6, '#ffc27a', 8, 14); lamp(10.2, -0.6, 3.4, '#3fc3e8', 12, 22); lamp(-4.6, 3.2, 8.0, '#ffcf9a', 8, 10);
+lamp(6.0, 2.2, 4.4, '#ffc27a', 8, 14); lamp(6.0, 2.2, 6.6, '#ffc27a', 8, 14); lamp(10.2, -0.6, 3.4, '#3fc3e8', 12, 22); lamp(-4.6, 3.2, 8.0, '#ffcf9a', 8, 10); lamp(-4.4, 3.4, 4.0, '#ffd6a8', 9, 14); lamp(-3.0, 3.4, -6.2, '#ffd6a8', 8, 8);
 lamp(-1.5, 6.6, 7.5, '#ffd6a8', 10, 12); lamp(-4.4, 3.1, -10.6, '#ffd6a8', 9, 12); lamp(0.6, 6.5, -8.2, '#ffd6a8', 9, 10); lamp(-5.0, 6.5, -9.0, '#ffd6a8', 9, 10);
 lamp(0, 2.2, -6.2, '#ffc27a', 7, 10); lamp(2.0, 1.2, 14.2, '#ffd0a0', 7, 6); lamp(9.6, 1.4, 14.2, '#9ad5ec', 7, 6);
 
@@ -395,7 +429,7 @@ const MODES = {
 let mode = 'dusk';
 function applyMode(k) { mode = k; const m = MODES[k]; skyU.top.value.set(m.top); skyU.mid.value.set(m.mid); skyU.hor.value.set(m.hor); skyU.sunDir.value.set(...m.sunDir).normalize();
   sun.color.set(m.sun[0]); sun.intensity = m.sun[1]; sun.position.set(...m.sunPos); hemi.color.set(m.hemi[0]); hemi.groundColor.set(m.hemi[1]); hemi.intensity = m.hemi[2]; scene.fog.color.set(m.fog); renderer.toneMappingExposure = m.expo;
-  lamps.forEach(l => { l.intensity = l.userData.pow * m.lamps; }); M.led.color.setRGB(2.4 * m.led + 1.0 * (1 - m.led), 2.0 * m.led + 0.95 * (1 - m.led), 1.45 * m.led + 0.85 * (1 - m.led)); M.bulb.color.setRGB(3.2 * m.led + 1.0 * (1 - m.led), 2.6 * m.led + 0.97 * (1 - m.led), 1.8 * m.led + 0.9 * (1 - m.led)); M.ledCool.color.setRGB(1.6 * m.led + 0.9 * (1 - m.led), 2.2 * m.led + 1 * (1 - m.led), 2.6 * m.led + 1 * (1 - m.led));
+  lamps.forEach(l => { l.intensity = l.userData.pow * 1.3 * m.lamps; }); M.led.color.setRGB(2.4 * m.led + 1.0 * (1 - m.led), 2.0 * m.led + 0.95 * (1 - m.led), 1.45 * m.led + 0.85 * (1 - m.led)); M.bulb.color.setRGB(3.2 * m.led + 1.0 * (1 - m.led), 2.6 * m.led + 0.97 * (1 - m.led), 1.8 * m.led + 0.9 * (1 - m.led)); M.ledCool.color.setRGB(1.6 * m.led + 0.9 * (1 - m.led), 2.2 * m.led + 1 * (1 - m.led), 2.6 * m.led + 1 * (1 - m.led));
   M.water.color.set(m.water); M.water.emissiveIntensity = 0.35 * m.lamps; M.flame.opacity = 0.6 + 0.3 * m.lamps; buildEnv(); $('mode').setAttribute('aria-pressed', k === 'day'); $('mode').textContent = k === 'day' ? 'Crépuscule' : 'Jour'; }
 applyMode('dusk');
 $('mode').addEventListener('click', () => applyMode(mode === 'day' ? 'dusk' : 'day'));
@@ -410,7 +444,9 @@ function move(dx, dz, dt) { // dx, dz : déplacement souhaité (m) ; refuse les 
 const keys = {}; addEventListener('keydown', e => { keys[e.code] = true; if (e.code === 'Space') e.preventDefault(); }); addEventListener('keyup', e => { keys[e.code] = false; });
 const K = (...c) => c.some(k => keys[k]);
 let locked = false, dragging = null; const look = (ddx, ddy) => { P.yaw -= ddx * 0.0022; P.pitch = clamp(P.pitch - ddy * 0.0022, -1.3, 1.3); };
-canvas.addEventListener('click', () => { if (!isTouch && !locked && !renderer.xr.isPresenting) canvas.requestPointerLock?.(); });
+const lock = () => { try { const r = canvas.requestPointerLock?.(); if (r && r.catch) r.catch(() => { $('intro').classList.remove('on'); }); } catch { $('intro').classList.remove('on'); } };
+canvas.addEventListener('click', () => { if (!isTouch && !locked && !renderer.xr.isPresenting) lock(); });
+$('go').addEventListener('click', lock);
 document.addEventListener('pointerlockchange', () => { locked = document.pointerLockElement === canvas; $('intro').classList.toggle('on', !locked && !isTouch && !renderer.xr.isPresenting); });
 addEventListener('mousemove', e => { if (locked) look(e.movementX, e.movementY); else if (dragging === 'mouse') look(e.movementX, e.movementY); });
 canvas.addEventListener('mousedown', e => { if (!locked && !isTouch) dragging = 'mouse'; }); addEventListener('mouseup', () => { if (dragging === 'mouse') dragging = null; });
@@ -472,4 +508,5 @@ renderer.setAnimationLoop(() => {
   renderer.render(scene, camera);
 });
 $('loader').classList.add('off');
+window.WHV = { scene, M, P, goTo, applyMode, renderer, floors, solids };
 if (isTouch) $('intro').classList.remove('on');
