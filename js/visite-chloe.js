@@ -440,6 +440,7 @@ const EYE = 1.62, R = 0.32;
 function floorAt(x, z, cur) { let best = -Infinity; for (const f of floors) { if (x < f.x0 || x > f.x1 || z < f.z0 || z > f.z1) continue; const y = f.fn ? f.fn(x, z) : f.y; if (y <= cur + 0.55 && y > best) best = y; } return best === -Infinity ? 0 : best; }
 function collide() { const y0 = P.y + 0.3, y1 = P.y + 1.5; for (let pass = 0; pass < 2; pass++) for (const s of solids) { if (s.y1 <= y0 || s.y0 >= y1) continue; const cx = clamp(P.x, s.x0, s.x1), cz = clamp(P.z, s.z0, s.z1); let dx = P.x - cx, dz = P.z - cz; const d2 = dx * dx + dz * dz; if (d2 >= R * R) continue; if (d2 < 1e-8) { const px = Math.min(P.x - s.x0, s.x1 - P.x), pz = Math.min(P.z - s.z0, s.z1 - P.z); if (px < pz) P.x += (P.x - s.x0 < s.x1 - P.x ? -1 : 1) * (px + R); else P.z += (P.z - s.z0 < s.z1 - P.z ? -1 : 1) * (pz + R); continue; } const d = Math.sqrt(d2); P.x = cx + dx / d * R; P.z = cz + dz / d * R; } }
 function move(dx, dz, dt) { // dx, dz : déplacement souhaité (m) ; refuse les chutes de plus d'un mètre
+  if (pano) { const nx = P.x + dx, nz = P.z + dz, r = Math.hypot(nx - pano.x, nz - pano.z); if (r > (pano.walk || 2.5)) { exitPano(); } else { P.x = nx; P.z = nz; P.y = Math.max(0, pano.y - EYE); return; } }
   const ox = P.x, oz = P.z; P.x += dx; P.z += dz; collide(); const fy = floorAt(P.x, P.z, P.y); if (P.y - fy > 1.0 && !(P.y > SL - 0.5 && fy >= SL - 0.5)) { P.x = ox; P.z = oz; return; } P.y = fy > P.y ? damp(P.y, fy, 16, dt) : damp(P.y, fy, 9, dt); }
 const keys = {}; addEventListener('keydown', e => { keys[e.code] = true; if (e.code === 'Space') e.preventDefault(); }); addEventListener('keyup', e => { keys[e.code] = false; });
 const K = (...c) => c.some(k => keys[k]);
@@ -465,32 +466,37 @@ document.querySelectorAll('[data-spot]').forEach(b => b.addEventListener('click'
 // PANOS : une entrée par vue — id, titre, fichier équirectangulaire, position dans la villa (x, z, hauteur d'œil), rotation d'alignement (rad),
 // liens vers d'autres vues (direction yaw/pitch où afficher le repère). Tant que la liste est vide, la porte ouvre le tour Kuula.
 const PANOS = [
-  { id: 'hall', title: 'Salon · double hauteur', src: 'img/vr/chloe/hall.jpg', x: -0.4, z: -0.3, y: 1.6, rot: PI, links: [] },
+  { id: 'hall', title: 'Salon · double hauteur', src: 'img/vr/chloe/hall.jpg', depth: 'img/vr/chloe/hall-depth.png', x: -0.4, z: -0.3, y: 1.6, rot: PI, walk: 2.6, links: [] },
 ];
 const panoById = Object.fromEntries(PANOS.map(p => [p.id, p]));
-const panoSphere = new THREE.Mesh(new THREE.SphereGeometry(12, 64, 32), new THREE.MeshBasicMaterial({ side: THREE.BackSide, depthWrite: false, depthTest: false, transparent: true, opacity: 0, toneMapped: false }));
+const panoMat = new THREE.ShaderMaterial({ side: THREE.BackSide, transparent: true, depthWrite: true, uniforms: { map: { value: null }, depth: { value: null }, opacity: { value: 0 }, hasDepth: { value: 0 } },
+  vertexShader: `uniform sampler2D depth; uniform float hasDepth; varying vec2 vUv; void main(){ vUv = uv; float q = texture2D(depth, uv).r; float d = hasDepth > 0.5 ? (q > 0.004 ? 0.45 / q : 30.0) : 12.0; vec3 p = normalize(position) * d; gl_Position = projectionMatrix * modelViewMatrix * vec4(p, 1.0); }`,
+  fragmentShader: `uniform sampler2D map; uniform float opacity; varying vec2 vUv; void main(){ gl_FragColor = vec4(texture2D(map, vUv).rgb, opacity);
+    #include <colorspace_fragment>
+  }` });
+const panoSphere = new THREE.Mesh(new THREE.SphereGeometry(1, 256, 128), panoMat); panoSphere.frustumCulled = false;
 panoSphere.renderOrder = 50; panoSphere.visible = false; panoSphere.scale.x = -1; scene.add(panoSphere);
 const hotMat = new THREE.MeshBasicMaterial({ color: '#f0cf7a', transparent: true, opacity: 0.9, depthTest: false, side: THREE.DoubleSide });
 const hotGeo = new THREE.RingGeometry(0.16, 0.24, 36), hotCore = new THREE.CircleGeometry(0.07, 24);
 const hotspots = new THREE.Group(); hotspots.renderOrder = 60; scene.add(hotspots);
-const panoTex = {}; const loadPano = src => panoTex[src] || (panoTex[src] = new Promise(res => { new THREE.TextureLoader().load(src, t => { t.colorSpace = THREE.SRGBColorSpace; t.minFilter = THREE.LinearFilter; t.generateMipmaps = false; t.anisotropy = 8; res(t); }); }));
+const panoTex = {}; const loadPano = (src, srgb = true) => src ? (panoTex[src] || (panoTex[src] = new Promise(res => { new THREE.TextureLoader().load(src, t => { if (srgb) t.colorSpace = THREE.SRGBColorSpace; t.minFilter = THREE.LinearFilter; t.magFilter = THREE.LinearFilter; t.generateMipmaps = false; t.anisotropy = 8; res(t); }); }))) : Promise.resolve(null);
 let pano = null, panoFade = 0, panoTarget = 0, panoArmed = false; // armé une fois les commandes relâchées : on ne ressort pas sur la lancée de l'entrée
-async function enterPano(def) { if (!def) return; $('fade').classList.add('on'); const t = await loadPano(def.src); setTimeout(() => $('fade').classList.remove('on'), 320);
-  pano = def; panoArmed = false; panoSphere.material.map = t; panoSphere.material.needsUpdate = true; panoSphere.rotation.y = def.rot || 0; panoSphere.visible = true; panoTarget = 1;
+async function enterPano(def) { if (!def) return; $('fade').classList.add('on'); const [t, dm] = await Promise.all([loadPano(def.src), loadPano(def.depth, false)]); setTimeout(() => $('fade').classList.remove('on'), 320);
+  pano = def; panoArmed = false; panoMat.uniforms.map.value = t; panoMat.uniforms.depth.value = dm; panoMat.uniforms.hasDepth.value = dm ? 1 : 0; panoSphere.rotation.y = def.rot || 0; panoSphere.position.set(def.x, def.y, def.z); panoSphere.visible = true; panoTarget = 1; world.visible = false; flames.forEach(f => { f.visible = false; });
   P.x = def.x; P.z = def.z; P.y = Math.max(0, def.y - EYE); if (renderer.xr.isPresenting) rig.position.set(P.x, P.y, P.z);
   hotspots.clear(); for (const l of def.links) { const g = new THREE.Group(); g.add(new THREE.Mesh(hotGeo, hotMat)); g.add(new THREE.Mesh(hotCore, hotMat)); g.children.forEach(m => { m.renderOrder = 60; }); g.userData.to = l.to; g.userData.dir = V(-Math.sin(l.yaw) * Math.cos(l.pitch), Math.sin(l.pitch), -Math.cos(l.yaw) * Math.cos(l.pitch)); hotspots.add(g); }
   $('panoName').textContent = def.title; $('panoBar').classList.add('on'); }
 let panoLeft = null; // vue que l'on vient de quitter : pas de ré-entrée tant qu'on ne s'en est pas éloigné
-function exitPano() { if (!pano) return; panoLeft = pano; pano = null; panoTarget = 0; hotspots.clear(); $('panoBar').classList.remove('on'); }
-function panoFrame(dt) { panoFade = damp(panoFade, panoTarget, 8, dt); panoSphere.material.opacity = panoFade; if (panoFade < 0.01 && !pano) panoSphere.visible = false;
-  const eye = renderer.xr.isPresenting ? V().setFromMatrixPosition(renderer.xr.getCamera().matrixWorld) : camera.position; panoSphere.position.copy(eye);
+function exitPano() { if (!pano) return; panoLeft = pano; pano = null; panoTarget = 0; world.visible = true; flames.forEach(f => { f.visible = true; }); hotspots.clear(); $('panoBar').classList.remove('on'); }
+function panoFrame(dt) { panoFade = damp(panoFade, panoTarget, 8, dt); panoMat.uniforms.opacity.value = panoFade; if (panoFade < 0.01 && !pano) panoSphere.visible = false;
+  const eye = renderer.xr.isPresenting ? V().setFromMatrixPosition(renderer.xr.getCamera().matrixWorld) : camera.position;
   for (const g of hotspots.children) { g.position.copy(eye).addScaledVector(g.userData.dir, 5); g.lookAt(eye); g.scale.setScalar(1 + 0.12 * Math.sin(performance.now() / 300)); } }
 const hotRay = new THREE.Raycaster(); hotRay.params.Mesh = {};
 function hotspotAt(origin, dir) { hotRay.set(origin, dir); const h = hotRay.intersectObjects(hotspots.children, true)[0]; return h ? h.object.parent.userData.to : null; }
 canvas.addEventListener('click', e => { if (!pano || renderer.xr.isPresenting) return; const nd = locked ? V(0, 0, 0.5) : V((e.clientX / innerWidth) * 2 - 1, -(e.clientY / innerHeight) * 2 + 1, 0.5); const dir = nd.unproject(camera).sub(camera.position).normalize(); const to = hotspotAt(camera.position.clone(), dir); if (to) enterPano(panoById[to]); });
 $('panoExit').addEventListener('click', exitPano);
 // repères dorés dans la maison aux emplacements des vues 360°
-for (const d of PANOS) { put('led', new THREE.RingGeometry(0.3, 0.38, 32).rotateX(-PI / 2), mat4(d.x, 0.2, d.z)); }
+for (const d of PANOS) { put('led', new THREE.RingGeometry((d.walk || 2.5) - 0.06, (d.walk || 2.5), 64).rotateX(-PI / 2), mat4(d.x, 0.2, d.z)); }
 
 // ---------------------------------------------------------------- intérieur sans fichiers 360° : le tour Kuula du studio, tel quel, par-dessus la scène
 const tourEl = $('tour'), tourFrame = $('tour-frame'); let tourOpen = false;
@@ -518,7 +524,7 @@ function xrUpdate(dt) { const s = renderer.xr.getSession(); if (!s) return;
   const xrCam = renderer.xr.getCamera(); const fwd = V(); xrCam.getWorldDirection(fwd); fwd.y = 0; fwd.normalize(); const right = V().crossVectors(fwd, V(0, 1, 0));
   for (const src of s.inputSources) { const g = src.gamepad; if (!g || g.axes.length < 4) continue; const ax = g.axes[2], ay = g.axes[3];
     if (src.handedness === 'right') { snapT -= dt; if (Math.abs(ax) > 0.6 && snapT <= 0) { snapT = 0.35; P.yaw -= Math.sign(ax) * PI / 6; rig.rotation.y = P.yaw; } continue; }
-    if (Math.abs(ax) < 0.15 && Math.abs(ay) < 0.15) { if (pano) panoArmed = true; continue; } if (pano) { if (!panoArmed) continue; exitPano(); } const v = 1.8 * dt; move((fwd.x * -ay + right.x * ax) * v, (fwd.z * -ay + right.z * ax) * v, dt); rig.position.set(P.x, P.y, P.z); }
+    if (Math.abs(ax) < 0.15 && Math.abs(ay) < 0.15) continue; const v = 1.8 * dt; move((fwd.x * -ay + right.x * ax) * v, (fwd.z * -ay + right.z * ax) * v, dt); rig.position.set(P.x, P.y, P.z); }
   let shown = false; for (const c of ctrls) { const h = ctrlHit(c); if (h) { marker.position.copy(h.p).y += 0.02; shown = true; break; } } marker.visible = shown; }
 renderer.xr.addEventListener('sessionstart', () => { rig.position.set(P.x, P.y, P.z); rig.rotation.y = P.yaw; camera.rotation.set(0, 0, 0); camera.position.set(0, 0, 0); document.body.classList.add('xr'); });
 renderer.xr.addEventListener('sessionend', () => { rig.position.set(0, 0, 0); rig.rotation.y = 0; marker.visible = false; document.body.classList.remove('xr'); $('vr').setAttribute('aria-pressed', 'false'); });
@@ -538,15 +544,14 @@ renderer.setAnimationLoop(() => {
   else {
     let fx = 0, fz = 0; if (K('KeyW', 'KeyZ', 'ArrowUp')) fz -= 1; if (K('KeyS', 'ArrowDown')) fz += 1; if (K('KeyA', 'KeyQ', 'ArrowLeft')) fx -= 1; if (K('KeyD', 'ArrowRight')) fx += 1;
     fx += stick.dx; fz += stick.dy; const len = Math.hypot(fx, fz); if (len > 1) { fx /= len; fz /= len; }
-    if (pano) { if (len > 0.02) { if (panoArmed) exitPano(); else { fx = fz = 0; } } else panoArmed = true; }
-    if (len > 0.02) { const sp = (K('ShiftLeft', 'ShiftRight') ? 4.2 : 2.3) * dt; const c = Math.cos(P.yaw), s = Math.sin(P.yaw); move((fx * c - fz * s) * sp, (fx * s + fz * c) * sp, dt); bob += dt * (K('ShiftLeft') ? 11 : 7); } else P.y = damp(P.y, floorAt(P.x, P.z, P.y), 10, dt);
+    if (len > 0.02) { const sp = (K('ShiftLeft', 'ShiftRight') ? 4.2 : 2.3) * (pano ? 0.6 : 1) * dt; const c = Math.cos(P.yaw), s = Math.sin(P.yaw); move((fx * c + fz * s) * sp, (-fx * s + fz * c) * sp, dt); bob += dt * (K('ShiftLeft') ? 11 : 7); } else if (!pano) P.y = damp(P.y, floorAt(P.x, P.z, P.y), 10, dt);
     camera.position.set(P.x, P.y + EYE + Math.sin(bob) * 0.025, P.z); camera.rotation.set(P.pitch, P.yaw, 0);
   }
   sky.position.copy(renderer.xr.isPresenting ? rig.position : camera.position); sun.target.position.set(P.x, 0, P.z); sun.position.set(P.x + MODES[mode].sunPos[0], MODES[mode].sunPos[1], P.z + MODES[mode].sunPos[2]);
   panoFrame(dt);
   if (!tourOpen && !pano && P.y < 1 && P.z < 5.6 && P.z > 2.5 && P.x > -6.5 && P.x < -2.7) openTour();
-  if (panoLeft && Math.hypot(P.x - panoLeft.x, P.z - panoLeft.z) > 1.3) panoLeft = null;
-  if (!pano && PANOS.length) for (const d of PANOS) if (d !== panoLeft && Math.hypot(P.x - d.x, P.z - d.z) < 0.7 && Math.abs(P.y + EYE - d.y) < 1) { enterPano(d); break; } // la porte franchie : on entre dans les vues 360°
+  if (panoLeft && Math.hypot(P.x - panoLeft.x, P.z - panoLeft.z) > (panoLeft.walk || 2.5) + 0.3) panoLeft = null;
+  if (!pano && PANOS.length) for (const d of PANOS) if (d !== panoLeft && Math.hypot(P.x - d.x, P.z - d.z) < (d.walk || 2.5) - 0.2 && Math.abs(P.y + EYE - d.y) < 1) { enterPano(d); break; } // la porte franchie : on entre dans les vues 360°
   zoneT -= dt; if (zoneT <= 0) { zoneT = 0.4; const n = zoneName(); if ($('zone').textContent !== n) { $('zone').textContent = n; $('area').classList.add('on'); } }
   renderer.render(scene, camera);
 });
