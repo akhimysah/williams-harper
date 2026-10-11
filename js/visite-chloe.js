@@ -458,8 +458,15 @@ const endTouch = e => { for (const t of e.changedTouches) { if (t.identifier ===
 canvas.addEventListener('touchend', endTouch); canvas.addEventListener('touchcancel', endTouch);
 // points de visite
 const SPOTS = { jardin: [-4.4, 18.6, 0.08, 0.02], entree: [-4.5, 8.6, 0.0, 0.05], salon: [1.6, 7.9, PI / 2, 0.02], hall: [-0.4, 0.4, -PI / 2 + 0.3, 0.12], dinner: [0.2, -3.0, 0, 0.05], sejour: [5.6, -7.3, 0.4, 0.02], terrasse: [6.0, 9.2, 0.0, 0.03], piscine: [10.4, 11.0, 0.15, 0.06], suite: [-1.0, 7.8, PI / 2 + 0.4, 0.03], etage: [5.4, 5.6, -PI / 2, -0.1], chambre: [-0.6, -6.0, -0.2, 0.02], facade: [16.5, 1.2, PI / 2 + 0.55, 0.14] };
-function goTo(name) { const s = SPOTS[name]; if (!s) return; $('fade').classList.add('on'); setTimeout(() => { P.x = s[0]; P.z = s[1]; P.yaw = s[2]; P.pitch = s[3]; P.y = floorAt(P.x, P.z, name === 'suite' || name === 'etage' || name === 'chambre' ? SL : 0); if (renderer.xr.isPresenting) { rig.position.set(P.x, P.y, P.z); rig.rotation.y = P.yaw; } $('fade').classList.remove('on'); }, 260); }
+const INSIDE = new Set(['salon', 'hall', 'dinner', 'sejour', 'suite', 'chambre']);
+function goTo(name) { if (INSIDE.has(name)) { openTour(); return; } const s = SPOTS[name]; if (!s) return; $('fade').classList.add('on'); setTimeout(() => { P.x = s[0]; P.z = s[1]; P.yaw = s[2]; P.pitch = s[3]; P.y = floorAt(P.x, P.z, name === 'suite' || name === 'etage' || name === 'chambre' ? SL : 0); if (renderer.xr.isPresenting) { rig.position.set(P.x, P.y, P.z); rig.rotation.y = P.yaw; } $('fade').classList.remove('on'); }, 260); }
 document.querySelectorAll('[data-spot]').forEach(b => b.addEventListener('click', () => goTo(b.dataset.spot)));
+// ---------------------------------------------------------------- intérieur : les vues 360° du studio (tour Kuula), telles quelles
+const tourEl = $('tour'), tourFrame = $('tour-frame'); let tourOpen = false;
+function openTour() { if (tourOpen) return; tourOpen = true; if (!tourFrame.src) tourFrame.src = tourFrame.dataset.src; if (renderer.xr.getSession()) renderer.xr.getSession().end(); if (document.pointerLockElement) document.exitPointerLock(); tourEl.classList.add('on'); tourEl.setAttribute('aria-hidden', 'false'); $('intro').classList.remove('on'); }
+function closeTour() { tourOpen = false; tourEl.classList.remove('on'); tourEl.setAttribute('aria-hidden', 'true'); const s = SPOTS.entree; P.x = s[0]; P.z = s[1] + 1.2; P.yaw = s[2]; P.pitch = s[3]; P.y = 0; }
+$('open-tour').addEventListener('click', openTour); $('close-tour').addEventListener('click', closeTour);
+if (location.hash === '#interieur') openTour();
 const ZONES = [[-6.9, -2.13, -13.4, -8.0, 'Cuisine'], [-2.13, 2.66, -12.0, -8.0, 'Service'], [2.66, 8.5, -12.0, -4.26, 'Séjour'], [-2.66, 2.66, -8.0, -4.26, 'Salle à manger'], [-6.9, 2.66, -4.26, 5.7, 'Hall double hauteur'], [-2.66, 4.26, 5.7, 10.1, 'Salon · cheminée'], [4.26, 8.5, 1.6, 10.6, 'Terrasse couverte'], [4.3, 13.8, -4.3, 11.2, 'Piscine à débordement'], [8.5, 10.2, -14, -4.26, 'Terrasse est'], [-7.3, -2.66, 5.7, 11.4, 'Entrée'], [-13, 20.5, 10.6, 20.5, 'Jardin'], [-13, 20.5, -16.5, 20.5, 'Domaine Red Stone']];
 const ZONES1 = [[-7.45, -3.06, -13.4, -5.2, 'Chambre 1'], [-3.06, 2.0, -12.1, -5.2, 'Chambre 2'], [2.0, 7.7, -12.1, -3.7, 'Chambre 3'], [-7.45, 2.0, -5.2, -3.7, 'Couloir'], [-6.9, -4.0, 1.6, 5.0, 'Bain parental'], [-4.0, -1.0, 1.6, 5.0, 'Dressing'], [-6.9, 3.7, 1.6, 10.1, 'Suite parentale'], [3.7, 7.3, 1.6, 10.1, 'Terrasse de la suite'], [-6.9, -1.6, -3.7, 2.1, 'Passerelle'], [-20, 20, -20, 20, 'Terrasses']];
 function zoneName() { const L = P.y > SL - 0.6 ? ZONES1 : ZONES; for (const [x0, x1, z0, z1, n] of L) if (P.x >= x0 && P.x <= x1 && P.z >= z0 && P.z <= z1) return n; return 'Villa Chloé'; }
@@ -504,9 +511,10 @@ renderer.setAnimationLoop(() => {
     camera.position.set(P.x, P.y + EYE + Math.sin(bob) * 0.025, P.z); camera.rotation.set(P.pitch, P.yaw, 0);
   }
   sky.position.copy(renderer.xr.isPresenting ? rig.position : camera.position); sun.target.position.set(P.x, 0, P.z); sun.position.set(P.x + MODES[mode].sunPos[0], MODES[mode].sunPos[1], P.z + MODES[mode].sunPos[2]);
+  if (!tourOpen && P.y < 1 && P.z < 5.6 && P.z > 2.5 && P.x > -6.5 && P.x < -2.7) openTour(); // la porte franchie : on entre dans les vues 360°
   zoneT -= dt; if (zoneT <= 0) { zoneT = 0.4; const n = zoneName(); if ($('zone').textContent !== n) { $('zone').textContent = n; $('area').classList.add('on'); } }
   renderer.render(scene, camera);
 });
 $('loader').classList.add('off');
-window.WHV = { scene, M, P, goTo, applyMode, renderer, floors, solids };
+window.WHV = { scene, M, P, goTo, applyMode, renderer, floors, solids, openTour, closeTour };
 if (isTouch) $('intro').classList.remove('on');

@@ -56,19 +56,30 @@ canvas#view{display:block;width:100vw;height:100vh;cursor:crosshair}
 #touchhint{bottom:calc(max(16px,env(safe-area-inset-bottom)) + 58px);left:18px;font-size:12px;line-height:1.5;opacity:.75;display:none}
 @media (pointer:coarse){#touchhint{display:block}#brand .t{font-size:18px}}
 body.xr .hud{display:none}
+#tour{inset:0;background:#000;opacity:0;pointer-events:none;transition:opacity .35s;z-index:8}
+#tour.on{opacity:1;pointer-events:auto}
+#tour iframe{position:absolute;inset:0;width:100%;height:100%;border:0;display:block}
+#tour .bar{position:absolute;top:max(14px,env(safe-area-inset-top));left:118px;right:16px;display:flex;justify-content:flex-start;align-items:flex-start;pointer-events:none}
+#tour #close-tour{position:absolute;left:16px;bottom:calc(max(16px,env(safe-area-inset-bottom)) + 96px);top:auto}
+#tour .bar>*{pointer-events:auto}
+#tour .t{font-family:var(--display);font-style:italic;font-size:22px;line-height:1;color:var(--paper)}
+#tour .t small{display:block;font-family:var(--body);font-style:normal;font-size:10px;letter-spacing:.3em;text-transform:uppercase;opacity:.75;margin-bottom:4px}
+#tour button{font:inherit;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--paper);background:rgba(10,10,14,.6);border:1px solid rgba(255,255,255,.35);border-radius:999px;padding:8px 14px;cursor:pointer;backdrop-filter:blur(8px)}
+#tour button:hover{background:var(--paper);color:var(--ink)}
 </style>
 </head>
 <body>
 <canvas id="view"></canvas>
 <a class="hud" id="brand" href="villa-chloe.html" aria-label="Retour à la villa Chloé"><img src="img/logo.png" alt="Williams &amp; Harper"><span class="t sh"><small>Visite immersive</small>Villa Chloé</span></a>
-<div class="hud" id="tools"><button type="button" id="mode" aria-pressed="false">Jour</button><button type="button" id="fs">Plein écran</button><button type="button" id="vr" aria-pressed="false" hidden>Entrer en VR</button></div>
+<div class="hud" id="tools"><button type="button" id="open-tour">Intérieur 360°</button><button type="button" id="mode" aria-pressed="false">Jour</button><button type="button" id="fs">Plein écran</button><button type="button" id="vr" aria-pressed="false" hidden>Entrer en VR</button></div>
 <div class="hud" id="area"><div class="k sh">Vous êtes</div><div class="n sh" id="zone">Jardin</div></div>
 <div class="hud" id="spots" role="group" aria-label="Points de visite">
   <button type="button" data-spot="jardin">Jardin</button><button type="button" data-spot="entree">Entrée</button><button type="button" data-spot="salon">Salon · cheminée</button><button type="button" data-spot="hall">Double hauteur</button><button type="button" data-spot="dinner">Salle à manger</button><button type="button" data-spot="sejour">Séjour</button><button type="button" data-spot="terrasse">Terrasse</button><button type="button" data-spot="piscine">Piscine</button><button type="button" data-spot="facade">Façade</button><button type="button" data-spot="suite">Suite parentale</button><button type="button" data-spot="etage">Terrasse de la suite</button><button type="button" data-spot="chambre">Chambre 2</button>
 </div>
 <div class="hud" id="touchhint">Pouce gauche : marcher · pouce droit : regarder</div>
 <div class="hud" id="stick"><div id="knob"></div></div>
-<div class="hud" id="intro"><div class="card"><h1>Villa Chloé, à l'échelle 1</h1><p>Marchez librement du jardin à la suite parentale. <kbd>Z</kbd> <kbd>Q</kbd> <kbd>S</kbd> <kbd>D</kbd> ou les flèches pour avancer, la souris pour regarder, <kbd>Maj</kbd> pour accélérer, <kbd>Échap</kbd> pour libérer la souris. Les points de visite en bas téléportent.</p><button type="button" class="go" id="go">Entrer dans la villa</button><p class="vrh" id="vrhint">Avec un casque (Meta Quest, Pico…), ouvrez cette page dans le navigateur du casque : le bouton « Entrer en VR » apparaît.</p></div></div>
+<div class="hud" id="intro"><div class="card"><h1>Villa Chloé, à l'échelle 1</h1><p>Promenez-vous dans le jardin, autour du bassin et des terrasses ; en franchissant la porte, vous entrez dans les vraies vues 360° de l'intérieur. <kbd>Z</kbd> <kbd>Q</kbd> <kbd>S</kbd> <kbd>D</kbd> ou les flèches pour avancer, la souris pour regarder, <kbd>Maj</kbd> pour accélérer, <kbd>Échap</kbd> pour libérer la souris. Les points de visite en bas téléportent.</p><button type="button" class="go" id="go">Entrer dans la villa</button><p class="vrh" id="vrhint">Avec un casque (Meta Quest, Pico…), ouvrez cette page dans le navigateur du casque : le bouton « Entrer en VR » apparaît.</p></div></div>
+<div class="hud" id="tour" aria-hidden="true"><iframe id="tour-frame" title="Visite 360° de la villa Chloé" allow="xr-spatial-tracking; gyroscope; accelerometer; fullscreen" allowfullscreen scrolling="no" data-src="https://kuula.co/share/collection/7KQmw?logo=1&amp;info=0&amp;fs=1&amp;vr=1&amp;sd=1&amp;thumbs=1&amp;autop=0"></iframe><div class="bar"><span class="t sh"><small>Intérieur · vues 360° du studio</small>Villa Chloé</span><button type="button" id="close-tour">↩ Retour au jardin</button></div></div>
 <div class="hud" id="fade"></div>
 <div class="hud" id="loader">Construction de la villa…</div>
 <script type="importmap">{"imports":{"three":"./js/vendor/three.module.min.js"}}</script>
