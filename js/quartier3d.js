@@ -380,72 +380,82 @@ function bananaPlant(x, z, sc = 1) {
 // infinity pool across the whole front with a black marble water feature and stepping stones.
 function margaux(ry, s, B, lb, W, rect, ls, vname, vurl, record) {
   const P3 = (u, y, v) => V(s * u, y, v);
-  const sc = B.elements[0] / Math.cos(ry) || 1.5;
-  // front: low dark wall with a gate, lawn with rocks, bushes and pines
+  const sc = Math.hypot(B.elements[0], B.elements[2]) || 1.5;
+  // front: low dark wall with a gate, lawn with stepping stones, rocks, clipped bushes and pines
   lb('marbleD', -11.8, 6.4, 0, 0.45, 0, 0.35); ls(-11.8, 6.4, 0, 0.35, 0.45); lb('led', -11.8, 6.4, 0.36, 0.39, -0.02, 0);
   lb('marbleD', 9.4, 11.8, 0, 0.45, 0, 0.35); ls(9.4, 11.8, 0, 0.35, 0.45);
-  for (const [u, v] of [[7.9, 1.2], [7.9, 2.6], [7.9, 4], [7.9, 5.4], [7.9, 6.8], [7.9, 8.2]]) { const p = W(u, v); put('rock', new THREE.CylinderGeometry(0.5, 0.5, 0.05, 12), mat4(p.x, 0.025, p.z)); }
-  for (const [u, v, r] of [[-8.6, 3.2, 0.75], [-7.4, 3.9, 0.45], [3.6, 2.4, 0.55], [10.2, 7.6, 0.8], [-10.8, 8.4, 0.5]]) { const p = W(u, v); put('rock', new THREE.IcosahedronGeometry(r, 0), mat4(p.x, r * 0.5, p.z, rnd(), rnd() * 6, 0, 1.4, 0.75, 1)); }
-  for (const [u, v, r] of [[-5.2, 5.4, 0.5], [-2.6, 6.8, 0.42], [1.4, 4.2, 0.55], [4.6, 7.4, 0.45], [-9.4, 5.8, 0.4], [10.6, 4.6, 0.45], [6.2, 8.8, 0.38]]) { const p = W(u, v); put('leaf', new THREE.IcosahedronGeometry(r, 1), mat4(p.x, r * 0.8, p.z)); }
+  for (let v = 1.2; v < 8.6; v += 1.4) { const p = W(7.9, v); put('marbleL', new THREE.CylinderGeometry(0.5, 0.5, 0.05, 12), mat4(p.x, 0.025, p.z)); }
+  for (const [u, v, r] of [[-8.6, 3.2, 0.75], [-7.4, 3.9, 0.45], [3.6, 2.4, 0.55], [10.2, 7.6, 0.8], [-10.8, 8.4, 0.5], [9.8, 8.6, 0.45]]) { const p = W(u, v); put('rock', new THREE.IcosahedronGeometry(r, 0), mat4(p.x, r * 0.5, p.z, rnd(), rnd() * 6, 0, 1.4, 0.75, 1)); }
+  for (const [u, v, r] of [[-5.2, 5.4, 0.5], [-2.6, 6.8, 0.42], [1.4, 4.2, 0.55], [4.6, 7.4, 0.45], [-9.4, 5.8, 0.4], [10.6, 4.6, 0.45], [6.2, 8.8, 0.38], [0.4, 8.4, 0.4]]) { const p = W(u, v); put('leaf', new THREE.IcosahedronGeometry(r, 1), mat4(p.x, r * 0.8, p.z)); }
   { const a = W(-11.2, 1.4); pine(a.x, a.z, 14); const b = W(11.2, 2.2); pine(b.x, b.z, 12); }
-  // infinity pool across the front, dark marble coping with an LED line, stepping stones, water feature
-  lb('marbleD', -11.2, 11.2, 0, 0.2, 9.2, 9.5); lb('marbleD', -11.2, 11.2, 0, 0.2, 13.2, 13.5);
-  lb('marbleD', -11.2, -10.9, 0, 0.2, 9.5, 13.2); lb('marbleD', 10.9, 11.2, 0, 0.2, 9.5, 13.2);
-  lb('led', -11.2, 11.2, 0.14, 0.18, 9.17, 9.2);
+  // infinity pool across the whole front: light stone coping, LED under the far edge, stepping stones, dark water feature
+  lb('marbleL', -11.2, 11.2, 0, 0.2, 9.2, 9.5); lb('marbleL', -11.2, 11.2, 0, 0.2, 13.2, 13.5);
+  lb('marbleL', -11.2, -10.9, 0, 0.2, 9.5, 13.2); lb('marbleL', 10.9, 11.2, 0, 0.2, 9.5, 13.2);
+  lb('led', -11.2, 11.2, 0.12, 0.16, 9.17, 9.2);
   lb('waterC', -10.9, 10.9, -1.2, 0.17, 9.5, 13.2);
   pools.push(rect(-10.9, 10.9, 9.5, 13.2)); ls(-11.2, 11.2, 9.2, 13.5, 0.3, 'pool');
   for (const u of [-6.3, -4.5, -2.7, 2.7, 4.5, 6.3]) { lb('marbleL', u - 0.55, u + 0.55, 0.14, 0.24, 10.8, 11.9); ls(u - 0.55, u + 0.55, 10.8, 11.9, 0.3, 'pool'); }
   lb('marbleD', -1.7, 1.7, 0, 0.95, 12.4, 13.5); ls(-1.7, 1.7, 12.4, 13.5, 0.95); lb('water', -1.5, 1.5, 0.75, 0.9, 12.55, 13.35); lb('led', -1.7, 1.7, 0.85, 0.9, 12.37, 12.4);
-  // terrace behind the pool; sun deck at the left front
+  // stone terrace behind the pool; sun deck at the left front
   lb('stoneT', -11.4, 11.4, 0, 0.22, 13.5, 16.2);
   lb('stoneT', -11.4, -6.8, 0, 0.22, 7.6, 9.2);
   for (const u of [-10.6, -8.9]) { lb('sofa', u, u + 1.3, 0.22, 0.55, 7.9, 9.0); lb('sofa', u, u + 1.3, 0.55, 1.05, 7.9, 8.2); ls(u, u + 1.3, 7.9, 9.0, 0.6); }
-  // dining on the left, lounge on the right, rattan pendants and gold discs
-  { const c = W(-7, 14.8); put('table', new THREE.CylinderGeometry(0.9, 0.9, 0.06, 20), mat4(c.x, 0.75, c.z)); put('lamp', new THREE.CylinderGeometry(0.06, 0.06, 0.5, 6), mat4(c.x, 0.48, c.z)); solid(c.x - 1, c.x + 1, c.z - 1, c.z + 1, 0.8);
+  // dining on the left under rattan pendants, lounge on the right with the gold discs
+  { const c = W(-7.2, 14.9); put('table', new THREE.CylinderGeometry(0.9, 0.9, 0.06, 20), mat4(c.x, 0.75, c.z)); put('lamp', new THREE.CylinderGeometry(0.06, 0.06, 0.5, 6), mat4(c.x, 0.48, c.z)); solid(c.x - 1, c.x + 1, c.z - 1, c.z + 1, 0.8);
     for (let i = 0; i < 5; i++) { const a = i / 5 * Math.PI * 2; put('parasol', new THREE.CylinderGeometry(0.28, 0.24, 0.5, 10), mat4(c.x + Math.cos(a) * 1.35, 0.5, c.z + Math.sin(a) * 1.35)); } }
-  for (const [u, v] of [[-8.2, 14.2], [-6.2, 14.2]]) { const p = P3(u, 2.9, v).applyMatrix4(B); put('parasol', new THREE.ConeGeometry(0.75, 0.42, 14), mat4(p.x, p.y, p.z)); put('metal', new THREE.CylinderGeometry(0.01, 0.01, 1.0, 3), mat4(p.x, p.y + 0.7, p.z)); }
-  lb('sofa', 4.2, 9.6, 0.22, 0.62, 14.9, 15.9); lb('sofa', 4.2, 9.6, 0.62, 1.15, 15.55, 15.9); for (let u = 4.35; u < 9.2; u += 0.75) lb('sofa', u, u + 0.6, 0.62, 0.8, 14.95, 15.5); ls(4.2, 9.6, 14.9, 15.9, 0.65);
-  lb('marbleD', 5.6, 7.6, 0.22, 0.56, 13.8, 14.5); ls(5.6, 7.6, 13.8, 14.5, 0.56);
-  for (const [u, y, r] of [[8.6, 2.5, 0.55], [9.5, 2.0, 0.4], [7.9, 1.75, 0.3]]) { const p = P3(u, y, 15.95).applyMatrix4(B); put('gold', new THREE.CylinderGeometry(r, r, 0.06, 20).rotateX(Math.PI / 2), mat4(p.x, p.y, p.z, 0, ry)); }
-  // wings: ground floor glass set back under the upper floor, upper floor glass with balconies
-  for (const [u0, u1] of [[-10, -3.6], [3.6, 10]]) {
-    lb('glassC', u0, u1, 0.22, 3.9, 16, 16.1); for (let u = u0; u <= u1 - 0.1; u += 1.6) lb('metal', u, u + 0.07, 0.22, 3.9, 15.92, 16);
-    lb('woodIn', u0, u1, 0.22, 3.9, 25.3, 25.45); lb('floorIn', u0, u1, 0.22, 0.24, 16.1, 25.3); lb('woodIn', u0, u1, 3.84, 3.9, 16.1, 25.3);
-    lb('woodS', u0 - 0.4, u1 + 0.4, 3.9, 4.05, 13.4, 25.6); // soffit under the upper floor
-    lb('marbleD', u0 - 0.4, u1 + 0.4, 4.05, 4.5, 13.4, 25.6); lb('led', u0 - 0.4, u1 + 0.4, 4.28, 4.33, 13.37, 13.4);
-    lb('rail', u0 - 0.3, u1 + 0.3, 4.5, 5.55, 13.42, 13.48);
-    lb('glassC', u0, u1, 4.5, 7.9, 14.5, 14.6); for (let u = u0; u <= u1 - 0.1; u += 1.6) lb('metal', u, u + 0.07, 4.5, 7.9, 14.42, 14.5);
-    lb('woodIn', u0, u1, 4.5, 7.9, 25.3, 25.45); lb('floorIn', u0, u1, 4.5, 4.52, 14.6, 25.3); lb('woodIn', u0, u1, 7.84, 7.9, 14.6, 25.3);
-    lb('woodIn', u0 < 0 ? u0 : u1 - 0.15, u0 < 0 ? u0 + 0.15 : u1, 0.22, 7.9, 16.1, 25.3);
-    ls(u0, u1, 16, 25.5, 8.6);
-    for (const [uu, vv] of [[u0 + 1.2, 14.2], [u1 - 1.2, 14.2]]) { const p = P3(uu, 0, vv).applyMatrix4(B); put('table', new THREE.CylinderGeometry(0.32, 0.26, 0.6, 10), mat4(p.x, 4.8, p.z)); put('leaf', new THREE.IcosahedronGeometry(0.6, 1), mat4(p.x, 5.5, p.z)); }
+  for (const [u, v] of [[-8.3, 14.6], [-6.1, 14.6]]) { const p = P3(u, 2.75, v).applyMatrix4(B); put('parasol', new THREE.ConeGeometry(0.8, 0.45, 14), mat4(p.x, p.y, p.z)); put('metal', new THREE.CylinderGeometry(0.01, 0.01, 1.0, 3), mat4(p.x, p.y + 0.7, p.z)); }
+  lb('sofa', 4.6, 9.6, 0.22, 0.62, 14.9, 15.9); lb('sofa', 4.6, 9.6, 0.62, 1.15, 15.55, 15.9); for (let u = 4.75; u < 9.2; u += 0.75) lb('sofa', u, u + 0.6, 0.62, 0.8, 14.95, 15.5); ls(4.6, 9.6, 14.9, 15.9, 0.65);
+  lb('marbleD', 5.8, 7.8, 0.22, 0.56, 13.8, 14.5); ls(5.8, 7.8, 13.8, 14.5, 0.56);
+  for (const [u, y, r] of [[8.4, 2.5, 0.55], [9.3, 2.0, 0.4], [7.7, 1.75, 0.3]]) { const p = P3(u, y, 15.95).applyMatrix4(B); put('gold', new THREE.CylinderGeometry(r, r, 0.06, 20).rotateX(Math.PI / 2), mat4(p.x, p.y, p.z, 0, ry)); }
+  // ---- the house: travertine piers and bands, dark marble pylons, glass between, wood soffits ----
+  const H1 = 3.9, H2 = 7.8;
+  for (const sgn of [-1, 1]) {
+    const u0 = sgn < 0 ? -10 : 4.4, u1 = sgn < 0 ? -4.4 : 10, uo = sgn < 0 ? u0 : u1; // uo: outer end
+    // ground floor: covered terrace, glass wall at v = 16 between stone piers
+    lb('glassC', u0 + 0.9, u1 - 0.9, 0.22, H1, 16, 16.1); for (let u = u0 + 0.9; u <= u1 - 1; u += 1.5) lb('metal', u, u + 0.07, 0.22, H1, 15.92, 16);
+    lb('marbleL', u0, u0 + 0.9, 0, H1, 15.5, 16.5); lb('marbleL', u1 - 0.9, u1, 0, H1, 15.5, 16.5);
+    lb('floorIn', u0, u1, 0.22, 0.25, 16.1, 25.3); lb('marbleL', u0, u1, 0.22, H1, 25.3, 25.5); lb('woodIn', uo - (sgn < 0 ? 0 : 0.2), uo + (sgn < 0 ? 0.2 : 0), 0.22, H2, 16.1, 25.3);
+    lb('woodIn', u0, u1, H1 - 0.08, H1, 16.1, 25.3);
+    // floor band: dark fascia under the upper floor, wood soffit over the terrace, LED line
+    lb('woodS', u0 - 0.5, u1 + 0.5, H1, H1 + 0.16, 13.3, 25.6);
+    lb('marbleD', u0 - 0.5, u1 + 0.5, H1 + 0.16, H1 + 0.6, 13.3, 25.6); lb('led', u0 - 0.5, u1 + 0.5, H1 + 0.4, H1 + 0.46, 13.27, 13.3);
+    // upper floor: travertine piers, reflective glass, travertine spandrel, glass balcony rail
+    lb('marbleL', u0 - 0.5, u0 + 1.2, H1 + 0.6, H2, 14.2, 25.6); lb('marbleL', u1 - 1.2, u1 + 0.5, H1 + 0.6, H2, 14.2, 25.6);
+    lb('marbleL', u0 + 1.2, u1 - 1.2, H1 + 0.6, H1 + 1.0, 14.3, 14.6);
+    lb('glass', u0 + 1.2, u1 - 1.2, H1 + 1.0, H2, 14.5, 14.6); for (let u = u0 + 1.2; u <= u1 - 1.3; u += 1.6) lb('metal', u, u + 0.07, H1 + 1.0, H2, 14.42, 14.5);
+    lb('floorIn', u0, u1, H1 + 0.6, H1 + 0.63, 14.6, 25.3); lb('marbleL', u0, u1, H1 + 0.6, H2, 25.3, 25.5);
+    lb('metal', u0 - 0.5, u1 + 0.5, H1 + 0.6, H1 + 0.7, 13.3, 13.42);
+    lb('rail', u0 - 0.4, u1 + 0.4, H1 + 0.7, H1 + 1.75, 13.32, 13.38);
+    ls(u0, u1, 16, 25.5, H2 + 0.8);
+    for (const uu of [u0 + 1.6, u1 - 1.6]) { const p = P3(uu, 0, 13.9).applyMatrix4(B); put('table', new THREE.CylinderGeometry(0.32, 0.26, 0.6, 10), mat4(p.x, H1 + 0.9, p.z)); put('leaf', new THREE.IcosahedronGeometry(0.6, 1), mat4(p.x, H1 + 1.6, p.z)); }
   }
-  lb('metal', -9.8, -3.8, 0.22, 3.4, 24.9, 25.3); for (let y = 0.7; y < 3.3; y += 0.62) lb('led', -9.6, -4, y, y + 0.03, 24.85, 24.9); // lit shelves (left wing)
-  lb('sofa', 4.4, 9.4, 4.52, 4.95, 21.5, 22.4); lb('sofa', 4.4, 9.4, 4.95, 5.4, 22.1, 22.4);
-  // central atrium: double-height glass, gold spiral stair, hanging gold discs, light marble pillars
-  lb('glassC', -2.6, 2.6, 0.22, 7.9, 15.8, 15.9); for (let u = -2.6; u <= 2.5; u += 1.3) lb('metal', u, u + 0.07, 0.22, 7.9, 15.72, 15.8);
-  lb('woodIn', -2.6, 2.6, 0.22, 7.9, 25.3, 25.45); lb('floorIn', -2.6, 2.6, 0.22, 0.24, 15.9, 25.3); lb('woodIn', -2.6, 2.6, 7.84, 7.9, 15.9, 25.3);
-  ls(-2.6, 2.6, 15.9, 25.5, 8.6);
+  lb('metal', -9.6, -5.2, 0.22, 3.4, 24.9, 25.3); for (let y = 0.7; y < 3.3; y += 0.62) lb('led', -9.4, -5.4, y, y + 0.03, 24.85, 24.9); // lit shelves (left wing)
+  lb('sofa', 5.0, 9.4, H1 + 0.63, H1 + 1.05, 21.5, 22.4); lb('sofa', 5.0, 9.4, H1 + 1.05, H1 + 1.5, 22.1, 22.4);
+  // central atrium: double-height glass between two big travertine piers; gold spiral stair and hanging discs
+  lb('glassC', -2.8, 2.8, 0.22, H2 + 0.7, 15.7, 15.8); for (let u = -2.8; u <= 2.7; u += 1.4) lb('metal', u, u + 0.07, 0.22, H2 + 0.7, 15.62, 15.7);
+  lb('marbleL', -2.8, 2.8, 0.22, H2 + 0.7, 25.3, 25.5); lb('floorIn', -2.8, 2.8, 0.22, 0.25, 15.8, 25.3); lb('woodIn', -2.8, 2.8, H2 + 0.62, H2 + 0.7, 15.8, 25.3);
+  ls(-2.8, 2.8, 15.8, 25.5, H2 + 1.6);
   { const curve = new THREE.CatmullRomCurve3(Array.from({ length: 25 }, (_, i) => { const t = i / 24, a = t * Math.PI * 2.2; return P3(0.3 + Math.cos(a) * 1.4, 0.4 + t * 4.0, 20.5 + Math.sin(a) * 1.4); }));
-    put('gold', new THREE.TubeGeometry(curve, 80, 0.14, 8, false), B);
+    put('gold', new THREE.TubeGeometry(curve, 80, 0.12, 8, false), B);
     for (let i = 0; i < 14; i++) { const t = i / 14, a = t * Math.PI * 2.2, p = P3(0.3 + Math.cos(a) * 0.9, 0.4 + t * 4.0, 20.5 + Math.sin(a) * 0.9).applyMatrix4(B); put('gold', new THREE.BoxGeometry(1.0 * sc, 0.05, 0.4 * sc), mat4(p.x, p.y, p.z, 0, ry - a - Math.PI / 2)); }
     put('marbleL', new THREE.CylinderGeometry(0.25 * sc, 0.25 * sc, 7.6, 12), mat4(...P3(0.3, 4.0, 20.5).applyMatrix4(B).toArray())); }
-  for (const [u, y, v, r] of [[-0.9, 6.0, 18.5, 0.5], [-0.3, 5.2, 18.1, 0.42], [-1.2, 4.6, 18.9, 0.32], [-0.5, 3.9, 18.3, 0.26]]) { const p = P3(u, y, v).applyMatrix4(B); put('gold', new THREE.CylinderGeometry(r, r, 0.05, 20), mat4(p.x, p.y, p.z, 0.5, rnd() * 3, 0.3)); put('metal', new THREE.CylinderGeometry(0.008, 0.008, 7.8 - y, 3), mat4(p.x, (7.8 + y) / 2, p.z)); }
-  const pillar = (u0, u1, v0, v1, h) => { lb('marbleL', u0, u1, 0, h, v0, v1); ls(u0, u1, v0, v1, h); lb('gold', (u0 + u1) / 2 - 0.02, (u0 + u1) / 2 + 0.02, 0.3, h - 0.3, v0 - 0.04, v0); };
-  pillar(-3.6, -2.6, 14.8, 16.4, 8.6); pillar(2.6, 3.6, 14.8, 16.4, 8.6);
-  // dark marble pylons at both ends, with vertical gold lines
-  const pylon = (u0, u1, v0, v1, h) => { lb('marbleD', u0, u1, 0, h, v0, v1); ls(u0, u1, v0, v1, h); for (const u of [(u0 * 2 + u1) / 3, (u0 + u1 * 2) / 3]) { lb('gold', u - 0.02, u + 0.02, 0.4, h - 0.4, v0 - 0.04, v0); lb('gold', u - 0.02, u + 0.02, 0.4, h - 0.4, v1, v1 + 0.04); } };
-  pylon(-11.5, -10.1, 14.6, 16.6, 8.4); pylon(10.1, 11.5, 13.9, 17.2, 8.4);
-  // roofs: wood soffit, black fascia with LED lines; the atrium volume rises higher
+  for (const [u, y, v, r] of [[-0.9, 6.0, 18.5, 0.5], [-0.3, 5.2, 18.1, 0.42], [-1.2, 4.6, 18.9, 0.32], [-0.5, 3.9, 18.3, 0.26]]) { const p = P3(u, y, v).applyMatrix4(B); put('gold', new THREE.CylinderGeometry(r, r, 0.05, 20), mat4(p.x, p.y, p.z, 0.5, rnd() * 3, 0.3)); put('metal', new THREE.CylinderGeometry(0.008, 0.008, H2 + 0.6 - y, 3), mat4(p.x, (H2 + 0.6 + y) / 2, p.z)); }
+  const pier = (u0, u1, v0, v1, h) => { lb('marbleL', u0, u1, 0, h, v0, v1); ls(u0, u1, v0, v1, h); lb('gold', (u0 + u1) / 2 - 0.02, (u0 + u1) / 2 + 0.02, 0.3, h - 0.3, v0 - 0.04, v0); };
+  pier(-4.4, -2.8, 14.6, 16.6, H2 + 1.6); pier(2.8, 4.4, 14.6, 16.6, H2 + 1.6);
+  // dark marble pylons at both ends, standing forward of the façade, with vertical gold lines
+  const pylon = (u0, u1, v0, v1, h) => { lb('marbleD', u0, u1, 0, h, v0, v1); ls(u0, u1, v0, v1, h); for (const u of [(u0 * 2 + u1) / 3, (u0 + u1 * 2) / 3]) { lb('gold', u - 0.02, u + 0.02, 0.4, h - 0.4, v0 - 0.04, v0); lb('gold', u - 0.02, u + 0.02, 0.4, h - 0.4, v1, v1 + 0.04); } lb('led', u0 - 0.03, u1 + 0.03, h - 0.5, h - 0.45, v0 - 0.03, v0); };
+  pylon(-11.7, -10.3, 14.2, 16.8, H2 + 0.75); pylon(10.3, 11.1, 13.4, 17.2, H2 + 0.75); pylon(11.3, 11.9, 13.8, 17.2, H2 + 0.75);
+  lb('marbleD', 10.6, 11.6, 0, H1 - 0.3, 11.8, 12.9); ls(10.6, 11.6, 11.8, 12.9, H1 - 0.3); lb('gold', 11.08, 11.12, 0.3, H1 - 0.6, 11.76, 11.8); // dark monolith at the right of the pool
+  // roofs: deep wood soffits, thick black fascia with LED lines; the atrium volume rises above the wings
   const roof = (u0, u1, vf, y0, y1) => {
     lb('woodS', u0, u1, y0, y0 + 0.2, vf, 26.3); lb('marbleD', u0, u1, y0 + 0.2, y1, vf, 26.3);
-    lb('led', u0, u1, y0 + 0.4, y0 + 0.46, vf - 0.03, vf); lb('led', u0 - 0.03, u0, y0 + 0.4, y0 + 0.46, vf, 26.3); lb('led', u1, u1 + 0.03, y0 + 0.4, y0 + 0.46, vf, 26.3);
+    lb('led', u0, u1, y0 + 0.42, y0 + 0.48, vf - 0.03, vf); lb('led', u0 - 0.03, u0, y0 + 0.42, y0 + 0.48, vf, 26.3); lb('led', u1, u1 + 0.03, y0 + 0.42, y0 + 0.48, vf, 26.3);
     lb('slab2', u0 + 0.3, u1 - 0.3, y1, y1 + 0.05, vf + 0.3, 26);
   };
-  roof(-11.9, -3.2, 13.0, 7.9, 8.5); roof(3.2, 11.9, 13.0, 7.9, 8.5); roof(-4.2, 4.2, 12.4, 8.5, 9.3);
-  lb('wall', -4.0, 4.0, 7.9, 8.5, 15.0, 26.2); // atrium upstand under the raised roof
-  { const p = W(-10.4, 13.2); bananaPlant(p.x, p.z, 1.2); const q = W(-9.2, 16.6); bananaPlant(q.x, q.z, 1); }
-  const d = W(0, 15.2);
+  roof(-12.1, -3.8, 12.8, H2, H2 + 0.75); roof(3.8, 12.1, 12.8, H2, H2 + 0.75); roof(-4.8, 4.8, 12.2, H2 + 0.75, H2 + 1.6);
+  lb('marbleL', -4.4, 4.4, H2, H2 + 0.75, 14.6, 26.2); // stone upstand of the atrium between the two roofs
+  { const p = W(-10.6, 13.0); bananaPlant(p.x, p.z, 1.2); const q = W(-9.4, 16.8); bananaPlant(q.x, q.z, 1); }
+  const d = W(0, 15.1);
   const door = { x: d.x, z: d.z, name: vname, url: vurl, n: lots.length + 1 };
   record({ door, green: false, roof: W(0, 20), pool: W(-5, 11.3), house: rect(-10, 10, 16, 25.5), poolR: rect(-10.9, 10.9, 9.5, 13.2), margaux: true });
 }
