@@ -3,9 +3,9 @@
 (function(){
   const root=document.documentElement,rm=matchMedia('(prefers-reduced-motion: reduce)').matches,fine=matchMedia('(pointer:fine)').matches;
   // ---- mode nuit (mémorisé)
-  try{if(localStorage.getItem('wh-night')==='1')root.classList.add('night')}catch(e){}
+  try{if(localStorage.getItem('wh-night')==='1'&&localStorage.getItem('wh-night-user')==='1')root.classList.add('night')}catch(e){}
   const nb=document.getElementById('night');if(nb){const sync=()=>nb.setAttribute('aria-pressed',root.classList.contains('night'));sync();
-    nb.addEventListener('click',()=>{root.classList.toggle('night');sync();try{localStorage.setItem('wh-night',root.classList.contains('night')?'1':'0')}catch(e){}})}
+    nb.addEventListener('click',()=>{root.classList.toggle('night');sync();try{localStorage.setItem('wh-night',root.classList.contains('night')?'1':'0');localStorage.setItem('wh-night-user','1')}catch(e){}})}
   // ---- barre de progression
   const bar=document.createElement('div');bar.className='progress';document.body.appendChild(bar);
   const prog=()=>{const h=document.documentElement.scrollHeight-innerHeight;bar.style.transform=`scaleX(${h>0?scrollY/h:0})`};
@@ -104,14 +104,12 @@
     fetch('https://api.open-meteo.com/v1/forecast?latitude=31.5665&longitude=-8.0459&current=temperature_2m,weather_code&timezone=Africa%2FCasablanca').then(r=>r.json()).then(d=>{const c=d.current;const code=c.weather_code;const W={fr:['ciel dégagé','peu nuageux','nuageux','couvert','brume','bruine','pluie','neige','averses','orage'],en:['clear sky','few clouds','cloudy','overcast','mist','drizzle','rain','snow','showers','storm'],nl:['heldere hemel','licht bewolkt','bewolkt','betrokken','nevel','motregen','regen','sneeuw','buien','onweer']}[L]||[];
       const idx=code===0?0:code<=2?1:code===3?3:code<=48?4:code<=57?5:code<=67?6:code<=77?7:code<=82?8:9;m.innerHTML='<b>'+Math.round(c.temperature_2m)+'°</b><span>Marrakech · '+(W[idx]||'')+'</span>';m.classList.add('on')}).catch(()=>{})}
   // nuit automatique entre 20 h et 7 h si l'utilisateur n'a rien choisi
-  try{if(localStorage.getItem('wh-night')===null){const h=new Date().getHours();if(h>=20||h<7)root.classList.add('night')}}catch(e){}
   // flèches ← → entre les villas
   const prev=document.querySelector('.nextvilla a[href^="villa-"]'),next=document.querySelector('.next-band');
   if(prev||next)addEventListener('keydown',e=>{if(e.target.matches('input,textarea,select'))return;if(e.key==='ArrowRight'&&next)location.href=next.href;if(e.key==='ArrowLeft'&&prev)location.href=prev.href});
   // hero qui se rétracte et s'assombrit au scroll
   const copy=document.querySelector('.full .copy');if(copy&&!rm){let t3=false;const u3=()=>{const k=Math.min(1,scrollY/innerHeight);copy.style.opacity=1-k*1.3;copy.style.transform=`translateY(${k*60}px) scale(${1-k*.08})`;t3=false};addEventListener('scroll',()=>{if(!t3){t3=true;requestAnimationFrame(u3)}},{passive:true})}
   // contact qui s'assombrit quand on y arrive
-  const ct=document.getElementById('contact');if(ct)new IntersectionObserver(es=>es.forEach(x=>ct.classList.toggle('dark',x.intersectionRatio>.35)),{threshold:[.35]}).observe(ct);
   // galerie : reflow animé au filtrage
   const gal=document.getElementById('gal');if(gal){const re=()=>{[...gal.querySelectorAll('figure:not([hidden])')].forEach((f,k)=>{f.style.setProperty('--k',k);f.style.animation='none';void f.offsetWidth;f.style.animation=''})};document.querySelectorAll('.galnav button').forEach(b=>b.addEventListener('click',()=>setTimeout(re,0)))}
   // titre de l'onglet quand on quitte la page
