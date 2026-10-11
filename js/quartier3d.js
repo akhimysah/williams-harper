@@ -167,6 +167,7 @@ MAT.metal = new THREE.MeshLambertMaterial({ color: '#1d1e21' });
 for (const [k, c] of [['signA', '#b08d57'], ['signB', '#2f4a6e'], ['signC', '#c4643f'], ['signD', '#3f6340']]) MAT[k] = new THREE.MeshLambertMaterial({ color: c, emissive: c, emissiveIntensity: 0.25 });
 MAT.sofa = new THREE.MeshLambertMaterial({ color: '#efe9de' });
 MAT.rock = new THREE.MeshLambertMaterial({ color: '#6f6d6a', flatShading: true });
+MAT.court = new THREE.MeshStandardMaterial({ color: '#2f6fb3', roughness: 0.9 });
 /* ---- photo textures (ambientCG, CC0): PBR materials tiled in world space ---- */
 const texLoader = new THREE.TextureLoader();
 const TEX = {};
@@ -184,7 +185,7 @@ function pbr(key, name, metres, o = {}) {
 }
 pbr('grass', 'grass', 3); pbr('groof', 'grass', 2, { color: '#c9d9a8' });
 pbr('asphalt', 'asphalt', 4, { color: '#9a9a9c' });
-pbr('side', 'concrete', 2, { color: '#e6e1d6' }); pbr('curb', 'concrete', 1, { color: '#d8d2c6' });
+pbr('side', 'concrete', 2, { color: '#d3cdc1' }); pbr('curb', 'concrete', 1, { color: '#d8d2c6' });
 pbr('pave', 'stone', 2, { color: '#e8e2d6' }); pbr('stoneT', 'stone', 1.5, { color: '#dcd8d0' }); pbr('floorIn', 'stone', 2, { color: '#f0ebe2', emissive: '#8a7a62', emissiveIntensity: 0.35 });
 pbr('sand', 'gravel', 1.5, { color: '#e9dcc2' });
 pbr('wall', 'concrete', 2.5, { color: '#f6f3ee' }); pbr('wall2', 'concrete', 2.5, { color: '#e9e4da' });
@@ -235,7 +236,7 @@ MAT.car = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.42, 
 MAT.head = new THREE.MeshBasicMaterial({ color: '#d8d4c8' });
 MAT.tail = new THREE.MeshBasicMaterial({ color: '#5a1010' });
 MAT.brake = new THREE.MeshBasicMaterial({ color: '#ff2a1a' });
-const NO_SHADOW = new Set(['led', 'flame', 'rail', 'waterC', 'stoneT', 'glassC', 'floorIn', 'asphalt', 'line', 'side', 'pave', 'sand', 'water', 'grass', 'bulb', 'curb', 'tlxr', 'tlxa', 'tlxg', 'tlzr', 'tlza', 'tlzg']);
+const NO_SHADOW = new Set(['court', 'led', 'flame', 'rail', 'waterC', 'stoneT', 'glassC', 'floorIn', 'asphalt', 'line', 'side', 'pave', 'sand', 'water', 'grass', 'bulb', 'curb', 'tlxr', 'tlxa', 'tlxg', 'tlzr', 'tlza', 'tlzg']);
 const matCache = {};
 const lam = hex => (matCache[hex] ||= new THREE.MeshLambertMaterial({ color: hex }));
 
@@ -322,10 +323,18 @@ function pine(x, z, h = 9) {
 // along the south front, bending along the oblique road; the Margaux villas in two groups, south-west
 // and east. Coordinates in metres, x east, z south, origin at the north-west corner of the Chloé block.
 const VILLAS = { 'Chloé': 'villa-chloe.html', 'Céline': 'villa-celine.html', 'Margaux': 'villa-margaux.html' };
-const LD = 28, LW = 23.75, BW = 190, BD = 156;
-const WORLD = { x0: -300, x1: 300, z0: -210, z1: 330 };
-const SITE_POLY = [[-40, -12], [262, -12], [262, 100], [232, 150], [188, 196], [132, 232], [72, 246], [-20, 246], [-90, 252], [-130, 292], [-200, 286], [-224, 200], [-206, 108], [-160, 58], [-100, 18]];
-const GARDEN_POLY = [[-22, 10], [-22, 155], [-200, 155], [-206, 108], [-160, 58], [-100, 18]];
+const LD = 28, LW = 23.75;
+// Geometry traced from the architect's plan de masse (Line Design, 1/500): the drawing was rotated so the
+// Voie N°16 runs along the top; coordinates below are pixels of that drawing, 4.5 px per metre.
+const PX = (px, py) => [(px - 85) / 4.5 - 130, (py - 150) / 4.5 - 131];
+const PM = px => px / 4.5;
+const WORLD = { x0: -300, x1: 300, z0: -250, z1: 300 };
+const SITE_PX = [[85, 150], [1255, 150], [1255, 520], [1320, 640], [1300, 800], [1230, 920], [1170, 1050], [1060, 1200], [950, 1300], [880, 1330], [170, 1330], [425, 1075], [425, 830], [25, 650]];
+const SITE_POLY = SITE_PX.map(p => PX(...p));
+const PARK_PX = [590, 320, 650, 855], PLAZA_PX = [450, 880, 650, 1050], P1_PX = [598, 330, 642, 430], P2_PX = [790, 1005, 880, 1045], P3_PX = [447, 880, 470, 1030], COURT_PX = [598, 755, 642, 845];
+const rectPX = r => { const a = PX(r[0], r[1]), b = PX(r[2], r[3]); return [a[0], a[1], b[0], b[1]]; };
+const PARK = rectPX(PARK_PX), PLAZA = rectPX(PLAZA_PX), P1 = rectPX(P1_PX), P2 = rectPX(P2_PX), P3 = rectPX(P3_PX), COURT = rectPX(COURT_PX);
+const inRect = (r, x, z) => x > r[0] && x < r[2] && z > r[1] && z < r[3];
 function inPoly(poly, x, z) {
   let inside = false;
   for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
@@ -336,14 +345,18 @@ function inPoly(poly, x, z) {
 }
 const bboxOf = q => [Math.min(...q.map(p => p[0])), Math.min(...q.map(p => p[1])), Math.max(...q.map(p => p[0])), Math.max(...q.map(p => p[1]))];
 const ROADS = [
-  { name: 'Avenue Red Stone', p0: [WORLD.x0 - 20, -6], p1: [WORLD.x1 + 20, -6], w: 10, ai: true, wrap: true },
-  { name: 'Rue Harper', p0: [-16, WORLD.z0 - 20], p1: [-16, 161], w: 10, ai: true },
-  { name: 'Allée du Lac', p0: [WORLD.x0 - 20, 161], p1: [84, 161], w: 10, ai: true },
-  { name: 'Rue Margaux', p0: [196, -6], p1: [196, 80], w: 10, ai: true },
-  { name: 'Allée des Pins', p0: [-16, 60], p1: [196, 60], w: 8, ai: true },
-  { name: 'Allée des Palmiers', p0: [-16, 124], p1: [123.5, 124], w: 8, ai: true },
-  { name: 'Allée Céline', p0: [84, 161], p1: [196, 56], w: 10, ai: false },
-  { name: 'Impasse Margaux', p0: [-150, 161], p1: [-150, 262], w: 6, ai: false },
+  { name: 'Voie N°16', p0: PX(-500, 82), p1: PX(1800, 82), w: 30, ai: true, wrap: true },
+  { name: 'Voie N°14', p0: PX(1300, -500), p1: PX(1300, 1800), w: 20, ai: true, wrap: true },
+  { name: 'Voie N°12', p0: PX(-500, 1375), p1: PX(1800, 1375), w: 20, ai: true, wrap: true },
+  { name: "Allée de l'entrée", p0: PX(65, 150), p1: PX(25, 650), w: 10, ai: false, side: true },
+  { name: 'Servitude de passage', p0: PX(25, 650), p1: PX(425, 830), w: 10, ai: false, side: true },
+  { name: 'Voie N°4', p0: PX(425, 300), p1: PX(425, 1060), w: 9, ai: true, side: true },
+  { name: 'Voie N°1', p0: PX(53, 300), p1: PX(1040, 300), w: 10, ai: true, side: true },
+  { name: 'Voie N°6', p0: PX(680, 300), p1: PX(680, 1060), w: 10, ai: true, side: true },
+  { name: 'Voie N°3', p0: PX(1040, 82), p1: PX(1040, 940), w: 10, ai: true, side: true },
+  { name: 'Voie N°3', p0: PX(1040, 940), p1: PX(870, 1060), w: 10, ai: false, side: true },
+  { name: 'Voie N°5', p0: PX(425, 1060), p1: PX(870, 1060), w: 10, ai: true, side: true },
+  { name: 'Accès sud', p0: PX(425, 1060), p1: PX(170, 1375), w: 10, ai: false, side: true },
 ];
 for (const rd of ROADS) {
   const [x0, z0] = rd.p0, [x1, z1] = rd.p1;
@@ -359,8 +372,6 @@ for (let i = 0; i < ROADS.length; i++) for (let j = i + 1; j < ROADS.length; j++
   const X = { x: a.p0[0] + a.dx * ta, z: a.p0[1] + a.dz * ta, ai: a.ai && b.ai, axisX: !!(a.axis && b.axis && a.axis !== b.axis), a, b };
   XINGS.push(X); a.xings.push({ t: ta, other: b, to: tb, X }); b.xings.push({ t: tb, other: a, to: ta, X });
 }
-const DIAG = ROADS.find(r => r.name === 'Allée Céline'), DN = [-DIAG.dz, DIAG.dx]; // DN: normal pointing south-east
-const diagDist = (x, z) => (x - DIAG.p0[0]) * DN[0] + (z - DIAG.p0[1]) * DN[1];
 function nearestRoad(x, z) {
   let best = null;
   for (const rd of ROADS) {
@@ -387,7 +398,8 @@ for (const rd of ROADS) {
   const M = mat4((rd.p0[0] + rd.p1[0]) / 2, 0, (rd.p0[1] + rd.p1[1]) / 2, 0, rd.ang), hw = rd.w / 2;
   box('asphalt', -hw, hw, 0, 0.02 + (rd.axis === 'z' ? 0.001 : rd.axis ? 0 : 0.002), -rd.L / 2 - hw, rd.L / 2 + hw, M);
   for (let t = 4; t < rd.L - 4; t += 8) if (!rd.xings.some(x => Math.abs(x.t - t - 1.5) < 10)) box('line', -0.1, 0.1, 0.02, 0.035, t - rd.L / 2, t - rd.L / 2 + 3, M);
-  if (rd.w >= 10) for (let t = 12, side = 1; t < rd.L - 10; t += 17, side = -side) {
+  if (rd.side) for (const sg of [-1, 1]) box('side', sg * (hw + 0.1), sg * (hw + 2.1), 0, 0.1, -rd.L / 2 - hw, rd.L / 2 + hw, M);
+  if (rd.w >= 9) for (let t = 12, side = 1; t < rd.L - 10; t += 17, side = -side) {
     if (rd.xings.some(x => Math.abs(x.t - t) < 11)) continue;
     const p = V(side * (hw + 0.7), 0, t - rd.L / 2).applyMatrix4(M);
     lamp(p.x, p.z, -side * Math.cos(rd.ang), side * Math.sin(rd.ang));
@@ -652,24 +664,29 @@ function celine(ry, s, B, lb, W, rect, ls, vname, vurl, record) {
   const door = { x: d.x, z: d.z, name: vname, url: vurl, n: lots.length + 1 };
   record({ door, green: false, roof: W(0, 20), pool: W(-4, 9.7), house: rect(-10.2, 10, 16, 25.5), poolR: rect(-10.5, 9.2, 6.5, 12.8), celine: true });
 }
-// The Chloé block: 8 columns, 5 rows served by the avenue, two internal lanes and the south road;
-// the south-east corner is cut by the oblique road and the park runs through it diagonally.
-const ROWS = [[0, 1], [56, -1], [64, 1], [120, -1], [128, 1]];
-const parkCL = z => 88 - 0.5625 * (z - 28);
-const inParkBand = (x, z) => z > 28 && z < BD && Math.abs(x - parkCL(z)) < 13;
-ROWS.forEach(([front, dir], r) => {
-  const z0 = dir > 0 ? front : front - LD, z1 = z0 + LD, zc = (z0 + z1) / 2;
-  for (let c = 0; c < 8; c++) {
-    const x0 = c * LW, x1 = x0 + LW, xc = x0 + LW / 2;
-    if (diagDist(x1, z1) > -7 || diagDist(x1, z0) > -7) continue;
-    if (r > 0 && Math.abs(xc - parkCL(zc)) < 20) continue;
-    lot(xc, front, dir, r === 0 && c === 0 ? 'Céline' : 'Chloé'); // the show villa sits at the corner
-  }
-});
-// sidewalks around the block
-box('side', -2, 0, 0, 0.1, -2, BD + 2); box('side', 0, BW, 0, 0.1, -2, 0); box('side', 0, 84, 0, 0.1, BD, BD + 2); box('side', BW, BW + 1, 0, 0.1, 0, 56);
-{ const M = mat4((DIAG.p0[0] + DIAG.p1[0]) / 2, 0, (DIAG.p0[1] + DIAG.p1[1]) / 2, 0, DIAG.ang); box('side', 5, 7, 0, 0.1, -DIAG.L / 2, DIAG.L / 2 - 6, M); }
-for (let z = 8; z < 150; z += 18) palm(-6, z, 6 + rnd() * 2);
+// ---- the lots, block by block, as drawn on the plan de masse ----
+const F = { S: Math.PI, N: 0, W: Math.PI / 2, E: -Math.PI / 2 }; // facing direction -> lot rotation
+const lotPX = (px, py, face, name, sc = 1) => lotAt(...PX(px, py), F[face], name, sc);
+// row along the Voie N°16, served by the Voie N°1
+for (let i = 0; i < 7; i++) lotPX(120 + 61.5 + i * 123, 283, 'S', 'Chloé', 1.15);
+// west block: 3 lots facing the entrance road, 4 facing the Voie N°4
+for (let k = 0; k < 3; k++) lotPX(95, 378 + k * 117, 'W', 'Chloé', 1.1);
+for (let k = 0; k < 4; k++) lotPX(400, 378 + k * 117, 'E', 'Chloé', 1.1);
+// the column along the green strip
+for (let k = 0; k < 5; k++) lotPX(447, 373.5 + k * 107, 'W', 'Chloé', 1.0);
+// east block: two columns of six
+for (let k = 0; k < 6; k++) { lotPX(703, 371.5 + k * 103.3, 'W', 'Chloé', 0.965); lotPX(1017, 371.5 + k * 103.3, 'E', 'Chloé', 0.965); }
+// the large eastern lots along the Voie N°3
+for (let k = 0; k < 4; k++) lotPX(1062, 240 + k * 160, 'W', 'Margaux', 1.5);
+lotPX(1062, 870, 'W', 'Chloé', 1.0);
+// the southern row and the two lots on the bend, served by the Voie N°5
+for (let k = 0; k < 4; k++) lotPX(397 + k * 134, 1083, 'N', 'Céline', 1.25);
+lotAt(...PX(1030, 990), 0.615, 'Céline', 1.3);
+lotAt(...PX(930, 1075), 0.35, 'Céline', 1.3);
+// palms along the big roads' verges and the eastern servitude strip
+for (let x = 140; x < 1240; x += 55) palm(...PX(x, 160), 7 + rnd() * 2);
+for (let y = 180; y < 1250; y += 55) palm(...PX(1268, y), 6 + rnd() * 2);
+for (let y = 330; y < 1050; y += 60) { palm(...PX(455, y), 6 + rnd() * 2); palm(...PX(655, y), 6 + rnd() * 2); }
 
 const parkCurves = [];
 function ribbon(key, pts, w, y = 0.06) {
@@ -685,10 +702,8 @@ function ribbon(key, pts, w, y = 0.06) {
   g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); g.setIndex(idx);
   put(key, g);
 }
-// the park: a diagonal green band through the Chloé block, down to the shared space south of the road
-ribbon('sand', [[90, 29], [80, 46], [70, 66], [60, 84], [50, 100], [38, 118], [28, 136], [18, 154]], 3);
-for (let k = -4; k <= 4; k++) box('line', 16 + k - 0.22, 16 + k + 0.22, 0.021, 0.036, BD, BD + 10); // crossing to the shared space
-ribbon('sand', [[16, 167], [26, 172], [38, 176]], 2.6, 0.065);
+// the green strip between the two central blocks: path, small fountain square, padel court
+ribbon('sand', [[...PX(620, 330)], [...PX(612, 400)], [...PX(628, 470)], [...PX(614, 560)], [...PX(626, 640)], [...PX(614, 720)], [...PX(620, 750)]], 2.4);
 const ponds = [];
 const pond = (x, z, rx, rz) => {
   put('coping', new THREE.CircleGeometry(1, 48).rotateX(-Math.PI / 2), mat4(x, 0.07, z, 0, 0, 0, rx + 1, 1, rz + 1));
@@ -696,8 +711,6 @@ const pond = (x, z, rx, rz) => {
   solid(x - rx * 0.8, x + rx * 0.8, z - rz * 0.8, z + rz * 0.8, 0.6);
   ponds.push([x, z, rx, rz]);
 };
-pond(46, 100, 7, 4);
-box('deck', 36, 41, 0.1, 0.35, 99, 101.5); solid(36, 41, 99, 101.5, 0.35);
 const plaza = (cx, cz, r, n) => {
   put('pave', new THREE.CircleGeometry(r, 40).rotateX(-Math.PI / 2), mat4(cx, 0.07, cz));
   for (let i = 0; i < n; i++) {
@@ -715,80 +728,54 @@ const bench = (x, z, r) => {
   put('wood', new THREE.BoxGeometry(2.2, 0.12, 0.6).translate(0, 0.5, 0), mat4(x, 0, z, 0, r));
   put('wood', new THREE.BoxGeometry(2.2, 0.5, 0.1).translate(0, 0.8, 0.28), mat4(x, 0, z, 0, r));
 };
-for (const [x, z, r] of [[84, 40, 0.6], [56, 90, 0.5], [34, 126, 0.4], [26, 146, 0.5]]) bench(x, z, r);
-for (let i = 0; i < 44; i++) {
-  const z = 30 + rnd() * 124, x = parkCL(z) + (rnd() - 0.5) * 24;
-  if (Math.abs(z - 60) < 5.5 || Math.abs(z - 124) < 5.5 || Math.hypot((x - 46) / 8, (z - 100) / 5) < 1 || (z > 64 && z < 72 && x > 57 && x < 74)) continue;
-  if (Math.abs(x - parkCL(z)) < 2.2) continue;
-  rnd() < 0.35 ? palm(x, z, 5 + rnd() * 3) : tree(x, z, 0.7 + rnd() * 0.5);
+plaza(...PX(620, 490), 5.5, 4);
+for (const [x, y, r] of [[602, 380, 1.57], [638, 600, -1.57], [602, 690, 1.57]]) bench(...PX(x, y), r);
+for (let i = 0; i < 26; i++) { const x = 594 + rnd() * 52, y = 330 + rnd() * 520; if (Math.abs(x - 620) < 4 || (y > 440 && y < 540) || y > 750 || y < 435) continue; rnd() < 0.5 ? palm(...PX(x, y), 5 + rnd() * 3) : tree(...PX(x, y), 0.6 + rnd() * 0.4); }
+// padel court: blue surface, glass walls, white lines
+{ const [x0, z0, x1, z1] = COURT; box('court', x0, x1, 0, 0.06, z0, z1); box('line', x0 + 0.1, x1 - 0.1, 0.06, 0.08, (z0 + z1) / 2 - 0.05, (z0 + z1) / 2 + 0.05);
+  box('line', x0 + 0.1, x0 + 0.2, 0.06, 0.08, z0 + 0.1, z1 - 0.1); box('line', x1 - 0.2, x1 - 0.1, 0.06, 0.08, z0 + 0.1, z1 - 0.1);
+  box('rail', x0 - 0.1, x0, 0, 3, z0, z1); box('rail', x1, x1 + 0.1, 0, 3, z0, z1); box('rail', x0, x1, 0, 3, z0 - 0.1, z0); box('rail', x0, x1, 0, 3, z1, z1 + 0.1);
+  solid(x0 - 0.2, x0, z0, z1, 3); solid(x1, x1 + 0.2, z0, z1, 3); solid(x0, x1, z0 - 0.2, z0, 3); solid(x0, x1, z1, z1 + 0.2, 3);
+  box('metal', x0 + 0.05, x1 - 0.05, 0.9, 0.95, (z0 + z1) / 2 - 0.02, (z0 + z1) / 2 + 0.02); }
+// the shared space south of the strip: lawn, the sinuous pond, a café terrace, benches
+{ const [x0, z0, x1, z1] = PLAZA; box('pave', x0, x1, 0, 0.05, z0, z0 + 2); }
+pond(...PX(540, 955), 14, 7);
+box('deck', ...(() => { const a = PX(520, 988); return [a[0] - 3, a[0] + 3]; })(), 0.1, 0.35, ...(() => { const a = PX(520, 988); return [a[1] - 1.2, a[1] + 1.2]; })());
+{ const a = PX(520, 988); solid(a[0] - 3, a[0] + 3, a[1] - 1.2, a[1] + 1.2, 0.35); }
+plaza(...PX(610, 1010), 6.5, 5);
+ribbon('sand', [[...PX(470, 890)], [...PX(478, 930)], [...PX(500, 1000)], [...PX(560, 1030)], [...PX(600, 1040)]], 2.2, 0.065);
+for (const [x, y, r] of [[470, 960, 1.57], [585, 905, 0], [620, 940, -1.57]]) bench(...PX(x, y), r);
+for (let i = 0; i < 12; i++) { const x = 455 + rnd() * 190, y = 885 + rnd() * 160; if (Math.hypot((x - 540) / 70, (y - 955) / 38) < 1 || Math.hypot(x - 610, y - 1010) < 35) continue; rnd() < 0.5 ? palm(...PX(x, y), 5 + rnd() * 3) : tree(...PX(x, y), 0.7 + rnd() * 0.4); }
+// parkings: in the strip's north end, north of the Voie N°5 and along the Voie N°4
+function parking(r, along, bays = true) {
+  const [x0, z0, x1, z1] = r; box('asphalt', x0, x1, 0, 0.022, z0, z1);
+  if (along === 'x') for (let x = x0; x <= x1; x += 3.2) { box('line', x, x + 0.1, 0.022, 0.034, z0, z1); if (x + 1.6 < x1 && bays && rnd() < 0.5) parkedSpots.push([x + 1.6, (z0 + z1) / 2, rnd() < 0.5 ? 0 : Math.PI]); }
+  else for (let z = z0; z <= z1; z += 3.2) { box('line', x0, x1, 0.022, 0.034, z, z + 0.1); if (z + 1.6 < z1 && bays && rnd() < 0.5) parkedSpots.push([(x0 + x1) / 2, z + 1.6, rnd() < 0.5 ? Math.PI / 2 : -Math.PI / 2]); }
 }
-for (let x = 59; x <= 72; x += 3.25) { box('wood', x - 0.15, x + 0.15, 0, 2.8, 66, 66.3); box('wood', x - 0.15, x + 0.15, 0, 2.8, 70.2, 70.5); solid(x - 0.2, x + 0.2, 65.9, 66.4, 2.8); solid(x - 0.2, x + 0.2, 70.1, 70.6, 2.8); }
-for (let x = 58.7; x <= 72.4; x += 0.6) box('wood', x, x + 0.12, 2.8, 2.95, 65.7, 70.9);
-
-// roundabout
-put('asphalt', new THREE.CircleGeometry(11, 48).rotateX(-Math.PI / 2), mat4(-16, 0.025, 161));
-put('coping', new THREE.CircleGeometry(4.6, 32).rotateX(-Math.PI / 2), mat4(-16, 0.03, 161));
-put('leaf2', new THREE.CircleGeometry(4, 32).rotateX(-Math.PI / 2), mat4(-16, 0.08, 161));
-solid(-18.8, -13.2, 158.2, 163.8, 0.3); palm(-16, 161, 7);
-// parking south of the road, the shared space (espace commun) next to it
-box('asphalt', -8, 28, 0, 0.022, 167, 183); box('curb', -8.1, 28.1, 0, 0.13, 183, 183.3);
-for (let x = -8; x <= 28; x += 3.2) { box('line', x, x + 0.1, 0.022, 0.034, 167, 173); if (x + 1.6 < 14 && rnd() < 0.55) parkedSpots.push([x + 1.6, 170.5, rnd() < 0.5 ? 0 : Math.PI]); }
-plaza(46, 177, 8, 5);
-// the shops: a round plaza ringed by five pavilions, café tables in the middle
-{
-  const cx = -44, cz = 124;
-  put('pave', new THREE.CircleGeometry(14, 48).rotateX(-Math.PI / 2), mat4(cx, 0.07, cz));
-  for (let i = 0; i < 5; i++) {
-    const a = 0.5 + i / 5 * Math.PI * 2, px = cx + Math.cos(a) * 10.5, pz = cz + Math.sin(a) * 10.5, ry = Math.atan2(-Math.cos(a), -Math.sin(a));
-    const M = mat4(px, 0, pz, 0, ry), bx = (k, u0, u1, y0, y1, v0, v1) => box(k, u0, u1, y0, y1, v0, v1, M);
-    bx('wall', -3.2, 3.2, 0, 3.6, -2.6, 2.6); bx('slab', -3.6, 3.6, 3.6, 3.9, -3, 3); bx('marbleD', -3.6, 3.6, 3.9, 4.2, -3, 3);
-    bx('glassLit', -2.8, 2.8, 0.1, 2.9, 2.6, 2.7); bx(['signA', 'signB', 'signC', 'signD', 'signB'][i], -2.6, 2.6, 3.0, 3.5, 2.7, 2.78); bx('woodS', -3.2, 3.2, 2.9, 3.0, 2.6, 4.2);
-    solidR(px, pz, 3.2, 2.6, ry, 4);
-  }
-  for (let i = 0; i < 4; i++) {
-    const a = i / 4 * Math.PI * 2 + 0.4, x = cx + Math.cos(a) * 4.5, z = cz + Math.sin(a) * 4.5;
-    put('table', new THREE.CylinderGeometry(0.55, 0.55, 0.06, 16), mat4(x, 0.75, z)); put('lamp', new THREE.CylinderGeometry(0.05, 0.05, 2.4, 6), mat4(x, 1.2, z));
-    put(i % 2 ? 'parasol' : 'parasol2', new THREE.ConeGeometry(1.5, 0.55, 10), mat4(x, 2.45, z));
-    for (let j = 0; j < 3; j++) { const b = a + j * 2.1; put('table', new THREE.CylinderGeometry(0.2, 0.2, 0.45, 8), mat4(x + Math.cos(b) * 0.95, 0.22, z + Math.sin(b) * 0.95)); }
-    solid(x - 0.6, x + 0.6, z - 0.6, z + 0.6, 0.8);
-  }
-  for (let i = 0; i < 5; i++) { const a = 0.5 + (i + 0.5) / 5 * Math.PI * 2; palm(cx + Math.cos(a) * 13.5, cz + Math.sin(a) * 13.5, 6 + rnd() * 2); }
+parking(P1, 'z'); parking(P3, 'z'); parking(P2, 'x', false);
+// guard houses at both entrances: a stone kiosk under a dark flat roof (cf. the detail on the plan)
+function guardHouse(px, py, ry) {
+  const [x, z] = PX(px, py), M = mat4(x, 0, z, 0, ry), bx = (k, u0, u1, y0, y1, v0, v1) => box(k, u0, u1, y0, y1, v0, v1, M);
+  bx('marbleL', -1.2, 1.2, 0, 3.0, -2.4, 2.4); bx('glassC', -1.1, 1.1, 0.9, 2.6, 2.4, 2.46); bx('glassC', 1.2, 1.26, 0.9, 2.6, -2.2, 2.2);
+  bx('marbleD', -3.4, 3.4, 3.0, 3.3, -3.2, 3.2); bx('woodS', -3.4, 3.4, 2.96, 3.0, -3.2, 3.2); bx('led', -3.4, 3.4, 3.02, 3.06, 3.2, 3.23);
+  bx('marbleD', -3.2, -2.9, 0, 3.0, -3.0, -2.7); bx('marbleD', 2.9, 3.2, 0, 3.0, -3.0, -2.7);
+  bx('metal', -2.6, 2.6, 0.95, 1.0, -3.5, -3.4); // barrier
+  solidR(x, z, 1.2, 2.4, ry, 3.2); solidR(x, z, 3.3, 0.2, ry, 3.2);
 }
-// agency kiosk (mission giver), by the roundabout
-box('wall', -62, -58, 0, 2.8, 146, 148); box('slab', -62.5, -57.5, 2.8, 3, 145.5, 148.5); box('wood', -61.8, -58.2, 0, 1.1, 148, 148.2); solid(-62, -58, 146, 148.2, 3);
-// the garden west of the block: winding path, the pond and its jetty, benches
-ribbon('sand', [[-28, 150], [-50, 128], [-85, 132], [-118, 112], [-112, 82], [-140, 60], [-170, 70]], 3);
-ribbon('sand', [[-58, 128], [-70, 108], [-96, 90]], 2.4, 0.065);
-pond(-100, 100, 15, 9);
-box('deck', -86, -80, 0.1, 0.35, 98.5, 100.5); solid(-86, -80, 98.5, 100.5, 0.35);
-for (const [x, z, r] of [[-70, 120, 0.4], [-130, 95, -0.3], [-150, 70, 0.6], [-40, 140, -0.5]]) bench(x, z, r);
-for (let i = 0; i < 50; i++) {
-  const x = -200 + rnd() * 176, z = 14 + rnd() * 140;
-  if (!inPoly(GARDEN_POLY, x, z) || Math.hypot((x + 100) / 17, (z - 100) / 11) < 1 || Math.hypot(x + 44, z - 124) < 16 || Math.hypot(x + 60, z - 147) < 5) continue;
-  if (nearRoad(x, z, 3)) continue;
-  rnd() < 0.4 ? palm(x, z, 5 + rnd() * 3) : tree(x, z, 0.8 + rnd() * 0.5);
-}
+guardHouse(118, 268, 0); guardHouse(393, 1042, Math.PI / 2);
 
-// Céline villas along the south front: three on the road, three along the oblique road
-lotAt(-56, 166, 0, 'Céline', 1.6); lotAt(4, 185, 0, 'Céline', 1.6); lotAt(46, 185, 0, 'Céline', 1.6);
-{ const ry = Math.atan2(DN[0], DN[1]); for (const t of [30, 72, 114]) lotAt(DIAG.p0[0] + DIAG.dx * t + DN[0] * 6, DIAG.p0[1] + DIAG.dz * t + DN[1] * 6, ry, 'Céline', 1.6); }
-// Margaux villas: two to the east, two to the south-west
-lotAt(222, 0, 0, 'Margaux', 1.5); lotAt(203, 66, Math.PI / 2, 'Margaux', 1.5);
-lotAt(-110, 166, 0, 'Margaux', 1.5); lotAt(-154, 236, -Math.PI / 2, 'Margaux', 1.5);
-
-// pines outside the site, a few trees in the unbuilt margins inside
+// pines and trees around the site, a few in the unbuilt corners inside
 for (let i = 0; i < 300; i++) {
   const x = WORLD.x0 + rnd() * (WORLD.x1 - WORLD.x0), z = WORLD.z0 + rnd() * (WORLD.z1 - WORLD.z0);
-  if (inPoly(SITE_POLY, x, z) || nearRoad(x, z, 8)) continue;
+  if (inPoly(SITE_POLY, x, z) || nearRoad(x, z, 9)) continue;
   rnd() < 0.8 ? pine(x, z, 8 + rnd() * 7) : palm(x, z, 6 + rnd() * 3);
 }
-for (let i = 0; i < 90; i++) {
-  const x = -220 + rnd() * 480, z = -12 + rnd() * 300;
-  if (!inPoly(SITE_POLY, x, z) || inPoly(GARDEN_POLY, x, z) || nearRoad(x, z, 4)) continue;
-  if (x > -3 && x < 192 && z > -3 && z < BD + 1) continue;
+for (let i = 0; i < 60; i++) {
+  const [x, z] = PX(85 + rnd() * 1240, 150 + rnd() * 1190);
+  if (!inPoly(SITE_POLY, x, z) || nearRoad(x, z, 4)) continue;
   if (lots.some(l => x > l.x0 - 2 && x < l.x1 + 2 && z > l.z0 - 2 && z < l.z1 + 2)) continue;
-  if ((x > -10 && x < 30 && z > 165 && z < 185) || Math.hypot(x - 46, z - 177) < 10 || Math.hypot(x + 16, z - 161) < 13) continue;
-  rnd() < 0.5 ? pine(x, z, 7 + rnd() * 5) : tree(x, z, 0.9 + rnd() * 0.5);
+  if ([PARK, PLAZA, P1, P2, P3, COURT].some(r => inRect(r, x, z))) continue;
+  rnd() < 0.4 ? pine(x, z, 7 + rnd() * 5) : tree(x, z, 0.9 + rnd() * 0.5);
 }
 
 const worldMeshes = [];
@@ -1099,10 +1086,10 @@ class Car {
 }
 const REAL_KINDS = [3, 4, 5], REAL_COLORS = { 3: ['#8a8d8f', '#1f1f1f', '#2f4a6e', '#d9d6cf'], 4: ['#a51c24', '#d9d6cf', '#c9a227', '#1f1f1f', '#4a5a6e'], 5: ['#141414', '#e9e7e2', '#4b5244', '#2c2f38'] };
 for (const [x, z, h] of parkedSpots) { const k = pick(REAL_KINDS); new Car(x, z, h, pick(REAL_COLORS[k]), k); }
-new Car(15.2, 170.5, 0, '#a51c24', 4); // race car, at the parking next to the course marker
-new Car(18.4, 170.5, 0, '#8a8d8f', 3);
-new Car(21.6, 170.5, 0, '#d9d6cf', 4);
-new Car(24.8, 170.5, 0, '#141414', 5);
+new Car(...PX(800, 1025), 0, '#a51c24', 4); // race car, at the parking next to the course marker
+new Car(...PX(814.4, 1025), 0, '#8a8d8f', 3);
+new Car(...PX(828.8, 1025), 0, '#d9d6cf', 4);
+new Car(...PX(843.2, 1025), 0, '#141414', 5);
 
 // traffic AI
 function laneFor(dx, dz, roadCoord) { return roadCoord + (dx ? dx * 2.5 * 1 : -dz * 2.5); }
@@ -1221,7 +1208,7 @@ function curvePath(curve) {
   return { len, loop: false, at(s) { const t = clamp(s / len, 0, 1), p = curve.getPointAt(t), tg = curve.getTangentAt(t); return [p.x, p.z, tg.x, tg.z]; } };
 }
 const pedPaths = [];
-pedPaths.push(ringPath(-2, 192, -2, 158), linePath(0, 188, 58), linePath(0, 118, 122), linePath(-80, 70, 168.5), linePath(-30, 190, -8.5));
+{ const a = PX(60, 285), b = PX(1040, 285), c = PX(60, 1070), d = PX(870, 1070), e = PX(140, 165), f = PX(1000, 165); pedPaths.push(linePath(a[0], b[0], a[1]), linePath(c[0], d[0], c[1]), linePath(e[0], f[0], e[1])); }
 for (const c of parkCurves) pedPaths.push(curvePath(c));
 for (let i = 0; i < 44; i++) {
   const path = pedPaths[i % pedPaths.length];
@@ -1231,11 +1218,11 @@ for (let i = 0; i < 44; i++) {
 
 /* ================= hero ================= */
 const hero = makePerson({ skin: '#c99b7a', hair: '#2a1d16', shirt: '#b08d57', pants: '#2d2b29', unique: true });
-const P = { x: -36, z: 150, y: 0, vy: 0, heading: Math.PI, phase: 0, speed: 0, down: 0, car: null, swim: false };
-let yaw = -1.2, pitch = 0.3, camDist = 6.5, lastMouse = -10;
+const P = { x: PX(165, 273)[0], z: PX(165, 273)[1], y: 0, vy: 0, heading: Math.PI, phase: 0, speed: 0, down: 0, car: null, swim: false };
+let yaw = -1.57, pitch = 0.3, camDist = 6.5, lastMouse = -10;
 
 /* ================= collectibles & markers ================= */
-const KEY_SPOTS = [[38.5, 100, 1.4], [46, 177, 1.6], [-81, 99.5, 1.4], [-44, 124, 1.6], [250, 20, 1.1], [-185, 270, 1.1], [100, 60, 1.1], [-16, -160, 1.1], [270, -6, 1.1], [-250, 161, 1.1], [150, 212, 1.1]];
+const KEY_SPOTS = [[620, 490, 1.6], [620, 800, 1.1], [520, 988, 1.4], [118, 268, 4.2], [1268, 600, 1.1], [600, 165, 1.1], [600, 1420, 1.1], [1400, 0, 1.1], [-100, 900, 1.1], [425, 940, 1.1], [1100, 1300, 1.1]].map(([px, py, y]) => [...PX(px, py), y]);
 const goldMat = new THREE.MeshStandardMaterial({ color: '#d8b25a', metalness: 0.9, roughness: 0.25, emissive: '#6b4a10', emissiveIntensity: 0.5 });
 const keyGeo = (() => {
   const ring = new THREE.TorusGeometry(0.22, 0.06, 8, 20), shaft = new THREE.BoxGeometry(0.06, 0.5, 0.06).translate(0, -0.45, 0);
@@ -1272,10 +1259,10 @@ let waypoint = null;
 
 /* ================= missions ================= */
 const VISIT = [['Chloé', 10], ['Céline', 3], ['Margaux', 2]].map(([n, k]) => doors.filter(d => d.name === n)[k] || doors.find(d => d.name === n));
-const RACE_CP = [[-16, 161], [-16, 60], [-16, -6], [90, -6], [196, -6], [196, 58], [140, 116], [84, 161], [30, 161]];
+const RACE_CP = [[680, 1060], [680, 300], [425, 300], [425, 830], [425, 1060], [870, 1060]].map(p => PX(...p));
 const MISSIONS = {
-  visite: { title: 'Visite privée', start: [-60, 143], reward: 25000, time: 240, color: '#f2c230', letter: 'V' },
-  course: { title: 'Contre-la-montre', start: [12, 177.5], reward: 15000, time: 95, color: '#5fb3e0', letter: 'C', needCar: true }
+  visite: { title: 'Visite privée', start: PX(140, 272), reward: 25000, time: 240, color: '#f2c230', letter: 'V' },
+  course: { title: 'Contre-la-montre', start: PX(865, 1022), reward: 15000, time: 95, color: '#5fb3e0', letter: 'C', needCar: true }
 };
 for (const [id, m] of Object.entries(MISSIONS)) m.marker = makeMarker(m.start[0], m.start[1], m.color), m.id = id;
 let mission = null; // {m, step, t}
@@ -1494,7 +1481,7 @@ function applySketch() {
 /* ================= annotations (sketch) ================= */
 const notes = [];
 function note(text, x, y, z) { const el = document.createElement('div'); el.className = 'note'; el.textContent = text; $('notes').appendChild(el); notes.push({ el, p: V(x, y, z) }); }
-note('Espace commun', 46, 3.4, 177); note('Le bassin', -100, 1.2, 100); note('Pergola', 65, 3.3, 68); note('Agence', -60, 3.4, 147); note('Commerces', -44, 6, 124); note('Le parc', 50, 4, 100); note('Rond-point', -16, 8, 161);
+{ const N = (t, px, py, y) => { const [x, z] = PX(px, py); note(t, x, y, z); }; N('Espace commun', 545, 955, 3.4); N('Padel', 620, 800, 3.2); N('Coulée verte', 620, 600, 4); N('Guérite 1', 118, 268, 3.6); N('Guérite 2', 393, 1042, 3.6); N('Voie N°16', 600, 82, 3); }
 for (const l of lots.filter(l => l.green).filter((_, i) => i % 6 === 0)) note('Toit végétalisé', l.roof.x, 7.4, l.roof.z);
 for (const l of lots.filter((_, i) => i % 7 === 3)) note('Piscine privée', l.pool.x, 1, l.pool.z);
 
@@ -1506,17 +1493,16 @@ const mapImg = document.createElement('canvas'); mapImg.width = MW * MPX; mapImg
   const poly = pts => { c.beginPath(); pts.forEach((p, i) => i ? c.lineTo(p[0], p[1]) : c.moveTo(p[0], p[1])); c.closePath(); };
   c.fillStyle = '#34402f'; c.fillRect(MX0, MZ0, MW, MH);
   c.fillStyle = '#3f4c3a'; poly(SITE_POLY); c.fill();
-  c.fillStyle = '#4b6b40'; poly(GARDEN_POLY); c.fill(); poly([[parkCL(28) - 13, 28], [parkCL(28) + 13, 28], [parkCL(BD) + 13, BD], [parkCL(BD) - 13, BD]]); c.fill();
+  c.fillStyle = '#4b6b40'; for (const r of [PARK, PLAZA]) c.fillRect(r[0], r[1], r[2] - r[0], r[3] - r[1]);
   c.lineCap = 'butt'; c.strokeStyle = '#7b7d80';
   for (const rd of ROADS) { c.lineWidth = rd.w; c.beginPath(); c.moveTo(rd.p0[0], rd.p0[1]); c.lineTo(rd.p1[0], rd.p1[1]); c.stroke(); }
-  c.fillStyle = '#7b7d80'; c.beginPath(); c.arc(-16, 161, 11, 0, 7); c.fill(); c.fillStyle = '#4b6b40'; c.beginPath(); c.arc(-16, 161, 4, 0, 7); c.fill();
-  c.fillStyle = '#6a6c70'; c.fillRect(-8, 167, 36, 16);
-  c.fillStyle = '#8c8a83'; c.fillRect(-2, -2, 2, BD + 4); c.fillRect(0, -2, BW, 2); c.fillRect(0, BD, 84, 2);
+  c.fillStyle = '#6a6c70'; for (const r of [P1, P2, P3]) c.fillRect(r[0], r[1], r[2] - r[0], r[3] - r[1]);
+  c.fillStyle = '#2f6fb3'; c.fillRect(COURT[0], COURT[1], COURT[2] - COURT[0], COURT[3] - COURT[1]);
   for (const l of lots) { c.fillStyle = '#4e5b47'; poly(l.poly); c.fill(); c.fillStyle = '#d9d4c7'; poly(l.house); c.fill(); c.fillStyle = '#5ec8df'; poly(l.poolR); c.fill(); }
   c.fillStyle = '#4aa3c2'; for (const [x, z, rx, rz] of ponds) { c.beginPath(); c.ellipse(x, z, rx, rz, 0, 0, 7); c.fill(); }
   c.strokeStyle = '#c9b98f'; c.lineWidth = 2.6; for (const cv of parkCurves) { c.beginPath(); cv.getPoints(60).forEach((p, i) => i ? c.lineTo(p.x, p.z) : c.moveTo(p.x, p.z)); c.stroke(); }
-  c.fillStyle = '#cfc6b4'; for (const [x, z, r] of [[46, 177, 8], [-44, 124, 14]]) { c.beginPath(); c.arc(x, z, r, 0, 7); c.fill(); }
-  c.fillStyle = '#d9d4c7'; for (let i = 0; i < 5; i++) { const a = 0.5 + i / 5 * Math.PI * 2; c.beginPath(); c.arc(-44 + Math.cos(a) * 10.5, 124 + Math.sin(a) * 10.5, 3.2, 0, 7); c.fill(); }
+  c.fillStyle = '#cfc6b4'; for (const [px, py, r] of [[620, 490, 5.5], [610, 1010, 6.5]]) { const [x, z] = PX(px, py); c.beginPath(); c.arc(x, z, r, 0, 7); c.fill(); }
+  c.fillStyle = '#d9d4c7'; for (const [px, py] of [[118, 268], [393, 1042]]) { const [x, z] = PX(px, py); c.fillRect(x - 2.5, z - 2.5, 5, 5); }
 }
 const mm = $('minimap'), mmx = mm.getContext('2d'), MMR = mm.width / 2;
 const RG = (() => { // road graph: nodes at every crossing and road end
@@ -1611,7 +1597,7 @@ function drawBigmap() {
     const [x, y] = T(mx, mz); let a = Math.atan2(rd.dz, rd.dx); if (a > Math.PI / 2 || a < -Math.PI / 2) a += Math.PI;
     bmx.save(); bmx.translate(x, y); bmx.rotate(a); bmx.fillText(rd.name, 0, -4 * devicePixelRatio); bmx.restore();
   }
-  for (const [t, x, z] of [['Villas Chloé', 150, 30], ['Le parc', 52, 96], ['Commerces', -44, 108], ['Le jardin', -120, 70], ['Villas Céline', 60, 236], ['Villas Céline', 165, 170], ['Villas Margaux', -140, 215], ['Villas Margaux', 232, 95]]) { const [a, b] = T(x, z); bmx.fillText(t, a, b); }
+  for (const [t, px, py] of [['Villas Chloé', 250, 560], ['Villas Chloé', 860, 620], ['Coulée verte', 620, 300], ['Espace commun', 545, 1065], ['Villas Céline', 660, 1300], ['Villas Margaux', 1160, 480], ['Entrée', 118, 250], ['Entrée', 393, 1075]]) { const [x, z] = PX(px, py), [a, b] = T(x, z); bmx.fillText(t, a, b); }
   if (route) { bmx.strokeStyle = route.c; bmx.lineWidth = 4 * devicePixelRatio; bmx.beginPath(); route.p.forEach(([x, z], i) => { const [a, b] = T(x, z); i ? bmx.lineTo(a, b) : bmx.moveTo(a, b); }); bmx.stroke(); }
   for (const bl of blipList()) { const [x, y] = T(bl.x, bl.z); drawBlip(bmx, x, y, bl, devicePixelRatio); }
   const [px, py] = T(P.car ? P.car.x : P.x, P.car ? P.car.z : P.z);
@@ -2017,14 +2003,12 @@ function updatePeds(dt) {
 /* ================= zones ================= */
 function zoneOf(x, z) {
   for (const l of lots) if (x > l.x0 && x < l.x1 && z > l.z0 && z < l.z1 && inQuad(l.poly, x, z)) return [`Lot n° ${l.n}`, `Villa ${l.name}`];
-  if (Math.hypot(x + 16, z - 161) < 11) return ['Domaine Red Stone', 'Le rond-point'];
   const rd = nearestRoad(x, z); if (rd.d < rd.r.w / 2 + 0.5) return ['Domaine Red Stone', rd.r.name];
-  if (inParkBand(x, z)) return Math.hypot(x - 65, z - 68) < 9 ? ['Le parc', 'La pergola'] : ['Domaine Red Stone', 'Le parc'];
-  if (x > -8 && x < 28 && z > 167 && z < 183) return ['Domaine Red Stone', 'Parking'];
-  if (Math.hypot(x - 46, z - 177) < 9) return ['Domaine Red Stone', 'Espace commun'];
-  if (Math.hypot(x + 44, z - 124) < 15) return ['Domaine Red Stone', 'Les commerces'];
-  if (inPoly(GARDEN_POLY, x, z)) return ['Domaine Red Stone', 'Le jardin'];
-  if (x > -2 && x < 192 && z > -2 && z < 158) return ['Domaine Red Stone', 'Villas Chloé'];
+  if (inRect(COURT, x, z)) return ['Coulée verte', 'Terrain de padel'];
+  if (inRect(PARK, x, z)) return ['Domaine Red Stone', 'Coulée verte'];
+  if (inRect(PLAZA, x, z)) return ['Domaine Red Stone', 'Espace commun'];
+  if ([P1, P2, P3].some(r => inRect(r, x, z))) return ['Domaine Red Stone', 'Parking'];
+  for (const [px, py, nm] of [[118, 268, 'Entrée ouest'], [393, 1042, 'Entrée sud']]) { const [gx, gz] = PX(px, py); if (Math.hypot(x - gx, z - gz) < 8) return ['Domaine Red Stone', nm]; }
   if (!inPoly(SITE_POLY, x, z)) return ['Les abords', 'La pinède'];
   return ['Domaine Red Stone', 'Le domaine'];
 }
