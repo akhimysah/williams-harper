@@ -9,6 +9,7 @@
 <link rel="canonical" href="https://akhimysah.github.io/williams-harper/404.html">
 <link rel="alternate" hreflang="fr" href="https://akhimysah.github.io/williams-harper/404.html">
 <link rel="alternate" hreflang="en" href="https://akhimysah.github.io/williams-harper/en/404.html">
+<link rel="alternate" hreflang="nl" href="https://akhimysah.github.io/williams-harper/nl/404.html">
 <link rel="alternate" hreflang="x-default" href="https://akhimysah.github.io/williams-harper/404.html">
 <meta property="og:type" content="website"><meta property="og:site_name" content="Williams &amp; Harper">
 <meta property="og:title" content="Page introuvable — Williams &amp; Harper"><meta property="og:description" content="Page introuvable.">
@@ -50,7 +51,7 @@
         <a href="pdf/brochure-margaux-wh.pdf" download><b>Brochure Margaux</b><span>PDF</span></a>
       </div></div></div>
       <a class="hcta" href="index.html#contact">Prendre rendez-vous</a>
-      <div class="lang" role="group" aria-label="Langue"><button id="lang-fr" aria-pressed="true" lang="fr">FR</button><button id="lang-en" aria-pressed="false" lang="en">EN</button></div>
+      <div class="ni lang" id="lang"><a href="#" aria-haspopup="true" class="lang-cur">FR</a><div class="sub"><div class="sub-in"><a href="404.html" data-lang="fr" lang="fr" aria-current="true">Français</a><a href="en/404.html" data-lang="en" lang="en">English</a><a href="nl/404.html" data-lang="nl" lang="nl">Nederlands</a></div></div></div>
     </nav>
     <button class="burger" id="burger" aria-label="Menu" aria-expanded="false"><span></span><span></span></button>
   </div>
@@ -66,7 +67,7 @@
 </footer>
 <div class="lb" id="lb" hidden role="dialog" aria-modal="true" aria-label="Photo en grand"><button class="x" id="lb-x" aria-label="Fermer">✕</button><button class="prev" id="lb-prev" aria-label="Précédente">‹</button><img id="lb-img" alt=""><button class="next" id="lb-next" aria-label="Suivante">›</button><div class="cap" id="lb-cap" aria-live="polite"></div></div>
 <script src="config.js"></script>
-<script src="i18n.js"></script>
+
 <script>
 const hdr=document.querySelector('header'),burger=document.getElementById('burger');
 burger.addEventListener('click',()=>{const o=hdr.classList.toggle('open');burger.setAttribute('aria-expanded',o)});document.querySelectorAll('.ni').forEach(n=>{const a=n.querySelector(':scope>a');a.addEventListener('click',e=>{if(matchMedia('(hover:none)').matches&&!hdr.classList.contains('open')&&!n.classList.contains('is-open')){e.preventDefault();document.querySelectorAll('.ni.is-open').forEach(o=>o.classList.remove('is-open'));n.classList.add('is-open');}});n.addEventListener('focusin',()=>n.classList.add('is-open'));n.addEventListener('focusout',e=>{if(!n.contains(e.relatedTarget))n.classList.remove('is-open');});});document.addEventListener('click',e=>{if(!e.target.closest('.ni'))document.querySelectorAll('.ni.is-open').forEach(o=>o.classList.remove('is-open'));});
@@ -87,12 +88,8 @@ new IntersectionObserver(es=>es.forEach(x=>{if(x.isIntersecting&&x.intersectionR
 v.addEventListener('click',()=>{if(done){if(v.paused){v.muted=false;v.play();}else v.pause();}});})();document.querySelectorAll('.faq-item').forEach(d=>d.addEventListener('toggle',()=>{if(d.open)document.querySelectorAll('.faq-item[open]').forEach(o=>{if(o!==d)o.open=false;});}));document.querySelectorAll('.player').forEach(p=>{const fp=p.querySelector('video'),fb=p.querySelector('.play');if(!fp||!fb)return;fb.addEventListener('click',()=>{fp.play()});fp.addEventListener('play',()=>fb.hidden=true);fp.addEventListener('pause',()=>fb.hidden=false);fp.addEventListener('ended',()=>fb.hidden=false)});
 const hv=document.querySelector('.hero-video video.bg');if(hv&&matchMedia('(prefers-reduced-motion: reduce)').matches){hv.remove()}
 let tx=null;lb.addEventListener('touchstart',e=>{tx=e.touches[0].clientX},{passive:true});lb.addEventListener('touchend',e=>{if(tx===null)return;const d=e.changedTouches[0].clientX-tx;if(Math.abs(d)>50)show(cur+(d<0?1:-1));tx=null});
-const EN=window.WH_EN||{},FR={};for(const k in EN)FR[EN[k]]=k;
-const nodes=[];(function walk(n){for(const c of n.childNodes){if(c.nodeType===3){if(c.nodeValue.trim())nodes.push(c)}else if(c.nodeType===1&&!['SCRIPT','STYLE'].includes(c.tagName))walk(c)}})(document.body);
-function setLang(l){const map=l==='en'?EN:FR;nodes.forEach(n=>{const raw=n.nodeValue,t=raw.trim();if(map[t]!==undefined)n.nodeValue=raw.replace(t,map[t])});document.querySelectorAll('[alt],[aria-label],[placeholder]').forEach(e=>{for(const a of ['alt','aria-label','placeholder']){const v=e.getAttribute(a);if(v&&map[v])e.setAttribute(a,map[v])}});
-  document.documentElement.lang=l;document.dispatchEvent(new CustomEvent('wh:lang',{detail:l}));document.getElementById('lang-fr').setAttribute('aria-pressed',l==='fr');document.getElementById('lang-en').setAttribute('aria-pressed',l==='en');try{localStorage.setItem('wh-lang',l)}catch(e){}}
-document.getElementById('lang-fr').onclick=()=>setLang('fr');document.getElementById('lang-en').onclick=()=>setLang('en');
-try{const sv=localStorage.getItem('wh-lang');if(sv==='en'||(sv===null&&!/^fr/i.test(navigator.language||'')))setLang('en')}catch(e){}
+document.querySelectorAll('#lang [data-lang]').forEach(a=>a.addEventListener('click',()=>{try{localStorage.setItem('wh-lang',a.dataset.lang)}catch(e){}}));document.querySelector('#lang .lang-cur').addEventListener('click',e=>e.preventDefault());
+try{const sv=localStorage.getItem('wh-lang'),nav=(navigator.language||'').slice(0,2).toLowerCase();if(sv===null&&!sessionStorage.getItem('wh-auto')){sessionStorage.setItem('wh-auto','1');if(nav==='en'||nav==='nl'){location.replace(nav+'/'+(location.pathname.split('/').pop()||'index.html')+location.hash)}}}catch(e){}
 </script>
 <script>
 (()=>{const mos=[...document.querySelectorAll('.adv .mo')],ims=[...document.querySelectorAll('.adv-media picture')];if(!mos.length)return;let cur=-1,hover=false;
