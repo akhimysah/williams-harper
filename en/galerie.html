@@ -27,13 +27,31 @@
   <div class="wrap">
     <a class="brand" href="index.html" aria-label="Williams &amp; Harper, accueil"><img class="w" src="../img/logo.png" alt="Williams &amp; Harper" width="132" height="46"><img class="d" src="../img/logo-dark.png" alt="" width="132" height="46"></a>
     <nav class="nav" aria-label="Navigation">
-      <a href="index.html#villas">The villas</a>
-      <a href="domaine.html">The estate</a>
-      <a href="maquette-3d.html">3D model</a>
-      <a href="galerie.html">Gallery</a>
-      <a href="catalogue.html">Interiors</a>
-      <a href="localisation.html">Location</a>
-      <a href="index.html#contact">Contact</a>
+      <div class="ni"><a href="index.html#villas" aria-haspopup="true">The villas</a><div class="sub"><div class="sub-in">
+        <a href="villa-chloe.html"><b>Villa Chloé</b><span>473 m² · 4 suites</span></a>
+        <a href="villa-celine.html"><b>Villa Céline</b><span>607 m² · 5 suites</span></a>
+        <a href="villa-margaux.html"><b>Villa Margaux</b><span>711 m² · 6 suites</span></a>
+        <a href="index.html#comparer"><b>Compare the villas</b><span>At a glance</span></a>
+        <a href="maquette-3d.html"><b>3D model</b><span>Volumes, floors, night</span></a>
+      </div></div></div>
+      <div class="ni"><a href="domaine.html" aria-haspopup="true">The estate</a><div class="sub"><div class="sub-in">
+        <a href="domaine.html"><b>The Red Stone Estate</b><span>Eight hectares, 41 villas</span></a>
+        <a href="index.html#vie"><b>Life on the estate</b><span>Holiday days</span></a>
+        <a href="index.html#services"><b>A day on the estate</b><span>Café, gym, padel, mall</span></a>
+        <a href="localisation.html"><b>Location</b><span>Marrakech, 15 min from the airport</span></a>
+      </div></div></div>
+      <div class="ni"><a href="galerie.html" aria-haspopup="true">Gallery</a><div class="sub"><div class="sub-in">
+        <a href="galerie.html"><b>Gallery</b><span>Exteriors and gardens</span></a>
+        <a href="catalogue.html"><b>Interiors</b><span>The Line Design catalogue</span></a>
+        <a href="index.html#film"><b>The film</b><span>Inhabit the silence</span></a>
+      </div></div></div>
+      <div class="ni"><a href="index.html#contact" aria-haspopup="true">Contact</a><div class="sub"><div class="sub-in">
+        <a href="index.html#contact"><b>Book a visit</b><span>On site or by video call</span></a>
+        <a href="index.html#questions"><b>Frequently asked questions</b><span>Buying, handover, management</span></a>
+        <a href="../pdf/brochure-chloe-wh.pdf" download><b>Chloé brochure</b><span>PDF</span></a>
+        <a href="../pdf/brochure-celine-wh.pdf" download><b>Céline brochure</b><span>PDF</span></a>
+        <a href="../pdf/brochure-margaux-wh.pdf" download><b>Margaux brochure</b><span>PDF</span></a>
+      </div></div></div>
       <a class="hcta" href="index.html#contact">Book a visit</a>
       <div class="lang" role="group" aria-label="Language"><a id="lang-fr" href="../galerie.html" aria-pressed="false" lang="fr">FR</a><a id="lang-en" href="galerie.html" aria-pressed="true" lang="en">EN</a></div>
     </nav>
@@ -64,7 +82,7 @@
 <script src="../i18n.js"></script>
 <script>
 const hdr=document.querySelector('header'),burger=document.getElementById('burger');
-burger.addEventListener('click',()=>{const o=hdr.classList.toggle('open');burger.setAttribute('aria-expanded',o)});
+burger.addEventListener('click',()=>{const o=hdr.classList.toggle('open');burger.setAttribute('aria-expanded',o)});document.querySelectorAll('.ni').forEach(n=>{const a=n.querySelector(':scope>a');a.addEventListener('click',e=>{if(matchMedia('(hover:none)').matches&&!hdr.classList.contains('open')&&!n.classList.contains('is-open')){e.preventDefault();document.querySelectorAll('.ni.is-open').forEach(o=>o.classList.remove('is-open'));n.classList.add('is-open');}});n.addEventListener('focusin',()=>n.classList.add('is-open'));n.addEventListener('focusout',e=>{if(!n.contains(e.relatedTarget))n.classList.remove('is-open');});});document.addEventListener('click',e=>{if(!e.target.closest('.ni'))document.querySelectorAll('.ni.is-open').forEach(o=>o.classList.remove('is-open'));});
 document.querySelectorAll('.nav a').forEach(a=>a.addEventListener('click',()=>hdr.classList.remove('open')));
 let lastY=0;const onScroll=()=>{hdr.classList.toggle('solid',scrollY>40||!document.querySelector('.full'));hdr.classList.toggle('hide',scrollY>lastY&&scrollY>400&&!hdr.classList.contains('open'));lastY=scrollY};addEventListener('scroll',onScroll,{passive:true});onScroll();
 const lbImgs=[...document.querySelectorAll('.gal img,.mosaic img,.plans img,.tri img,.cat img')],lb=document.getElementById('lb'),lbi=document.getElementById('lb-img'),lbc=document.getElementById('lb-cap');let cur=0,lastFocus=null;
