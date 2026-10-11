@@ -46,3 +46,34 @@
   // ---- ruban défilant : duplique le contenu pour une boucle continue
   document.querySelectorAll('.ribbon').forEach(r=>{r.innerHTML=r.innerHTML+r.innerHTML});
 })();
+// ---- salve 3 : parallaxes, rideau du film, FAQ, horloge, contact, inclinaison, bandeau villa suivante, menus, pied de page
+(function(){
+  const rm=matchMedia('(prefers-reduced-motion: reduce)').matches;if(rm)return;
+  const fine=matchMedia('(pointer:fine)').matches;
+  // 1 + 5 : parallaxes douces
+  const par=[];const add=(el,sp)=>{if(el)par.push([el,sp])};
+  add(document.querySelector('.manif-big'),-.08);add(document.querySelector('.manif-small'),.12);
+  document.querySelectorAll('.vie-grid figure').forEach((f,i)=>add(f,[-.05,.1,.16,-.08,.07][i%5]));
+  if(par.length){let t=false;const upd=()=>{par.forEach(([el,sp])=>{const r=el.getBoundingClientRect();if(r.bottom<0||r.top>innerHeight)return;const p=(r.top+r.height/2-innerHeight/2);el.style.transform=`translateY(${p*sp}px)`});t=false};
+    addEventListener('scroll',()=>{if(!t){t=true;requestAnimationFrame(upd)}},{passive:true});upd()}
+  // 2 : rideau du film
+  const film=document.getElementById('film');if(film){new IntersectionObserver(es=>es.forEach(x=>{if(x.intersectionRatio>.35)film.classList.add('open')}),{threshold:[.35]}).observe(film)}
+  // 4 : numéro courant de la FAQ dans la marge
+  const acc=document.querySelector('.faq-acc');if(acc){const cur=document.createElement('div');cur.className='faq-cur';acc.appendChild(cur);
+    const sync=()=>{const o=acc.querySelector('.faq-item[open]');if(!o){cur.style.opacity=0;return}cur.style.opacity=1;cur.textContent=o.querySelector('.faq-n').textContent;cur.style.top=(o.offsetTop+18)+'px'};
+    acc.querySelectorAll('.faq-item').forEach(d=>d.addEventListener('toggle',()=>setTimeout(sync,20)));sync()}
+  // 6 : horloge à rouleaux
+  const clock=document.querySelector('.adv-clock');if(clock){const mos=[...document.querySelectorAll('.adv .mo')];const mo=new MutationObserver(()=>{const on=mos.find(m=>m.classList.contains('on'));if(!on)return;const t=on.querySelector('.mo-t').textContent;if(clock.firstChild.textContent===t)return;clock.classList.remove('roll');void clock.offsetWidth;clock.firstChild.textContent=t;clock.classList.add('roll')});mos.forEach(m=>mo.observe(m,{attributes:true,attributeFilter:['class']}))}
+  // 7 : bouton envoyer → coche
+  const sb=document.querySelector('#contact-form button[type=submit]');if(sb){sb.insertAdjacentHTML('beforeend','<span class="ck" aria-hidden="true">✓</span>');document.getElementById('contact-form').addEventListener('submit',()=>{if(!document.getElementById('contact-form').checkValidity())return;setTimeout(()=>sb.classList.add('done'),400);setTimeout(()=>sb.classList.remove('done'),4000)})}
+  // 10 : inclinaison légère des photos
+  if(fine)document.querySelectorAll('.gal figure,.mosaic figure,.tri figure,.vie-grid figure').forEach(f=>{f.addEventListener('mousemove',e=>{const r=f.getBoundingClientRect();const x=(e.clientX-r.left)/r.width-.5,y=(e.clientY-r.top)/r.height-.5;f.style.transform=`perspective(900px) rotateY(${x*4}deg) rotateX(${-y*4}deg)`});f.addEventListener('mouseleave',()=>{f.style.transform=''})});
+  // 12 : bandeau villa suivante qui s'agrandit à l'approche
+  const nb=document.querySelector('.next-band');if(nb){const im=nb.querySelector('img');let t=false;const upd=()=>{const r=nb.getBoundingClientRect();const k=Math.min(1,Math.max(0,(innerHeight-r.top)/(innerHeight+r.height)));im.style.transform=`scale(${1.25-.2*k})`;t=false};addEventListener('scroll',()=>{if(!t){t=true;requestAnimationFrame(upd)}},{passive:true});upd()}
+  // 13 : escalier des sous-menus
+  document.querySelectorAll('.sub-in').forEach(s=>[...s.children].forEach((a,i)=>a.style.setProperty('--i',i)));
+  // 16 : pied de page
+  const ft=document.querySelector('footer');if(ft)new IntersectionObserver(es=>es.forEach(x=>{if(x.isIntersecting)ft.classList.add('seen')}),{threshold:.3}).observe(ft);
+  // 9 : plans
+  document.querySelectorAll('.plans figure').forEach(f=>{if(!f.classList.contains('curtain')){f.classList.add('curtain')}});
+})();

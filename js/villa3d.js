@@ -108,7 +108,7 @@ export function mount(el, opts = {}) {
   const controls = new OrbitControls(camera, renderer.domElement);
   controls.target.set(0, 2.5, 0); controls.enableDamping = true; controls.dampingFactor = 0.06; controls.minDistance = 14; controls.maxDistance = 110;
   controls.maxPolarAngle = Math.PI / 2 - 0.04; controls.autoRotate = !opts.still; controls.autoRotateSpeed = 0.35; controls.enablePan = false;
-  renderer.domElement.addEventListener('pointerdown', () => { controls.autoRotate = false; });
+  let idleT; renderer.domElement.addEventListener('pointerdown', () => { controls.autoRotate = false; clearTimeout(idleT); idleT = setTimeout(() => { if (!opts.still) controls.autoRotate = true; }, 6000); });
 
   const hemi = new THREE.HemisphereLight(0xffffff, 0xe6e0d3, 1.6); scene.add(hemi);
   const sun = new THREE.DirectionalLight(0xfff6e8, 2.4); sun.position.set(-28, 42, 18); sun.castShadow = true;
