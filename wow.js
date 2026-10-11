@@ -46,3 +46,18 @@
   // ---- ruban défilant : duplique le contenu pour une boucle continue
   document.querySelectorAll('.ribbon').forEach(r=>{r.innerHTML=r.innerHTML+r.innerHTML});
 })();
+// ---- volet de transition entre les pages + galerie : vignettes et glisser
+(function(){
+  const root=document.documentElement,rm=matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if(!rm){const v=document.createElement('div');v.className='veil';v.innerHTML='<span></span>';document.body.appendChild(v);
+    let from=false;try{from=sessionStorage.getItem('wh-veil')==='1';sessionStorage.removeItem('wh-veil')}catch(e){}
+    if(from){v.classList.add('cover');requestAnimationFrame(()=>requestAnimationFrame(()=>{v.classList.add('out');setTimeout(()=>v.classList.remove('cover','out'),900)}))}
+    document.addEventListener('click',e=>{const a=e.target.closest('a[href]');if(!a||e.defaultPrevented||e.metaKey||e.ctrlKey||a.target==='_blank'||a.hasAttribute('download'))return;const u=new URL(a.href,location.href);if(u.origin!==location.origin||!/\.html?$|\/$/.test(u.pathname)||(u.pathname===location.pathname&&u.hash))return;
+      v.classList.add('in');try{sessionStorage.setItem('wh-veil','1')}catch(e){}},true)}
+  const lb=document.getElementById('lb');if(!lb)return;
+  const imgs=[...document.querySelectorAll('.gal img,.mosaic img,.plans img,.tri img,.cat img')];if(imgs.length<2)return;
+  const strip=document.createElement('div');strip.className='lb-thumbs';imgs.forEach((im,i)=>{const t=document.createElement('button');t.type='button';t.setAttribute('aria-label',im.alt||('Photo '+(i+1)));const c=new Image();c.src=im.currentSrc||im.src;c.alt='';t.appendChild(c);t.addEventListener('click',()=>imgs[i].click());strip.appendChild(t)});lb.appendChild(strip);
+  const cap=document.getElementById('lb-cap');const sync=()=>{const m=(cap.textContent||'').match(/^(\d+)\s*\//);if(!m)return;const i=+m[1]-1;[...strip.children].forEach((b,j)=>b.classList.toggle('on',j===i));const b=strip.children[i];if(b)b.scrollIntoView({inline:'center',block:'nearest',behavior:'smooth'})};
+  new MutationObserver(sync).observe(cap,{childList:true,characterData:true,subtree:true});
+  const im=document.getElementById('lb-img');let x0=null;im.addEventListener('pointerdown',e=>{x0=e.clientX;im.setPointerCapture(e.pointerId)});im.addEventListener('pointerup',e=>{if(x0===null)return;const dx=e.clientX-x0;x0=null;if(Math.abs(dx)>60)document.getElementById(dx<0?'lb-next':'lb-prev').click()});im.draggable=false;
+})();
