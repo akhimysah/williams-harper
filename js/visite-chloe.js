@@ -471,20 +471,14 @@ const endTouch = e => { for (const t of e.changedTouches) { if (t.identifier ===
 canvas.addEventListener('touchend', endTouch); canvas.addEventListener('touchcancel', endTouch);
 // points de visite
 const SPOTS = { jardin: [-4.4, 18.6, 0.08, 0.02], entree: [-4.5, 8.6, 0.0, 0.05], salon: [1.6, 7.9, PI / 2, 0.02], hall: [-0.4, 0.4, -PI / 2 + 0.3, 0.12], dinner: [0.2, -3.0, 0, 0.05], sejour: [5.6, -7.3, 0.4, 0.02], terrasse: [6.0, 9.2, 0.0, 0.03], piscine: [10.4, 11.0, 0.15, 0.06], suite: [-1.0, 7.8, PI / 2 + 0.4, 0.03], etage: [5.4, 5.6, -PI / 2, -0.1], chambre: [-0.6, -6.0, -0.2, 0.02], facade: [16.5, 1.2, PI / 2 + 0.55, 0.14] };
-const INSIDE = new Set(['salon', 'hall', 'dinner', 'sejour', 'suite', 'chambre', 'entree', 'terrasse', 'piscine', 'jardin', 'etage', 'cuisine']);
+const INSIDE = new Set(['hall']);
 function goTo(name) { if (INSIDE.has(name) && (panoById[name] || !PANOS.length)) { if (PANOS.length) enterPano(panoById[name]); else openTour(); return; } if (pano) exitPano(); const s = SPOTS[name]; if (!s) return; $('fade').classList.add('on'); setTimeout(() => { P.x = s[0]; P.z = s[1]; P.yaw = s[2]; P.pitch = s[3]; P.y = floorAt(P.x, P.z, name === 'suite' || name === 'etage' || name === 'chambre' ? SL : 0); if (renderer.xr.isPresenting) { rig.position.set(P.x, P.y, P.z); rig.rotation.y = P.yaw; } $('fade').classList.remove('on'); }, 260); }
 document.querySelectorAll('[data-spot]').forEach(b => b.addEventListener('click', () => goTo(b.dataset.spot)));
 // ---------------------------------------------------------------- vues 360° du studio placées dans la maison (même scène, même commandes, VR comprise)
 // PANOS : une entrée par vue — id, titre, fichier équirectangulaire, position dans la villa (x, z, hauteur d'œil), rotation d'alignement (rad),
 // liens vers d'autres vues (direction yaw/pitch où afficher le repère). Tant que la liste est vide, la porte ouvre le tour Kuula.
-const PANOS = [ // vues 360° : celle du studio dans le hall, les autres rendues par Blender (Cycles) depuis la villa modélisée ; y = hauteur d'œil
+const PANOS = [ // vue 360° du studio dans le hall (les rendus Blender des autres pièces, jugés insuffisants, sont désactivés)
   { id: 'hall', title: 'Salon · double hauteur', src: 'img/vr/chloe/hall.jpg', depth: 'img/vr/chloe/hall-depth.png', x: -0.4, z: -0.3, y: 1.6, rot: PI, walk: 2.6 },
-  { id: 'salon', title: 'Salon · cheminée', x: 1.2, z: 7.6, y: 1.75, walk: 2.2 }, { id: 'dinner', title: 'Salle à manger', x: 0.0, z: -6.0, y: 1.75, walk: 2.0 },
-  { id: 'sejour', title: 'Séjour', x: 5.6, z: -8.0, y: 1.75, walk: 2.2 }, { id: 'cuisine', title: 'Cuisine', x: -4.4, z: -10.2, y: 1.75, walk: 1.8 },
-  { id: 'entree', title: 'Entrée', x: -4.5, z: 4.2, y: 1.75, walk: 1.6 }, { id: 'terrasse', title: 'Terrasse couverte', x: 6.0, z: 6.2, y: 1.77, walk: 2.2 },
-  { id: 'piscine', title: 'Piscine', x: 10.4, z: 9.0, y: 1.77, walk: 2.6 }, { id: 'jardin', title: 'Jardin', x: -4.4, z: 15.0, y: 1.6, walk: 3.0 },
-  { id: 'suite', title: 'Suite parentale', x: -1.6, z: 7.6, y: 5.82, walk: 2.2 }, { id: 'chambre', title: 'Chambre 2', x: -0.5, z: -8.2, y: 5.82, walk: 1.8 },
-  { id: 'etage', title: 'Terrasse de la suite', x: 5.4, z: 5.6, y: 5.83, walk: 2.0 },
 ];
 const NEIGH = { hall: ['salon', 'dinner', 'entree', 'terrasse'], salon: ['hall', 'terrasse', 'entree'], dinner: ['hall', 'sejour', 'cuisine'], sejour: ['dinner', 'hall'], cuisine: ['dinner'], entree: ['hall', 'salon', 'jardin'],
   terrasse: ['salon', 'piscine', 'hall'], piscine: ['terrasse', 'jardin', 'sejour'], jardin: ['entree', 'piscine'], suite: ['etage', 'chambre'], chambre: ['suite'], etage: ['suite', 'piscine'] };
