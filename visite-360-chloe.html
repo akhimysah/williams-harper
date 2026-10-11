@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<title>Villa Chloé en 360° — visite virtuelle de l'intérieur — Williams &amp; Harper</title>
+<meta name="description" content="Regardez autour de vous dans la Villa Chloé : les vues 360° de l'intérieur, en haute définition, à la souris, au doigt ou en bougeant votre téléphone.">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="canonical" href="https://akhimysah.github.io/williams-harper/visite-360-chloe.html">
+<meta property="og:title" content="Villa Chloé en 360° — visite virtuelle de l'intérieur">
+<meta property="og:description" content="Les vues 360° de la Villa Chloé, à regarder autour de soi.">
+<meta property="og:image" content="https://akhimysah.github.io/williams-harper/img/vr/chloe/hall-thumb.jpg">
+<meta name="theme-color" content="#0e0f12">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300;1,400&family=Jost:wght@300;400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="js/vendor/pannellum.css">
+<link rel="preload" as="image" href="img/vr/chloe/hall-sm.jpg">
+<style>
+:root{--ink:#1f1d1a;--paper:#f7f5f0;--gold:#d8b25a;--display:'Cormorant Garamond',Georgia,serif;--body:'Jost',system-ui,sans-serif}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden;background:#0e0f12;color:var(--paper);font-family:var(--body);font-weight:300;-webkit-user-select:none;user-select:none}
+#pano{position:fixed;inset:0;width:100%;height:100%;background:#0e0f12}
+#pano .pnlm-container{background:#0e0f12;font-family:var(--body)}
+#pano .pnlm-load-box,#pano .pnlm-about-msg{display:none!important}
+#pano .pnlm-hotspot-base.pnlm-scene{width:28px;height:28px;box-sizing:border-box;cursor:pointer;background-image:none;background-color:transparent;border:2px solid var(--gold);border-radius:50%;box-shadow:0 0 0 6px rgba(216,178,90,.18),0 0 18px rgba(0,0,0,.5);animation:pulse 1.8s ease-in-out infinite}
+#pano .pnlm-hotspot-base.pnlm-scene::after{content:"";position:absolute;left:50%;top:50%;width:8px;height:8px;margin:-4px 0 0 -4px;border-radius:50%;background:var(--gold)}
+#pano .pnlm-hotspot-base.pnlm-scene:hover{background-color:transparent;animation:none;box-shadow:0 0 0 10px rgba(216,178,90,.32),0 0 18px rgba(0,0,0,.5)}
+#pano div.pnlm-tooltip > span{font:300 12px/1.3 var(--body);letter-spacing:.1em;text-transform:uppercase;background:rgba(10,10,14,.7);border:1px solid rgba(255,255,255,.22);border-radius:999px;padding:7px 12px;backdrop-filter:blur(8px);color:var(--paper);white-space:nowrap;max-width:none;animation:none}
+#pano div.pnlm-tooltip:hover span:after{display:none}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 5px rgba(216,178,90,.22),0 0 18px rgba(0,0,0,.5)}50%{box-shadow:0 0 0 12px rgba(216,178,90,.08),0 0 18px rgba(0,0,0,.5)}}
+.hud{position:fixed;z-index:5;pointer-events:none}
+.sh{text-shadow:0 1px 2px rgba(0,0,0,.8),0 0 12px rgba(0,0,0,.5)}
+#brand{top:max(14px,env(safe-area-inset-top));left:16px;pointer-events:auto;display:flex;align-items:center;gap:14px;color:inherit;text-decoration:none}
+#brand img{height:26px;opacity:.9}
+#brand .t{font-family:var(--display);font-style:italic;font-size:22px;line-height:1;opacity:.95}
+#brand .t small{display:block;font-family:var(--body);font-style:normal;font-size:10px;letter-spacing:.3em;text-transform:uppercase;opacity:.7;margin-bottom:4px}
+#tools{top:max(14px,env(safe-area-inset-top));right:16px;display:flex;gap:6px;pointer-events:auto}
+#tools button,#tools a{font:inherit;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--paper);background:rgba(10,10,14,.55);border:1px solid rgba(255,255,255,.28);border-radius:999px;padding:8px 14px;cursor:pointer;backdrop-filter:blur(8px);text-decoration:none;line-height:1.2}
+#tools button[aria-pressed=true],#tools button:hover,#tools a:hover{background:var(--paper);color:var(--ink)}
+#tools a.vr{border-color:var(--gold);color:var(--gold)}
+#tools a.vr:hover{background:var(--gold);color:var(--ink)}
+#tools [hidden]{display:none}
+#name{left:18px;bottom:calc(max(16px,env(safe-area-inset-bottom)) + 118px)}
+#name .k{font-size:10px;letter-spacing:.28em;text-transform:uppercase;opacity:.75}
+#name .n{font-family:var(--display);font-style:italic;font-size:clamp(24px,3vw,38px);line-height:1.05}
+#name .d{font-size:12px;opacity:.7;margin-top:4px}
+#thumbs{bottom:max(16px,env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);display:flex;gap:8px;max-width:96vw;overflow-x:auto;pointer-events:auto;padding:4px;scrollbar-width:none}
+#thumbs::-webkit-scrollbar{display:none}
+#thumbs button{flex:none;position:relative;width:132px;height:82px;padding:0;border:1px solid rgba(255,255,255,.25);border-radius:6px;overflow:hidden;background:#000;cursor:pointer;opacity:.78;transition:opacity .25s,border-color .25s,transform .25s}
+#thumbs button img{display:block;width:100%;height:100%;object-fit:cover}
+#thumbs button span{position:absolute;left:0;right:0;bottom:0;padding:16px 8px 6px;font:300 10px/1.2 var(--body);letter-spacing:.14em;text-transform:uppercase;color:var(--paper);text-align:left;background:linear-gradient(transparent,rgba(0,0,0,.75))}
+#thumbs button:hover{opacity:1;transform:translateY(-2px)}
+#thumbs button[aria-current=true]{opacity:1;border-color:var(--gold);box-shadow:0 0 0 1px var(--gold)}
+#hint{inset:0;display:grid;place-items:end center;padding-bottom:min(30vh,240px);opacity:0;transition:opacity .6s}
+#hint.on{opacity:1}
+#hint div{display:flex;align-items:center;gap:12px;font-size:12px;letter-spacing:.18em;text-transform:uppercase;padding:12px 18px;border:1px solid rgba(255,255,255,.18);background:rgba(10,10,14,.5);backdrop-filter:blur(10px);border-radius:999px}
+#hint svg{width:26px;height:26px;stroke:var(--gold);fill:none;stroke-width:1.4;animation:sway 2.4s ease-in-out infinite}
+@keyframes sway{0%,100%{transform:translateX(-6px)}50%{transform:translateX(6px)}}
+#loader{inset:0;display:grid;place-items:center;font-size:11px;letter-spacing:.3em;text-transform:uppercase;opacity:.8;transition:opacity .4s;background:#0e0f12}
+#loader.off{opacity:0}
+#err{inset:0;display:none;place-items:center;text-align:center;padding:24px;font-size:14px;line-height:1.6;pointer-events:auto}
+@media (max-width:640px){#brand .t{display:none}#brand img{height:22px}#tools{right:10px;gap:4px}#tools button,#tools a{padding:7px 9px;font-size:10px;letter-spacing:.08em}#tools .lbl{display:none}#name{bottom:calc(max(16px,env(safe-area-inset-bottom)) + 92px)}#name .n{font-size:26px}#thumbs button{width:104px;height:66px}#hint div{font-size:10px;letter-spacing:.12em;padding:10px 14px;text-align:center}#hint{padding-bottom:min(34vh,300px)}}
+.embed #brand,.embed #tools a.vr{display:none}
+</style>
+</head>
+<body>
+<div id="pano" aria-label="Vue 360° de la villa Chloé"></div>
+<a class="hud" id="brand" href="villa-chloe.html" aria-label="Retour à la villa Chloé"><img src="img/logo.png" alt="Williams &amp; Harper"><span class="t sh"><small>Visite 360°</small>Villa Chloé</span></a>
+<div class="hud" id="tools"><button type="button" id="gyro" aria-pressed="false" hidden>Gyroscope</button><button type="button" id="rot" aria-pressed="true"><span class="lbl">Rotation </span>auto</button><button type="button" id="fs">Plein écran</button><a class="vr" href="visite-chloe.html">Promenade 3D <span class="lbl">et VR</span></a></div>
+<div class="hud" id="name"><div class="k sh">Vous regardez</div><div class="n sh" id="sceneName"></div><div class="d sh" id="sceneDesc"></div></div>
+<div class="hud" id="thumbs" role="group" aria-label="Vues 360°"></div>
+<div class="hud" id="hint"><div><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h16M4 12l4-4M4 12l4 4M20 12l-4-4M20 12l-4 4"/></svg>Glissez pour regarder autour de vous</div></div>
+<div class="hud" id="loader">Ouverture de la villa…</div>
+<div class="hud" id="err"></div>
+<script src="js/vendor/pannellum.js"></script>
+<script>
+(function () {
+  'use strict';
+  var $ = function (id) { return document.getElementById(id); };
+  if (/[?&]embed\b/.test(location.search)) document.body.classList.add('embed');
+  // Le panorama du studio existe en 6000 px et en 4096 px : on prend la plus grande que la carte graphique accepte.
+  var maxTex = 4096;
+  try { var gl = document.createElement('canvas').getContext('webgl'); if (gl) maxTex = gl.getParameter(gl.MAX_TEXTURE_SIZE); } catch (e) {}
+  var HD = maxTex >= 6000 && Math.min(screen.width, screen.height) * (devicePixelRatio || 1) >= 1000;
+  // Une vue 360° par entrée : identifiant, nom, image équirectangulaire, aperçu, vignette, cap de départ et repères vers d'autres vues.
+  var SCENES = [
+    { id: 'hall', name: 'Salon · double hauteur', desc: 'Rendu 360° du studio, tel quel', src: HD ? 'img/vr/chloe/hall-6000.jpg' : 'img/vr/chloe/hall.jpg', preview: 'img/vr/chloe/hall-sm.jpg', thumb: 'img/vr/chloe/hall-thumb.jpg', yaw: 0, pitch: -2,
+      hotspots: [{ yaw: 79, pitch: -4, to: 'salon', text: 'Salon · cheminée' }] },
+    { id: 'salon', name: 'Salon · cheminée', desc: 'Maquette de l’atelier, en cours', src: 'img/vr/chloe/salon.jpg', preview: 'img/vr/chloe/salon-sm.jpg', thumb: 'img/vr/chloe/salon-thumb.jpg', yaw: -40, pitch: -4,
+      hotspots: [{ yaw: 22, pitch: -5, to: 'hall', text: 'Double hauteur' }] }
+  ];
+  var byId = {}; var scenes = {};
+  SCENES.forEach(function (s) {
+    byId[s.id] = s;
+    scenes[s.id] = { type: 'equirectangular', panorama: s.src, preview: s.preview, yaw: s.yaw, pitch: s.pitch, hfov: 95,
+      hotSpots: s.hotspots.map(function (h) { return { pitch: h.pitch, yaw: h.yaw, type: 'scene', sceneId: h.to, text: h.text, targetYaw: byId[h.to] ? byId[h.to].yaw : 0, targetPitch: -2 }; }) };
+  });
+  var first = (location.hash || '').slice(1); if (!scenes[first]) first = SCENES[0].id;
+  var viewer = pannellum.viewer('pano', {
+    default: { firstScene: first, sceneFadeDuration: 900, autoLoad: true, showControls: false, compass: false, autoRotate: -1.6, autoRotateInactivityDelay: 6000,
+      minHfov: 40, maxHfov: 115, mouseZoom: true, keyboardZoom: true, draggable: true, friction: 0.12, orientationOnByDefault: false, hotSpotDebug: false, backgroundColor: [0.055, 0.059, 0.07], crossOrigin: 'anonymous' },
+    scenes: scenes
+  });
+  // vignettes
+  var thumbs = $('thumbs');
+  SCENES.forEach(function (s) {
+    var b = document.createElement('button'); b.type = 'button'; b.setAttribute('aria-current', 'false'); b.dataset.id = s.id;
+    b.innerHTML = '<img src="' + s.thumb + '" alt="" loading="lazy"><span>' + s.name + '</span>';
+    b.addEventListener('click', function () { if (viewer.getScene() !== s.id) viewer.loadScene(s.id, s.pitch, s.yaw, 95); });
+    thumbs.appendChild(b);
+  });
+  function current(id) {
+    var s = byId[id]; if (!s) return;
+    $('sceneName').textContent = s.name; $('sceneDesc').textContent = s.desc || '';
+    thumbs.querySelectorAll('button').forEach(function (b) { b.setAttribute('aria-current', b.dataset.id === id ? 'true' : 'false'); });
+    if (history.replaceState) history.replaceState(null, '', '#' + id);
+  }
+  current(first);
+  viewer.on('scenechange', current);
+  var loaded = false;
+  viewer.on('load', function () { if (loaded) return; loaded = true; $('loader').classList.add('off'); setTimeout(function () { $('loader').style.display = 'none'; }, 500);
+    $('hint').classList.add('on'); setTimeout(function () { $('hint').classList.remove('on'); }, 4200); });
+  viewer.on('error', function (m) { var e = $('err'); e.style.display = 'grid'; e.textContent = 'La vue 360° ne peut pas s’afficher sur cet appareil (' + m + ').'; $('loader').style.display = 'none'; });
+  var hide = function () { $('hint').classList.remove('on'); };
+  ['mousedown', 'touchstart', 'wheel', 'keydown'].forEach(function (ev) { $('pano').addEventListener(ev, hide, { passive: true }); });
+  // rotation automatique
+  var rotOn = true;
+  $('rot').addEventListener('click', function () { rotOn = !rotOn; this.setAttribute('aria-pressed', rotOn); if (rotOn) viewer.startAutoRotate(-1.6); else viewer.stopAutoRotate(); });
+  // plein écran
+  $('fs').addEventListener('click', function () { viewer.toggleFullscreen(); });
+  // gyroscope sur téléphone (demande d’autorisation sur iPhone au premier appui)
+  var g = $('gyro');
+  if (viewer.isOrientationSupported && viewer.isOrientationSupported()) { g.hidden = false;
+    g.addEventListener('click', function () { if (viewer.isOrientationActive()) { viewer.stopOrientation(); g.setAttribute('aria-pressed', 'false'); } else { viewer.startOrientation(); setTimeout(function () { g.setAttribute('aria-pressed', viewer.isOrientationActive() ? 'true' : 'false'); }, 600); } }); }
+  // flèches ← → pour passer d’une vue à l’autre
+  document.addEventListener('keydown', function (e) {
+    if (e.key !== 'PageDown' && e.key !== 'PageUp') return;
+    var i = SCENES.findIndex(function (s) { return s.id === viewer.getScene(); }); var n = SCENES[(i + (e.key === 'PageDown' ? 1 : SCENES.length - 1)) % SCENES.length];
+    viewer.loadScene(n.id, n.pitch, n.yaw, 95);
+  });
+  window.WH360 = viewer;
+})();
+</script>
+</body>
+</html>
