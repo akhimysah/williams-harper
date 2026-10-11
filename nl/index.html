@@ -56,13 +56,15 @@
       <a class="hcta" href="index.html#contact">Afspraak maken</a>
       <div class="ni lang" id="lang"><a href="#" aria-haspopup="true" class="lang-cur">NL</a><div class="sub"><div class="sub-in"><a href="../index.html" data-lang="fr" lang="fr">Français</a><a href="../en/index.html" data-lang="en" lang="en">English</a><a href="index.html" data-lang="nl" lang="nl" aria-current="true">Nederlands</a></div></div></div>
     </nav>
+    <button class="night" id="night" aria-label="Mode nuit" aria-pressed="false" title="Jour / nuit"><span></span></button>
     <button class="burger" id="burger" aria-label="Menu" aria-expanded="false"><span></span><span></span></button>
   </div>
 </header>
 <main id="main">
 
-<section class="full" style="padding:0">
+<section class="full hero-video" style="padding:0">
   <picture><source type="image/webp" srcset="../img/sm/photo-21.webp 720w, ../img/photo-21.webp 1280w" sizes="100vw"><img src="../img/photo-21.jpg" srcset="../img/sm/photo-21.jpg 720w, ../img/photo-21.jpg 1280w" sizes="100vw" alt="Villa Williams & Harper au domaine Red Stone, Marrakech" fetchpriority="high" decoding="async" ></picture>
+  <video class="bg" autoplay muted loop playsinline preload="metadata" poster="../media/hero-poster.jpg" aria-hidden="true"><source src="../media/hero-loop.mp4" type="video/mp4"></video>
   <div class="copy"><div class="wrap">
     <div class="label">Domaine Red Stone · Marrakech</div>
     <h1>Wonen in <em>de stilte</em></h1>
@@ -93,7 +95,30 @@
   <div class="player auto"><video id="film-player" playsinline preload="auto" poster="../media/hero-poster.jpg"><source src="../media/film-720.mp4" type="video/mp4">Uw browser kan deze video niet afspelen.</video><div class="film-hint" id="film-hint" hidden>Raak het scherm aan voor geluid</div></div>
 </section>
 
-<section id="villas" class="villas">
+<div class="ribbon" aria-hidden="true"><span>Villa Chloé</span><span>Villa Céline</span><span>Villa Margaux</span><span>Domaine Red Stone</span><span>Marrakech</span></div>
+
+<section id="villas" class="hscroll">
+  <div class="hs-sticky">
+    <div class="hs-track"><article class="hs-panel">
+      <picture><source type="image/webp" srcset="../img/sm/photo-03.webp 720w, ../img/photo-03.webp 1280w" sizes="100vw"><img src="../img/photo-03.jpg" srcset="../img/sm/photo-03.jpg 720w, ../img/photo-03.jpg 1280w" sizes="100vw" alt="Villa Chloé" loading="eager" decoding="async" ></picture>
+      <div class="hs-copy"><div class="label">I · Une élégance intime</div><h2>Villa <em>Chloé</em></h2><p>Een gelijkvloers paviljoen open naar zijn tuin, grote glaspartijen tot acht meter hoog, vier suites.</p>
+        <div class="hs-figs"><div><b>473</b><span>m² woonoppervlakte</span></div><div><b>127</b><span>m² terrassen</span></div><div><b>4</b><span>suites</span></div></div>
+        <a class="pill solid" href="villa-chloe.html">Ontdek de villa</a></div>
+    </article><article class="hs-panel">
+      <picture><source type="image/webp" srcset="../img/sm/photo-21.webp 720w, ../img/photo-21.webp 1280w" sizes="100vw"><img src="../img/photo-21.jpg" srcset="../img/sm/photo-21.jpg 720w, ../img/photo-21.jpg 1280w" sizes="100vw" alt="Villa Céline" loading="lazy" decoding="async" ></picture>
+      <div class="hs-copy"><div class="label">II · Luxe et intimité</div><h2>Villa <em>Céline</em></h2><p>Een gevel aan het gazon, royale terrassen, vijf suites en een privélift.</p>
+        <div class="hs-figs"><div><b>607</b><span>m² woonoppervlakte</span></div><div><b>177</b><span>m² terrassen</span></div><div><b>5</b><span>suites</span></div></div>
+        <a class="pill solid" href="villa-celine.html">Ontdek de villa</a></div>
+    </article><article class="hs-panel">
+      <picture><source type="image/webp" srcset="../img/sm/photo-28.webp 720w, ../img/photo-28.webp 1280w" sizes="100vw"><img src="../img/photo-28.jpg" srcset="../img/sm/photo-28.jpg 720w, ../img/photo-28.jpg 1280w" sizes="100vw" alt="Villa Margaux" loading="lazy" decoding="async" ></picture>
+      <div class="hs-copy"><div class="label">III · Luxe et exclusivité</div><h2>Villa <em>Margaux</em></h2><p>De grootste van de drie: zes suites, 370 m² overdekte terrassen, een glazen lift, de Atlas in panorama.</p>
+        <div class="hs-figs"><div><b>711</b><span>m² woonoppervlakte</span></div><div><b>370</b><span>m² terrassen</span></div><div><b>6</b><span>suites</span></div></div>
+        <a class="pill solid" href="villa-margaux.html">Ontdek de villa</a></div>
+    </article></div>
+    <div class="hs-nav"><span class="hs-dot on"></span><span class="hs-dot"></span><span class="hs-dot"></span></div>
+  </div>
+</section>
+<section class="villas villas-stack">
   <article class="villa">
     <figure><picture><source type="image/webp" srcset="../img/sm/photo-03.webp 720w, ../img/photo-03.webp 1280w" sizes="(max-width:960px) 100vw, 62vw"><img src="../img/photo-03.jpg" srcset="../img/sm/photo-03.jpg 720w, ../img/photo-03.jpg 1280w" sizes="(max-width:960px) 100vw, 62vw" alt="Villa Chloé" loading="lazy" decoding="async" ></picture></figure>
     <div class="text reveal">
@@ -312,5 +337,6 @@ mos.forEach(m=>{m.addEventListener('mouseenter',()=>{hover=true;act(+m.dataset.i
 </script>
 <script src="../forms.js"></script>
 <script src="../fx.js"></script>
+<script src="../wow.js" defer></script>
 </body>
 </html>
