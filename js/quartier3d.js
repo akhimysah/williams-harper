@@ -430,6 +430,26 @@ for (const X of XINGS) {
   }
 }
 
+// ---- photo façades: the architect's renders, sky cut out, hung in front of each villa's 3D volume ----
+const FACADES = {
+  'Margaux': { url: 'textures/facades/margaux.webp', night: 'textures/facades/margaux-night.webp', ratio: 0.341, u0: -12.0, u1: 12.0, v: 12.9 },
+  'Céline': { url: 'textures/facades/celine.webp', ratio: 0.358, u0: -11.5, u1: 11.5, v: 12.3 },
+  'Chloé': { url: 'textures/facades/chloe.webp', ratio: 0.47, u0: -9.3, u1: 8.7, v: 4.6 },
+};
+const facadeTex = {}, facades = [];
+const ftex = url => { if (!facadeTex[url]) { const t = texLoader.load(url); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8; facadeTex[url] = t; } return facadeTex[url]; };
+function facadePhoto(name, B, s, sc) {
+  const F = FACADES[name]; if (!F) return;
+  const w = F.u1 - F.u0, h = w * sc * F.ratio;
+  const geo = new THREE.PlaneGeometry(w, h); geo.rotateY(Math.PI); if (s < 0) geo.scale(-1, 1, 1);
+  geo.translate(s * (F.u0 + F.u1) / 2, h / 2 + 0.02, F.v);
+  const day = ftex(F.url), night = F.night ? ftex(F.night) : null;
+  const mat = new THREE.MeshStandardMaterial({ map: day, transparent: true, alphaTest: 0.5, roughness: 0.95, metalness: 0, side: THREE.DoubleSide, emissive: '#ffffff', emissiveMap: night || day, emissiveIntensity: 0 });
+  const m = new THREE.Mesh(geo, mat); m.applyMatrix4(B); m.castShadow = true;
+  m.customDepthMaterial = new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking, map: day, alphaTest: 0.5 });
+  m.userData = { noInk: true, noSketch: true, facade: true, day, night };
+  scene.add(m); facades.push(m);
+}
 function lot(lx, front, dir, vname, sc = 1) { return lotAt(lx, front, dir > 0 ? 0 : Math.PI, vname, sc); }
 // a lot with its front line at (lx, lz), facing -local z, rotated by ry, scaled by sc in plan
 function lotAt(lx, lz, ry, vname, sc = 1) {
@@ -443,6 +463,7 @@ function lotAt(lx, lz, ry, vname, sc = 1) {
   lb('fence', -hw, -hw + 0.1, 0, 1.6, 0.3, LD); lb('fence', hw - 0.1, hw, 0, 1.6, 0.3, LD); lb('fence', -hw, hw, 0, 1.6, LD - 0.1, LD);
   ls(-hw, -hw + 0.1, 0.3, LD, 1.7); ls(hw - 0.1, hw, 0.3, LD, 1.7); ls(-hw, hw, LD - 0.1, LD, 1.7);
   const vurl = VILLAS[vname];
+  facadePhoto(vname, B, s, sc);
   const record = extra => { const poly = quad(-hw, hw, 0, LD), bb = bboxOf(poly); doors.push(extra.door); lots.push({ x0: bb[0], z0: bb[1], x1: bb[2], z1: bb[3], poly, name: vname, n: lots.length + 1, ...extra }); };
   if (vname === 'Céline') return celine(ry, s, B, lb, W, quad, ls, vname, vurl, record);
   if (vname === 'Margaux') return margaux(ry, s, B, lb, W, quad, ls, vname, vurl, record);
@@ -1453,6 +1474,7 @@ function updateSky() {
   for (const m of Object.values(MAT)) if (m.isMeshStandardMaterial) m.envMapIntensity = 0.1 + 0.9 * day;
   MAT.waterC.envMapIntensity = 0.1 + 0.5 * day; MAT.marbleD.envMapIntensity = 0.15 + 0.6 * day;
   MAT.led.color.setRGB(1 + night * 1.2, 0.85 + night * 0.9, 0.63 + night * 0.5);
+  for (const f of facades) { const nt = night > 0.55 && f.userData.night; f.material.map = nt ? f.userData.night : f.userData.day; f.material.emissiveIntensity = sketch ? 0 : (nt ? 0.9 : 0.12 * night); f.visible = !sketch; }
   for (const m of propMeshes) if (m.material.userData.leafy) m.material.emissiveIntensity = 0.05 + 0.3 * day;
   MAT.woodIn.emissiveIntensity = sketch ? 0 : 0.4 + night * 0.5; MAT.floorIn.emissiveIntensity = sketch ? 0 : 0.3 + night * 0.4;
   renderer.toneMappingExposure = sketch ? 1 : 1 + night * 0.25;
