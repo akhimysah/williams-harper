@@ -11,6 +11,7 @@
 <link rel="alternate" hreflang="fr" href="https://akhimysah.github.io/williams-harper/maquette-3d.html">
 <link rel="alternate" hreflang="en" href="https://akhimysah.github.io/williams-harper/en/maquette-3d.html">
 <link rel="alternate" hreflang="nl" href="https://akhimysah.github.io/williams-harper/nl/maquette-3d.html">
+<link rel="alternate" hreflang="ar" href="https://akhimysah.github.io/williams-harper/ar/maquette-3d.html">
 <link rel="alternate" hreflang="x-default" href="https://akhimysah.github.io/williams-harper/maquette-3d.html">
 <meta property="og:type" content="website"><meta property="og:site_name" content="Williams &amp; Harper">
 <meta property="og:title" content="Maquette 3D — Williams &amp; Harper"><meta property="og:description" content="Maquettes 3D interactives des villas Chloé, Céline et Margaux, construites d'après les plans.">
@@ -58,7 +59,7 @@
         <a href="pdf/brochure-margaux-wh.pdf" download><b>Brochure Margaux</b><span>PDF</span></a>
       </div></div></div>
       <a class="hcta" href="index.html#contact">Prendre rendez-vous</a>
-      <div class="ni lang" id="lang"><a href="#" aria-haspopup="true" class="lang-cur">FR</a><div class="sub"><div class="sub-in"><a href="maquette-3d.html" data-lang="fr" lang="fr" aria-current="true">Français</a><a href="en/maquette-3d.html" data-lang="en" lang="en">English</a><a href="nl/maquette-3d.html" data-lang="nl" lang="nl">Nederlands</a></div></div></div>
+      <div class="ni lang" id="lang"><a href="#" aria-haspopup="true" class="lang-cur">FR</a><div class="sub"><div class="sub-in"><a href="maquette-3d.html" data-lang="fr" lang="fr" aria-current="true">Français</a><a href="en/maquette-3d.html" data-lang="en" lang="en">English</a><a href="nl/maquette-3d.html" data-lang="nl" lang="nl">Nederlands</a><a href="ar/maquette-3d.html" data-lang="ar" lang="ar" dir="rtl">العربية</a></div></div></div>
     </nav>
     <button class="night" id="night" aria-label="Mode nuit" aria-pressed="false" title="Jour / nuit"><span></span></button>
     <button class="burger" id="burger" aria-label="Menu" aria-expanded="false"><span></span><span></span></button>
@@ -136,7 +137,7 @@ v.addEventListener('click',()=>{if(done){if(v.paused){v.muted=false;v.play();}el
 const hv=document.querySelector('.hero-video video.bg');if(hv&&matchMedia('(prefers-reduced-motion: reduce)').matches){hv.remove()}
 let tx=null;lb.addEventListener('touchstart',e=>{tx=e.touches[0].clientX},{passive:true});lb.addEventListener('touchend',e=>{if(tx===null)return;const d=e.changedTouches[0].clientX-tx;if(Math.abs(d)>50)show(cur+(d<0?1:-1));tx=null});
 document.querySelectorAll('#lang [data-lang]').forEach(a=>a.addEventListener('click',()=>{try{localStorage.setItem('wh-lang',a.dataset.lang)}catch(e){}}));document.querySelector('#lang .lang-cur').addEventListener('click',e=>e.preventDefault());
-try{const sv=localStorage.getItem('wh-lang'),nav=(navigator.language||'').slice(0,2).toLowerCase();if(sv===null&&!sessionStorage.getItem('wh-auto')){sessionStorage.setItem('wh-auto','1');if(nav==='en'||nav==='nl'){location.replace(nav+'/'+(location.pathname.split('/').pop()||'index.html')+location.hash)}}}catch(e){}
+try{const sv=localStorage.getItem('wh-lang'),nav=(navigator.language||'').slice(0,2).toLowerCase();if(sv===null&&!sessionStorage.getItem('wh-auto')){sessionStorage.setItem('wh-auto','1');if(nav==='en'||nav==='nl'||nav==='ar'){location.replace(nav+'/'+(location.pathname.split('/').pop()||'index.html')+location.hash)}}}catch(e){}
 </script>
 <script>
 (()=>{const mos=[...document.querySelectorAll('.adv .mo')],ims=[...document.querySelectorAll('.adv-media picture')];if(!mos.length)return;let cur=-1,hover=false;
