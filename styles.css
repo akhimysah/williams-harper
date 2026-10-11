@@ -370,3 +370,18 @@ body:has(.stickybar){padding-bottom:3.6rem}}
 .nav .hcta::after{display:none}
 .villa header .wrap{height:84px}
 @media (max-width:860px){.nav .hcta{display:none}.hero-v2 .copy{top:auto;bottom:6rem;transform:none}.hero-v2 .sub{white-space:normal}.scroll-cue{display:none}}
+/* Manifeste — éditorial deux colonnes, images décalées, chiffres en grille */
+.manif{padding:clamp(5rem,10vw,9rem) 0}
+.manif-grid{display:grid;grid-template-columns:1.05fr 1fr;gap:clamp(3rem,7vw,7rem);align-items:center}
+.manif-media{position:relative;padding-bottom:18%;padding-right:18%}
+.manif-big{margin:0;aspect-ratio:4/5;overflow:hidden}
+.manif-big img,.manif-small img{width:100%;height:100%;object-fit:cover;display:block}
+.manif-small{position:absolute;right:0;bottom:0;width:48%;aspect-ratio:4/3;margin:0;overflow:hidden;box-shadow:0 30px 60px -30px rgba(0,0,0,.35);outline:10px solid var(--bg)}
+.manif-text h2{font-size:clamp(2.4rem,4.2vw,4rem);max-width:14ch}
+.manif-text .lead{margin-top:1.8rem}
+.manif-text p:not(.lead){color:var(--muted);margin-top:1.2rem;max-width:52ch}
+.manif-figs{display:grid;grid-template-columns:1fr 1fr;margin:2.8rem 0 2.2rem;border-top:1px solid var(--line);border-left:1px solid var(--line)}
+.manif-figs div{padding:1.4rem 1.4rem 1.3rem;border-right:1px solid var(--line);border-bottom:1px solid var(--line)}
+.manif-figs b{display:block;font-family:var(--display);font-size:clamp(2rem,3vw,2.8rem);font-weight:300;line-height:1;font-variant-numeric:tabular-nums}
+.manif-figs span{font-size:.58rem;letter-spacing:.32em;text-transform:uppercase;color:var(--muted);display:block;margin-top:.6rem}
+@media (max-width:960px){.manif-grid{grid-template-columns:1fr}.manif-media{padding-right:14%;padding-bottom:16%}.manif-text h2{max-width:none}}
