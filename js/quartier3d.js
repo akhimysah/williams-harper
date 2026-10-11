@@ -43,6 +43,17 @@ Object.assign(sun.shadow.camera, { left: -55, right: 55, top: 55, bottom: -55, n
 sun.shadow.bias = -0.0004; sun.shadow.normalBias = 0.04;
 scene.add(hemi, sun, sun.target);
 
+/* environment map for reflections (glass, water, gold, cars) */
+{
+  const pm = new THREE.PMREMGenerator(renderer), es = new THREE.Scene();
+  const eg = new THREE.SphereGeometry(10, 32, 16), pos = eg.attributes.position, col = [];
+  const top = new THREE.Color('#78aee3'), hor = new THREE.Color('#e6eef2'), low = new THREE.Color('#56653f'), c = new THREE.Color();
+  for (let i = 0; i < pos.count; i++) { const y = pos.getY(i) / 10; c.copy(hor).lerp(y > 0 ? top : low, Math.min(1, Math.abs(y) * (y > 0 ? 1.3 : 4))); col.push(c.r, c.g, c.b); }
+  eg.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+  es.add(new THREE.Mesh(eg, new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.BackSide })));
+  const sunBlob = new THREE.Mesh(new THREE.SphereGeometry(1.2, 12, 8), new THREE.MeshBasicMaterial({ color: new THREE.Color(6, 5.5, 4.5) })); sunBlob.position.set(-5, 6, 4); es.add(sunBlob);
+  scene.environment = pm.fromScene(es, 0.03).texture; pm.dispose();
+}
 /* sky dome + stars */
 const skyU = { top: { value: new THREE.Color() }, hor: { value: new THREE.Color() }, sunDir: { value: V(0, 1, 0) }, sunCol: { value: new THREE.Color() }, glow: { value: 1 } };
 const sky = new THREE.Mesh(new THREE.SphereGeometry(800, 32, 16), new THREE.ShaderMaterial({
@@ -83,6 +94,42 @@ for (const [k, c] of Object.entries(C)) MAT[k] = new THREE.MeshLambertMaterial({
   const t = new THREE.CanvasTexture(cv); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(90, 60); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8;
   MAT.grass.map = t;
 }
+function canvasTex(size, draw, rx = 1, ry = 1) {
+  const cv = document.createElement('canvas'); cv.width = cv.height = size; draw(cv.getContext('2d'), size);
+  const t = new THREE.CanvasTexture(cv); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(rx, ry); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8; return t;
+}
+function marble(base, vein, blot) {
+  return (g, n) => {
+    g.fillStyle = base; g.fillRect(0, 0, n, n);
+    for (let i = 0; i < 40; i++) { g.fillStyle = blot.replace('A', (0.04 + rnd() * 0.08).toFixed(2)); g.beginPath(); g.arc(rnd() * n, rnd() * n, 10 + rnd() * 50, 0, 7); g.fill(); }
+    g.lineCap = 'round';
+    for (let i = 0; i < 14; i++) {
+      g.strokeStyle = vein.replace('A', (0.15 + rnd() * 0.35).toFixed(2)); g.lineWidth = 0.6 + rnd() * 2.2;
+      g.beginPath(); let x = rnd() * n, y = 0; g.moveTo(x, y);
+      while (y < n) { const nx = x + (rnd() - 0.5) * 60, ny = y + 15 + rnd() * 40; g.quadraticCurveTo(x + (rnd() - 0.5) * 40, (y + ny) / 2, nx, ny); x = nx; y = ny; }
+      g.stroke();
+    }
+  };
+}
+MAT.marbleL = new THREE.MeshLambertMaterial({ map: canvasTex(256, marble('#e6e4df', 'rgba(110,112,118,A)', 'rgba(150,150,155,A)')) });
+MAT.marbleD = new THREE.MeshStandardMaterial({ map: canvasTex(256, marble('#3b3c40', 'rgba(225,225,228,A)', 'rgba(15,15,18,A)')), roughness: 0.35, metalness: 0.1 });
+MAT.woodS = new THREE.MeshLambertMaterial({ map: canvasTex(128, (g, n) => { for (let x = 0; x < n; x += 4) { g.fillStyle = `hsl(${28 + rnd() * 6},${45 + rnd() * 15}%,${42 + rnd() * 12}%)`; g.fillRect(x, 0, 4, n); g.fillStyle = 'rgba(60,30,10,.35)'; g.fillRect(x + 3, 0, 1, n); } }, 4, 1) });
+MAT.stoneT = new THREE.MeshLambertMaterial({ map: canvasTex(128, (g, n) => { g.fillStyle = '#9d9b97'; g.fillRect(0, 0, n, n); for (let y = 0; y < n; y += 32) for (let x = 0; x < n; x += 64) { g.fillStyle = `hsl(30,3%,${52 + rnd() * 10}%)`; g.fillRect(x + ((y / 32) % 2) * 32 + 1, y + 1, 62, 30); } }, 6, 2) });
+MAT.waterC = new THREE.MeshStandardMaterial({ map: canvasTex(256, (g, n) => {
+  const pal = ['#1e8fb5', '#2aa3c4', '#38b6cf', '#1679a3', '#47c3d6', '#2b9cbc', '#5fd0dd'];
+  g.fillStyle = '#9fd3df'; g.fillRect(0, 0, n, n);
+  for (let y = 0; y < n; y += 16) for (let x = 0; x < n; x += 16) { g.fillStyle = pal[Math.floor(rnd() * pal.length)]; g.fillRect(x + 1, y + 1, 14, 14); }
+}, 12, 4), color: '#bfe6ef', roughness: 0.08, metalness: 0.05, emissive: '#06384a', emissiveIntensity: 0.35 });
+MAT.glassC = new THREE.MeshStandardMaterial({ color: '#a9bcc6', roughness: 0.04, metalness: 0.6, transparent: true, opacity: 0.32, depthWrite: false });
+MAT.woodIn = new THREE.MeshLambertMaterial({ map: MAT.woodS.map, emissiveMap: MAT.woodS.map, emissive: '#ffffff', emissiveIntensity: 0.45 });
+MAT.floorIn = new THREE.MeshLambertMaterial({ map: MAT.marbleL.map, emissive: '#6b5a44', emissiveIntensity: 0.35 });
+MAT.rail = new THREE.MeshStandardMaterial({ color: '#d7ecef', roughness: 0.05, metalness: 0.2, transparent: true, opacity: 0.28, depthWrite: false });
+MAT.gold = new THREE.MeshStandardMaterial({ color: '#e0b25a', roughness: 0.22, metalness: 1, emissive: '#3a2506', emissiveIntensity: 0.4 });
+MAT.led = new THREE.MeshBasicMaterial({ color: '#ffd9a0' });
+MAT.flame = new THREE.MeshBasicMaterial({ color: '#ff9a3c' });
+MAT.metal = new THREE.MeshLambertMaterial({ color: '#1d1e21' });
+MAT.sofa = new THREE.MeshLambertMaterial({ color: '#efe9de' });
+MAT.rock = new THREE.MeshLambertMaterial({ color: '#6f6d6a', flatShading: true });
 MAT.glass = new THREE.MeshStandardMaterial({ color: '#3b4a55', roughness: 0.15, metalness: 0.6 });
 MAT.glassLit = new THREE.MeshStandardMaterial({ color: '#3b4a55', roughness: 0.15, metalness: 0.6, emissive: '#ffc77a', emissiveIntensity: 0 });
 MAT.water = new THREE.MeshStandardMaterial({ color: '#4fb6cc', roughness: 0.08, metalness: 0.1, emissive: '#0b3d4a', emissiveIntensity: 0.4 });
@@ -92,7 +139,7 @@ MAT.car = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.42, 
 MAT.head = new THREE.MeshBasicMaterial({ color: '#d8d4c8' });
 MAT.tail = new THREE.MeshBasicMaterial({ color: '#5a1010' });
 MAT.brake = new THREE.MeshBasicMaterial({ color: '#ff2a1a' });
-const NO_SHADOW = new Set(['asphalt', 'line', 'side', 'pave', 'sand', 'water', 'grass', 'bulb', 'curb', 'tlxr', 'tlxa', 'tlxg', 'tlzr', 'tlza', 'tlzg']);
+const NO_SHADOW = new Set(['led', 'flame', 'rail', 'waterC', 'stoneT', 'glassC', 'floorIn', 'asphalt', 'line', 'side', 'pave', 'sand', 'water', 'grass', 'bulb', 'curb', 'tlxr', 'tlxa', 'tlxg', 'tlzr', 'tlza', 'tlzg']);
 const matCache = {};
 const lam = hex => (matCache[hex] ||= new THREE.MeshLambertMaterial({ color: hex }));
 
@@ -203,6 +250,7 @@ function lot(lx, front, dir, idx) {
   const rect = (u0, u1, v0, v1) => { const a = W(u0, v0), b = W(u1, v1); return [Math.min(a.x, b.x), Math.min(a.z, b.z), Math.max(a.x, b.x), Math.max(a.z, b.z)]; };
   const ls = (u0, u1, v0, v1, h) => { const r = rect(u0, u1, v0, v1); solid(r[0], r[2], r[1], r[3], h); };
   const [vname, vurl] = VILLAS[idx % 3];
+  if (vname === 'Céline') return celine(ry, s, B, lb, W, rect, ls, vname, vurl);
   const gl = rnd() < 0.65 ? 'glassLit' : 'glass';
 
   lb('wall2', -11.6, 4.5, 0, 0.9, 0, 0.25); ls(-11.6, 4.5, 0, 0.25, 0.9);
@@ -238,6 +286,110 @@ function lot(lx, front, dir, idx) {
   doors.push(door);
   const r = rect(-11.6, 11.6, 0, LD);
   lots.push({ x0: r[0], z0: r[1], x1: r[2], z1: r[3], name: vname, n: lots.length + 1, door, green, roof: W(1, 11), pool: W(-3, 22.2), house: rect(-8, 4, 6, 16), upper: rect(-5, 7, 7, 15.5), poolR: rect(-7, 1, 20, 24.5) });
+}
+// Villa Céline, after the architect's renders: L-shaped two-storey glass villa, black marble bands with
+// warm LED lines, wood soffits, marble pillars, mosaic pool facing the garden with the gold sculpture.
+function bananaPlant(x, z, sc = 1) {
+  for (let i = 0; i < 7; i++) {
+    const a = i / 7 * Math.PI * 2 + rnd(), g = new THREE.BoxGeometry(0.42 * sc, 0.03, 1.5 * sc); g.translate(0, 0, 0.75 * sc);
+    put('leaf2', g, new THREE.Matrix4().makeTranslation(x, 0.25, z).multiply(new THREE.Matrix4().makeRotationY(a)).multiply(new THREE.Matrix4().makeRotationX(-0.75 - rnd() * 0.4)));
+  }
+  put('trunk', new THREE.CylinderGeometry(0.06, 0.09, 0.8 * sc, 5), mat4(x, 0.4 * sc, z));
+}
+function celine(ry, s, B, lb, W, rect, ls, vname, vurl) {
+  const P3 = (u, y, v) => V(s * u, y, v);
+  // front: low black stone wall with a gate, stepping stones over the lawn
+  lb('marbleD', -11.6, 7.4, 0, 0.45, 0, 0.35); ls(-11.6, 7.4, 0, 0.35, 0.45);
+  lb('led', -11.6, 7.4, 0.36, 0.39, -0.02, 0);
+  for (let i = 0, v = 0.9; v < 12.4; i++, v += 1.05) { const u = 9.4 + (i % 2) * 0.9; put('rock', new THREE.CylinderGeometry(0.42, 0.42, 0.06, 14), mat4(...P3(u, 0.03, v).applyMatrix4(B).toArray())); }
+  for (const [u, v] of [[-2, 2.2], [-0.8, 3.1], [0.6, 3.8], [2.1, 4.4], [3.6, 4.9], [5.2, 5.3]]) { const p = W(u, v); put('rock', new THREE.CylinderGeometry(0.38, 0.38, 0.05, 12), mat4(p.x, 0.025, p.z)); }
+  for (const [u, v, r] of [[-5.6, 3.4, 0.7], [-4.7, 3.9, 0.45], [-6.3, 4.1, 0.38], [4.2, 2.2, 0.5]]) { const p = W(u, v); put('rock', new THREE.IcosahedronGeometry(r, 0), mat4(p.x, r * 0.55, p.z, rnd(), rnd() * 6, 0, 1.3, 0.8, 1)); }
+  for (const [u, v, r] of [[-8.5, 4.6, 0.55], [-2.8, 5.3, 0.45], [1.5, 5.7, 0.5], [6.8, 3.6, 0.6], [-9.6, 5.6, 0.4], [7.6, 5.4, 0.42]]) { const p = W(u, v); put('leaf', new THREE.IcosahedronGeometry(r, 1), mat4(p.x, r * 0.8, p.z)); }
+  { const p = W(-8.6, 2.6); bananaPlant(p.x, p.z, 1.2); const q = W(5.6, 5.6); bananaPlant(q.x, q.z, 1); }
+  { const p = W(-10.6, 1.4); pine(p.x, p.z, 13); }
+  // pool (mosaic) with black marble coping
+  lb('marbleD', -10.8, 9.5, 0, 0.22, 6.2, 6.5); lb('marbleD', -10.8, 9.5, 0, 0.22, 12.8, 13.1);
+  lb('marbleD', -10.8, -10.5, 0, 0.22, 6.5, 12.8); lb('marbleD', 9.2, 9.5, 0, 0.22, 6.5, 12.8);
+  lb('led', -10.8, 9.5, 0.16, 0.2, 6.17, 6.2);
+  lb('waterC', -10.5, 9.2, -1.2, 0.17, 6.5, 12.8);
+  pools.push(rect(-10.5, 9.2, 6.5, 12.8)); { const pr = rect(-10.8, 9.5, 6.2, 13.1); solid(pr[0], pr[2], pr[1], pr[3], 0.3, 'pool'); }
+  // island + gold sculpture
+  lb('marbleD', -2.3, 0.3, 0, 0.5, 8.6, 10.9); ls(-2.3, 0.3, 8.6, 10.9, 0.5);
+  lb('led', -2.33, 0.33, 0.42, 0.46, 8.57, 10.93);
+  const cx = -1, cv = 9.75;
+  const tube = (pts, r) => {
+    const curve = new THREE.CatmullRomCurve3(pts.map(([u, y, v]) => P3(cx + u, y, cv + v)));
+    put('gold', new THREE.TubeGeometry(curve, 90, r, 8, false), B);
+  };
+  tube([[0, 0.5, 0], [0.3, 1.0, 0.25], [-0.3, 1.6, 0], [0.3, 2.1, -0.25], [0.7, 2.6, 0.1], [0.15, 3.05, 0.35], [-0.5, 2.85, 0.05], [-1.2, 2.5, -0.2], [-2.0, 2.75, 0.1], [-2.7, 2.5, 0.25]], 0.24);
+  tube([[0.1, 0.5, 0.1], [-0.35, 1.2, 0], [0.15, 1.9, 0.25], [0.9, 2.25, 0.05], [1.7, 2.15, -0.15], [2.3, 2.35, 0]], 0.15);
+  // freestanding marble pillar at the pool corner
+  const pillar = (u0, u1, v0, v1, h) => {
+    lb('marbleL', u0, u1, 0, h, v0, v1); ls(u0, u1, v0, v1, h);
+    lb('marbleD', u0 + 0.3, u1 - 0.3, 0.3, h - 0.3, v0 - 0.03, v0);
+    lb('gold', (u0 + u1) / 2 - 0.02, (u0 + u1) / 2 + 0.02, 0.3, h - 0.3, v0 - 0.05, v0 - 0.03);
+  };
+  pillar(-11.4, -10.6, 5.4, 6.2, 6.6);
+  // terrace + lounges with fire tables
+  lb('stoneT', -10.8, 10.6, 0, 0.22, 13.1, 16.1);
+  const lounge = (u0, u1) => {
+    lb('sofa', u0, u1, 0.22, 0.62, 14.7, 15.6); lb('sofa', u0, u1, 0.62, 1.15, 15.25, 15.6);
+    for (let u = u0 + 0.1; u < u1 - 0.5; u += 0.75) lb('sofa', u, u + 0.6, 0.62, 0.8, 14.75, 15.2);
+    ls(u0, u1, 14.7, 15.6, 0.62);
+    const m = (u0 + u1) / 2;
+    lb('marbleL', m - 0.9, m + 0.9, 0.22, 0.6, 13.4, 14.1); ls(m - 0.9, m + 0.9, 13.4, 14.1, 0.6);
+    for (let k = -2; k <= 2; k++) { const p = P3(m + k * 0.3, 0.75, 13.75).applyMatrix4(B); put('flame', new THREE.ConeGeometry(0.1, 0.32 + (k % 2 ? 0.1 : 0), 6), mat4(p.x, p.y, p.z)); }
+    for (const du of [-1.6, 1.6]) { const p = P3(m + du, 0.22, 13.8).applyMatrix4(B); put('sofa', new THREE.CylinderGeometry(0.42, 0.36, 0.75, 12), mat4(p.x, 0.6, p.z)); }
+  };
+  lounge(-9.4, -5.4); lounge(2.6, 7.8);
+  // glass core (warm interior) + mullions
+  lb('glassC', -10.2, 10, 0.22, 3.7, 16.1, 25.5); ls(-10.2, 10, 16.1, 25.5, 9);
+  lb('glassC', -10.2, 10, 4.4, 7.3, 16.8, 25.5);
+  for (let u = -10.1; u <= 9.95; u += 1.6) { lb('metal', u, u + 0.07, 0.22, 3.7, 16.02, 16.1); lb('metal', u, u + 0.07, 4.4, 7.3, 16.72, 16.8); }
+  // interior seen through the glass: warm wood walls, marble floors, lit shelves, stairs, sofas, pendants
+  for (const [y0, y1, vb] of [[0.22, 3.6, 25.3], [4.4, 7.3, 25.3]]) {
+    lb('woodIn', -10.1, 9.9, y0, y1, vb, vb + 0.15);
+    lb('woodIn', -10.1, -9.95, y0, y1, 16.2, 25.3); lb('woodIn', 9.75, 9.9, y0, y1, 16.2, 25.3);
+    lb('floorIn', -10.1, 9.9, y0, y0 + 0.02, 16.1, 25.3);
+    lb('woodIn', -10.1, 9.9, y1 - 0.06, y1, 16.1, 25.3);
+  }
+  lb('woodIn', -1.9, 0.3, 0.22, 7.3, 21, 21.2); // stair wall
+  for (let i = 0; i < 10; i++) lb('marbleL', -1.8, 0.2, 0.22 + i * 0.4, 0.34 + i * 0.4, 17.2 + i * 0.35, 17.6 + i * 0.35);
+  for (const [u0, u1] of [[-9.6, -6.4], [4.2, 7.4]]) {
+    lb('metal', u0, u1, 0.22, 3.4, 24.9, 25.3);
+    for (let y = 0.7; y < 3.3; y += 0.62) { lb('led', u0 + 0.05, u1 - 0.05, y, y + 0.03, 24.85, 24.9); lb('table', u0 + 0.3 + rnd() * (u1 - u0 - 0.8), u0 + 0.5 + rnd() * 0.3 + (u1 - u0 - 0.8) * 0.5, y + 0.03, y + 0.38, 24.95, 25.2); }
+  }
+  lb('sofa', -8.5, -3.5, 0.22, 0.65, 21.5, 22.4); lb('sofa', -8.5, -3.5, 0.65, 1.1, 22.1, 22.4);
+  lb('sofa', 3.5, 8.8, 4.42, 4.85, 21.5, 22.4); lb('sofa', 3.5, 8.8, 4.85, 5.3, 22.1, 22.4);
+  for (const [u, v, y] of [[-3.2, 18, 3.1], [-2.6, 18.6, 2.6], [-3.6, 19.1, 2.85], [-2.9, 19.7, 2.4], [-3.4, 18.3, 2.2]]) { const p = P3(u, y, v).applyMatrix4(B); put('led', new THREE.SphereGeometry(0.16, 10, 8), mat4(p.x, p.y, p.z)); put('metal', new THREE.CylinderGeometry(0.008, 0.008, 3.55 - y, 3), mat4(p.x, (3.55 + y) / 2, p.z)); }
+  // middle bands: black marble fascia over wood soffit, warm LED line, glass balustrade
+  const band = (u0, u1, vf, y0, y1) => {
+    lb('woodS', u0, u1, y0, y0 + 0.14, vf, 25.8);
+    lb('marbleD', u0, u1, y0 + 0.14, y1, vf, 25.8);
+    lb('led', u0, u1, y0 + 0.36, y0 + 0.41, vf - 0.03, vf);
+    lb('rail', u0 + 0.05, u1 - 0.05, y1, y1 + 1.0, vf + 0.02, vf + 0.08);
+  };
+  band(-10.9, 0.3, 14.6, 3.6, 4.4); band(1.8, 10.9, 13.3, 3.6, 4.4);
+  for (const [u, v] of [[-9.6, 15.2], [-4.4, 15.2], [3.0, 13.9], [9.6, 13.9]]) { const p = P3(u, 0, v).applyMatrix4(B); put('table', new THREE.CylinderGeometry(0.28, 0.22, 0.5, 10), mat4(p.x, 4.65, p.z)); put('leaf', new THREE.IcosahedronGeometry(0.5, 1), mat4(p.x, 5.2, p.z)); }
+  // central wood slat tower
+  lb('woodS', 0.3, 1.8, 0, 8.2, 15.95, 25.6); ls(0.3, 1.8, 15.95, 25.6, 9);
+  for (let u = 0.34; u < 1.78; u += 0.22) lb('wood', u, u + 0.1, 0, 8.2, 15.8, 15.95);
+  // roofs: deep wood soffits, black fascia, LED line
+  const roof = (u0, u1, vf, y0, y1, side) => {
+    lb('woodS', u0, u1, y0, y0 + 0.2, vf, 26.3);
+    lb('marbleD', u0, u1, y0 + 0.2, y1, vf, 26.3);
+    lb('led', u0, u1, y0 + 0.42, y0 + 0.48, vf - 0.03, vf);
+    lb('led', side, side + (side < 0 ? -0.03 : 0.03), y0 + 0.42, y0 + 0.48, vf, 26.3);
+    lb('slab2', u0 + 0.3, u1 - 0.3, y1, y1 + 0.05, vf + 0.3, 26);
+  };
+  roof(-11.4, 0.8, 13.8, 7.3, 8.0, -11.4); roof(0.8, 11.4, 12.6, 7.7, 8.5, 11.4);
+  // marble pillars carrying the roofs
+  pillar(-11.2, -10.2, 13.9, 14.9, 7.3); pillar(9.6, 10.5, 12.7, 13.6, 7.7); pillar(-0.2, 0.3, 13.9, 14.6, 7.3);
+  const d = W(1.05, 15.1);
+  const door = { x: d.x, z: d.z, name: vname, url: vurl, n: lots.length + 1 };
+  doors.push(door);
+  const r = rect(-11.6, 11.6, 0, LD);
+  lots.push({ x0: r[0], z0: r[1], x1: r[2], z1: r[3], name: vname, n: lots.length + 1, door, green: false, roof: W(0, 20), pool: W(-4, 9.7), house: rect(-10.2, 10, 16, 25.5), upper: rect(-10.2, 10, 16.8, 25.5), poolR: rect(-10.5, 9.2, 6.5, 12.8), celine: true });
 }
 function fence(x0, z0, x1, z1) {
   const t = 0.1;
@@ -735,6 +887,11 @@ function updateSky() {
   MAT.head.color.set(night > 0.5 && !sketch ? '#fffbe8' : '#d8d4c8');
   MAT.tail.color.set(night > 0.5 && !sketch ? '#ff3a24' : '#5a1010');
   MAT.water.emissiveIntensity = 0.4 + night * 0.9;
+  MAT.waterC.emissiveIntensity = 0.35 + night * 1.1;
+  MAT.led.color.set(sketch ? '#e6e0d0' : night > 0.5 ? '#ffe2b0' : '#ffd9a0');
+  for (const m of [MAT.glass, MAT.glassLit, MAT.water, MAT.glassC, MAT.rail, MAT.gold, MAT.marbleD, MAT.car]) m.envMapIntensity = 0.12 + 0.88 * day;
+  MAT.waterC.envMapIntensity = 0.1 + 0.4 * day;
+  MAT.woodIn.emissiveIntensity = sketch ? 0 : 0.4 + night * 0.5; MAT.floorIn.emissiveIntensity = sketch ? 0 : 0.3 + night * 0.4;
   renderer.toneMappingExposure = sketch ? 1 : 1 + night * 0.25;
   return night;
 }
