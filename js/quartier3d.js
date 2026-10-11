@@ -129,6 +129,7 @@ MAT.gold = new THREE.MeshStandardMaterial({ color: '#e0b25a', roughness: 0.22, m
 MAT.led = new THREE.MeshBasicMaterial({ color: '#ffd9a0' });
 MAT.flame = new THREE.MeshBasicMaterial({ color: '#ff9a3c' });
 MAT.metal = new THREE.MeshLambertMaterial({ color: '#1d1e21' });
+for (const [k, c] of [['signA', '#b08d57'], ['signB', '#2f4a6e'], ['signC', '#c4643f'], ['signD', '#3f6340']]) MAT[k] = new THREE.MeshLambertMaterial({ color: c, emissive: c, emissiveIntensity: 0.25 });
 MAT.sofa = new THREE.MeshLambertMaterial({ color: '#efe9de' });
 MAT.rock = new THREE.MeshLambertMaterial({ color: '#6f6d6a', flatShading: true });
 MAT.glass = new THREE.MeshStandardMaterial({ color: '#3b4a55', roughness: 0.15, metalness: 0.6 });
@@ -189,12 +190,16 @@ function pine(x, z, h = 9) {
   solid(x - 0.4, x + 0.4, z - 0.4, z + 0.4, 4);
 }
 
-const BX = [-130, 0, 130], BZ = [-70, 0, 70];
-const RX = [-195, -65, 65, 195], RZ = [-105, -35, 35, 105];
-const ROADX = ['Rue Harper', 'Rue Chloé', 'Rue Céline', 'Rue Margaux'];
-const ROADZ = ['Allée des Pins', 'Avenue Red Stone', 'Avenue des Palmiers', 'Allée du Lac'];
-const VILLAS = [['Chloé', 'villa-chloe.html'], ['Céline', 'villa-celine.html'], ['Margaux', 'villa-margaux.html']];
-const LW = 23.2, LD = 28, EXT = 250, ZEXT = 150;
+// Site plan after the Williams & Harper masterplan: Chloé villas in two blocks around a linear park,
+// shops and their garden to the west, a row of Céline villas along the south front, Margaux villas
+// in two groups (south-west and east).
+const RX = [-205, -75, 135], RZ = [-73, 83];
+const ROADX = ['Rue Harper', 'Rue Chloé', 'Rue Margaux'];
+const ROADZ = ['Avenue Red Stone', 'Allée Céline'];
+const VILLAS = { 'Chloé': 'villa-chloe.html', 'Céline': 'villa-celine.html', 'Margaux': 'villa-margaux.html' };
+const CHLOE_BLOCKS = [[-70, 130, -68, -8], [-70, 130, 18, 78]];
+const PARK = [-70, 130, -8, 18], SHOPS = [-200, -80, -68, 78], SITE = [-215, 240, -85, 125];
+const LD = 28, EXT = 245, ZEXT = 150;
 const nearInt = (v, list, d) => list.some(r => Math.abs(v - r) < d);
 
 put('grass', new THREE.BoxGeometry(EXT * 2 + 120, 0.2, 420).translate(0, -0.1, 0));
@@ -236,21 +241,22 @@ function lamp(lx, lz, ax, az) {
 for (const z of RZ) for (let x = -EXT + 10; x <= EXT - 10; x += 34) if (!nearInt(x, RX, 11)) { lamp(x, z - 5.7, 0, 1); lamp(x + 17, z + 5.7, 0, -1); }
 for (const x of RX) for (let z = -ZEXT + 10; z <= ZEXT - 10; z += 34) if (!nearInt(z, RZ, 11) && !nearInt(z + 17, RZ, 11)) { lamp(x - 5.7, z, 1, 0); lamp(x + 5.7, z + 17, -1, 0); }
 
-function block(cx, cz) {
-  box('side', cx - 60, cx + 60, 0, 0.1, cz - 30, cz - 28); box('side', cx - 60, cx + 60, 0, 0.1, cz + 28, cz + 30);
-  box('side', cx - 60, cx - 58, 0, 0.1, cz - 28, cz + 28); box('side', cx + 58, cx + 60, 0, 0.1, cz - 28, cz + 28);
-  box('curb', cx - 60.1, cx + 60.1, 0, 0.13, cz - 30.1, cz - 29.95); box('curb', cx - 60.1, cx + 60.1, 0, 0.13, cz + 29.95, cz + 30.1);
-  box('curb', cx - 60.1, cx - 59.95, 0, 0.13, cz - 30, cz + 30); box('curb', cx + 59.95, cx + 60.1, 0, 0.13, cz - 30, cz + 30);
+function blockRing(x0, x1, z0, z1) {
+  box('side', x0, x1, 0, 0.1, z0, z0 + 2); box('side', x0, x1, 0, 0.1, z1 - 2, z1);
+  box('side', x0, x0 + 2, 0, 0.1, z0 + 2, z1 - 2); box('side', x1 - 2, x1, 0, 0.1, z0 + 2, z1 - 2);
+  box('curb', x0 - 0.1, x1 + 0.1, 0, 0.13, z0 - 0.1, z0 + 0.05); box('curb', x0 - 0.1, x1 + 0.1, 0, 0.13, z1 - 0.05, z1 + 0.1);
+  box('curb', x0 - 0.1, x0 + 0.05, 0, 0.13, z0, z1); box('curb', x1 - 0.05, x1 + 0.1, 0, 0.13, z0, z1);
 }
+function sidewalk(x0, x1, z0, z1) { box('side', x0, x1, 0, 0.1, z0, z1); }
 
-function lot(lx, front, dir, idx) {
+function lot(lx, front, dir, vname) {
   const ry = dir > 0 ? 0 : Math.PI, B = mat4(lx, 0, front, 0, ry);
   const s = rnd() < 0.5 ? 1 : -1;
   const lb = (k, u0, u1, y0, y1, v0, v1) => box(k, s * u0, s * u1, y0, y1, v0, v1, B);
   const W = (u, v) => V(s * u, 0, v).applyMatrix4(B);
   const rect = (u0, u1, v0, v1) => { const a = W(u0, v0), b = W(u1, v1); return [Math.min(a.x, b.x), Math.min(a.z, b.z), Math.max(a.x, b.x), Math.max(a.z, b.z)]; };
   const ls = (u0, u1, v0, v1, h) => { const r = rect(u0, u1, v0, v1); solid(r[0], r[2], r[1], r[3], h); };
-  const [vname, vurl] = VILLAS[idx % 3];
+  const vurl = VILLAS[vname];
   if (vname === 'Céline') return celine(ry, s, B, lb, W, rect, ls, vname, vurl);
   const gl = rnd() < 0.65 ? 'glassLit' : 'glass';
 
@@ -397,19 +403,27 @@ function fence(x0, z0, x1, z1) {
   if (x0 === x1) box('fence', x0 - t / 2, x0 + t / 2, 0, 1.6, z0, z1); else box('fence', x0, x1, 0, 1.6, z0 - t / 2, z0 + t / 2);
   solid(x0 - t, x1 + t, z0 - t, z1 + t, 1.7);
 }
-let villaIdx = 0;
-for (const cz of BZ) for (const cx of BX) {
-  block(cx, cz);
-  if (cx === 0 && cz === 0) continue;
-  for (let i = 0; i < 5; i++) {
-    const lx = cx - 58 + LW / 2 + i * LW;
-    lot(lx, cz - 28, 1, villaIdx++);
-    lot(lx, cz + 28, -1, villaIdx++);
-  }
-  for (let k = 0; k <= 5; k++) { const x = cx - 58 + k * LW; fence(x, cz - 27.8, x, cz + 27.8); }
-  fence(cx - 58, cz, cx + 58, cz);
-  for (let k = 1; k < 5; k++) { const x = cx - 58 + k * LW; palm(x, cz - 29, 6 + rnd() * 2); palm(x, cz + 29, 6 + rnd() * 2); }
+// Chloé: two blocks of 2 x 8 lots
+for (const [x0, x1, z0, z1] of CHLOE_BLOCKS) {
+  blockRing(x0, x1, z0, z1);
+  const n = 8, w = (x1 - x0 - 4) / n, zm = (z0 + z1) / 2;
+  for (let i = 0; i < n; i++) { const lx = x0 + 2 + w / 2 + i * w; lot(lx, z0 + 2, 1, 'Chloé'); lot(lx, z1 - 2, -1, 'Chloé'); }
+  for (let k = 0; k <= n; k++) { const x = x0 + 2 + k * w; fence(x, z0 + 2.2, x, z1 - 2.2); }
+  fence(x0 + 2, zm, x1 - 2, zm);
+  for (let k = 1; k < n; k++) { const x = x0 + 2 + k * w; palm(x, z0 + 1, 6 + rnd() * 2); palm(x, z1 - 1, 6 + rnd() * 2); }
 }
+// a row of lots along a road: Céline on the south front, Margaux south-west and east
+function lotRow(name, x0, n, w, front, dir) {
+  const back = front + dir * LD;
+  for (let i = 0; i < n; i++) lot(x0 + w / 2 + i * w, front, dir, name);
+  for (let k = 0; k <= n; k++) { const x = x0 + k * w; fence(x, Math.min(front, back) + 0.2, x, Math.max(front, back) - 0.2); }
+  fence(x0, back, x0 + n * w, back);
+  sidewalk(x0, x0 + n * w, Math.min(front, front - dir * 2), Math.max(front, front - dir * 2));
+  for (let k = 0; k <= n; k++) palm(x0 + k * w, front - dir * 1, 6 + rnd() * 2);
+}
+lotRow('Céline', -60, 7, 24, 90, 1);
+lotRow('Margaux', -197, 4, 27, 90, 1);
+lotRow('Margaux', 143, 3, 27, 78, -1);
 
 // central park
 const parkCurves = [];
@@ -426,9 +440,9 @@ function ribbon(key, pts, w, y = 0.06) {
   g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); g.setIndex(idx);
   put(key, g);
 }
-ribbon('sand', [[-58, -18], [-40, -12], [-22, -19], [-6, -12], [-2, 2], [8, 14], [26, 16], [40, 8], [58, 14]], 3.2);
-ribbon('sand', [[14, -28], [22, -16], [28, -10], [24, 4], [12, 12], [4, 28]], 2.6, 0.065);
-ribbon('sand', [[-58, 20], [-44, 14], [-30, 18], [-16, 22], [-4, 28]], 2.4, 0.062);
+// the park: a green strip between the two Chloé blocks
+ribbon('sand', [[-68, 3], [-45, -2], [-20, 7], [5, 0], [30, 9], [55, 2], [80, 10], [105, 3], [128, 7]], 3);
+ribbon('sand', [[20, -8], [26, 0], [40, 4], [48, 12], [46, 18]], 2.4, 0.065);
 const ponds = [];
 const pond = (x, z, rx, rz) => {
   put('coping', new THREE.CircleGeometry(1, 48).rotateX(-Math.PI / 2), mat4(x, 0.07, z, 0, 0, 0, rx + 1, 1, rz + 1));
@@ -436,46 +450,91 @@ const pond = (x, z, rx, rz) => {
   solid(x - rx * 0.8, x + rx * 0.8, z - rz * 0.8, z + rz * 0.8, 0.6);
   ponds.push([x, z, rx, rz]);
 };
-pond(-30, 4, 13, 7); pond(-12, 8, 5, 4);
-box('deck', -20, -14, 0.1, 0.35, 0.5, 2.6); solid(-20, -14, 0.5, 2.6, 0.35);
-put('pave', new THREE.CircleGeometry(10, 40).rotateX(-Math.PI / 2), mat4(32, 0.07, -8));
-for (let i = 0; i < 7; i++) {
-  const a = i / 7 * Math.PI * 2, x = 32 + Math.cos(a) * 6, z = -8 + Math.sin(a) * 6;
-  put('table', new THREE.CylinderGeometry(0.55, 0.55, 0.06, 16), mat4(x, 0.75, z));
-  put('lamp', new THREE.CylinderGeometry(0.05, 0.05, 2.4, 6), mat4(x, 1.2, z));
-  put(i % 2 ? 'parasol' : 'parasol2', new THREE.ConeGeometry(1.5, 0.55, 10), mat4(x, 2.45, z));
-  for (let j = 0; j < 3; j++) { const b = a + j * 2.1; put('table', new THREE.CylinderGeometry(0.2, 0.2, 0.45, 8), mat4(x + Math.cos(b) * 0.95, 0.22, z + Math.sin(b) * 0.95)); }
-  solid(x - 0.6, x + 0.6, z - 0.6, z + 0.6, 0.8);
-}
-put('wood', new THREE.CylinderGeometry(1.8, 1.8, 0.45, 20), mat4(32, 0.22, -8)); solid(30.5, 33.5, -9.5, -6.5, 0.45);
-tree(32, -8, 1.3);
-for (const [x, z, r] of [[-40, -9, 0.3], [-10, -16, -0.2], [6, 18, 0.5], [44, 12, -0.3], [-22, 20, 0.1]]) {
+pond(-8, 10, 10, 4); pond(72, -2, 7, 3.5);
+const plaza = (cx, cz, r, n) => {
+  put('pave', new THREE.CircleGeometry(r, 40).rotateX(-Math.PI / 2), mat4(cx, 0.07, cz));
+  for (let i = 0; i < n; i++) {
+    const a = i / n * Math.PI * 2, x = cx + Math.cos(a) * r * 0.62, z = cz + Math.sin(a) * r * 0.62;
+    put('table', new THREE.CylinderGeometry(0.55, 0.55, 0.06, 16), mat4(x, 0.75, z));
+    put('lamp', new THREE.CylinderGeometry(0.05, 0.05, 2.4, 6), mat4(x, 1.2, z));
+    put(i % 2 ? 'parasol' : 'parasol2', new THREE.ConeGeometry(1.5, 0.55, 10), mat4(x, 2.45, z));
+    for (let j = 0; j < 3; j++) { const b = a + j * 2.1; put('table', new THREE.CylinderGeometry(0.2, 0.2, 0.45, 8), mat4(x + Math.cos(b) * 0.95, 0.22, z + Math.sin(b) * 0.95)); }
+    solid(x - 0.6, x + 0.6, z - 0.6, z + 0.6, 0.8);
+  }
+  put('wood', new THREE.CylinderGeometry(1.8, 1.8, 0.45, 20), mat4(cx, 0.22, cz)); solid(cx - 1.5, cx + 1.5, cz - 1.5, cz + 1.5, 0.45);
+  tree(cx, cz, 1.3);
+};
+plaza(38, 5, 8, 6);
+const bench = (x, z, r) => {
   put('wood', new THREE.BoxGeometry(2.2, 0.12, 0.6).translate(0, 0.5, 0), mat4(x, 0, z, 0, r));
   put('wood', new THREE.BoxGeometry(2.2, 0.5, 0.1).translate(0, 0.8, 0.28), mat4(x, 0, z, 0, r));
+};
+for (const [x, z, r] of [[-50, -5, 0.1], [-25, 12, 0.3], [15, -4, -0.2], [60, 13, 0.2], [92, -4, 0], [118, 12, -0.3]]) bench(x, z, r);
+for (let i = 0; i < 70; i++) {
+  const x = PARK[0] + 3 + rnd() * (PARK[1] - PARK[0] - 6), z = PARK[2] + 1.5 + rnd() * (PARK[3] - PARK[2] - 3);
+  if (Math.hypot((x + 8) / 12, (z - 10) / 6) < 1 || Math.hypot((x - 72) / 9, (z + 2) / 5) < 1 || Math.hypot(x - 38, z - 5) < 9.5 || (x > 94 && x < 110 && z < -1)) continue;
+  rnd() < 0.35 ? palm(x, z, 5 + rnd() * 3) : tree(x, z, 0.7 + rnd() * 0.5);
 }
-for (let i = 0; i < 46; i++) {
-  const x = -55 + rnd() * 110, z = -25 + rnd() * 50;
-  if (Math.hypot((x + 30) / 15, (z - 4) / 9) < 1 || Math.hypot(x - 32, z + 8) < 12 || Math.hypot(x + 12, z - 8) < 6 || Math.hypot(x - 23, z + 2) < 4) continue;
-  rnd() < 0.35 ? palm(x, z, 5 + rnd() * 3) : tree(x, z, 0.8 + rnd() * 0.6);
-}
-for (let x = -50; x <= -36; x += 3.5) { box('wood', x - 0.15, x + 0.15, 0, 2.8, -26.5, -26.2); box('wood', x - 0.15, x + 0.15, 0, 2.8, -22.5, -22.2); solid(x - 0.2, x + 0.2, -26.6, -26.1, 2.8); solid(x - 0.2, x + 0.2, -22.6, -22.1, 2.8); }
-for (let x = -50.3; x <= -35.7; x += 0.6) box('wood', x, x + 0.12, 2.8, 2.95, -27, -21.7);
-// agency kiosk (mission giver)
-box('wall', 19, 23, 0, 2.8, -6.5, -4.5); box('slab', 18.5, 23.5, 2.8, 3, -7, -4); box('wood', 19.2, 22.8, 0, 1.1, -4.5, -4.3);
-solid(19, 23, -6.5, -4.3, 3);
+for (let x = 95; x <= 108; x += 3.25) { box('wood', x - 0.15, x + 0.15, 0, 2.8, -7.5, -7.2); box('wood', x - 0.15, x + 0.15, 0, 2.8, -3.3, -3); solid(x - 0.2, x + 0.2, -7.6, -7.1, 2.8); solid(x - 0.2, x + 0.2, -3.4, -2.9, 2.8); }
+for (let x = 94.7; x <= 108.4; x += 0.6) box('wood', x, x + 0.12, 2.8, 2.95, -7.8, -2.6);
 
-for (let i = 0; i < 280; i++) {
+// shops (Commerces): L-shaped retail building, café terrace, parking; then their garden and the shared space
+const shopBoxes = [];
+function shopWing(x0, x1, z0, z1, faceX, faceZ) {
+  box('wall', x0, x1, 0, 4.4, z0, z1); solid(x0, x1, z0, z1, 5);
+  box('slab', x0 - 0.3, x1 + 0.3, 4.4, 4.75, z0 - 0.3, z1 + 0.3);
+  box('marbleD', x0 - 0.3, x1 + 0.3, 4.75, 5.1, z0 - 0.3, z1 + 0.3);
+  shopBoxes.push([x0, z0, x1, z1]);
+  const signs = ['signA', 'signB', 'signC', 'signD'];
+  if (faceZ) { // shopfronts on the z = faceZ side
+    const d = faceZ > z0 ? 1 : -1, zf = faceZ;
+    for (let x = x0 + 1, i = 0; x < x1 - 6; x += 7, i++) {
+      box('glassLit', x, x + 5.6, 0.1, 3.3, zf - d * 0.05, zf + d * 0.03);
+      box(signs[i % 4], x + 0.4, x + 5.2, 3.5, 4.2, zf + d * 0.03, zf + d * 0.12);
+      box('woodS', x - 0.2, x + 5.8, 3.3, 3.42, zf, zf + d * 1.8);
+    }
+  }
+  if (faceX) {
+    const d = faceX > x0 ? 1 : -1, xf = faceX;
+    for (let z = z0 + 1, i = 0; z < z1 - 6; z += 7, i++) {
+      box('glassLit', xf - d * 0.05, xf + d * 0.03, 0.1, 3.3, z, z + 5.6);
+      box(signs[(i + 2) % 4], xf + d * 0.03, xf + d * 0.12, 3.5, 4.2, z + 0.4, z + 5.2);
+      box('woodS', xf, xf + d * 1.8, 3.3, 3.42, z - 0.2, z + 5.8);
+    }
+  }
+}
+shopWing(-192, -112, -64, -46, 0, -46);
+shopWing(-192, -174, -46, -4, -174, 0);
+box('pave', -174, -100, 0, 0.05, -46, -36); box('pave', -174, -164, 0, 0.05, -36, -4);
+plaza(-140, -38, 5.5, 4); // café terrace
+const shopParking = [-165, -100, -24, -8];
+box('asphalt', shopParking[0], shopParking[1], 0, 0.02, shopParking[2], shopParking[3]);
+for (let x = shopParking[0] + 2; x <= shopParking[1] - 2; x += 3.2) { box('line', x, x + 0.1, 0.02, 0.03, shopParking[2], shopParking[2] + 6); if (rnd() < 0.5) parkedSpots.push([x + 1.6, shopParking[2] + 3, rnd() < 0.5 ? 0 : Math.PI]); }
+box('asphalt', -100, -80, 0, 0.021, -19, -13); // access to Rue Chloé
+// garden of the shops, with the winding path, the pond and the shared space (espace commun)
+ribbon('sand', [[-196, 8], [-180, 20], [-160, 12], [-140, 26], [-150, 48], [-128, 62], [-108, 56], [-92, 70]], 3);
+ribbon('sand', [[-140, 26], [-118, 30], [-104, 46]], 2.4, 0.065);
+pond(-170, 45, 12, 6); pond(-120, 14, 5, 3);
+box('deck', -160, -154, 0.1, 0.35, 49, 51.5); solid(-160, -154, 49, 51.5, 0.35);
+plaza(-104, 48, 9, 7);
+for (let i = 0; i < 45; i++) {
+  const x = -198 + rnd() * 116, z = 2 + rnd() * 74;
+  if (Math.hypot((x + 170) / 14, (z - 45) / 8) < 1 || Math.hypot(x + 104, z - 48) < 11 || Math.hypot(x + 120, z - 14) < 7 || (x > -116 && x < -100 && z > 4 && z < 24) || x > -95) continue;
+  rnd() < 0.4 ? palm(x, z, 5 + rnd() * 3) : tree(x, z, 0.8 + rnd() * 0.5);
+}
+for (const [x, z, r] of [[-175, 22, 0.4], [-150, 30, -0.3], [-132, 60, 0.2], [-186, 60, 0.6]]) bench(x, z, r);
+// agency kiosk (mission giver)
+box('wall', -114, -110, 0, 2.8, 8, 10); box('slab', -114.5, -109.5, 2.8, 3, 7.5, 10.5); box('wood', -113.8, -110.2, 0, 1.1, 10, 10.2);
+solid(-114, -110, 8, 10.2, 3);
+
+for (let i = 0; i < 300; i++) {
   const x = (rnd() * 2 - 1) * 290, z = (rnd() * 2 - 1) * 195;
-  if (Math.abs(x) < 202 && Math.abs(z) < 112) continue;
+  if (x > SITE[0] && x < SITE[1] && z > SITE[2] && z < SITE[3]) continue;
   if (RX.some(r => Math.abs(x - r) < 8) || RZ.some(r => Math.abs(z - r) < 8)) continue;
-  if (Math.abs(z) > 112 && Math.abs(z) < 132 && Math.abs(Math.abs(x) - 130) < 34) continue;
   rnd() < 0.8 ? pine(x, z, 8 + rnd() * 7) : palm(x, z, 6 + rnd() * 3);
 }
-const parkings = [[-130, -122], [130, 122]];
-for (const [px, pz] of parkings) {
-  box('asphalt', px - 30, px + 30, 0, 0.02, pz - 7, pz + 7);
-  for (let x = px - 28; x <= px + 28; x += 3.2) { box('line', x, x + 0.1, 0.02, 0.03, pz - 7, pz - 1); if (rnd() < 0.5) parkedSpots.push([x + 1.6, pz - 4, rnd() < 0.5 ? 0 : Math.PI]); }
-}
+// green margins inside the site that are not built
+for (let i = 0; i < 30; i++) { const x = 145 + rnd() * 90, z = -80 + rnd() * 120; if (RX.some(r => Math.abs(x - r) < 8) || RZ.some(r => Math.abs(z - r) < 8)) continue; rnd() < 0.6 ? pine(x, z, 8 + rnd() * 5) : tree(x, z, 1); }
 
 const worldMeshes = [];
 for (const [k, list] of Object.entries(buckets)) {
@@ -783,17 +842,17 @@ class Car {
   speed() { return Math.hypot(this.vx, this.vz); }
 }
 for (const [x, z, h] of parkedSpots) new Car(x, z, h, pick(CAR_COLORS), rnd() < 0.25 ? 1 : 0);
-new Car(104, 112.5, Math.PI / 2, '#a51c24', 4);
-new Car(12, -25.3, Math.PI / 2 + 0.25, '#8a8d8f', 3);
-new Car(4, -25.3, Math.PI / 2 + 0.25, '#d9d6cf', 4);
-new Car(20.5, -25.3, Math.PI / 2 + 0.25, '#141414', 5);
+new Car(-128, -1, Math.PI / 2, '#a51c24', 4); // race car next to the course marker
+new Car(-88, 26, 0.2, '#8a8d8f', 3);
+new Car(-88, 35, 0.2, '#d9d6cf', 4);
+new Car(-88, 44, 0.2, '#141414', 5);
 
 // traffic AI
 function laneFor(dx, dz, roadCoord) { return roadCoord + (dx ? dx * 2.5 * 1 : -dz * 2.5); }
 // right-hand traffic: heading +x drives on z+2.5, heading +z drives on x-2.5
 function spawnTraffic(n) {
   for (let i = 0; i < n; i++) {
-    const axisX = i % 2 === 0, list = axisX ? RZ : RX, road = list[Math.floor(i / 2) % 4], dir = rnd() < 0.5 ? 1 : -1;
+    const axisX = i % 2 === 0, list = axisX ? RZ : RX, road = list[Math.floor(i / 2) % list.length], dir = rnd() < 0.5 ? 1 : -1;
     const along = (rnd() * 2 - 1) * (axisX ? EXT - 20 : ZEXT - 20);
     const dx = axisX ? dir : 0, dz = axisX ? 0 : dir;
     const lane = laneFor(dx, dz, road);
@@ -802,7 +861,7 @@ function spawnTraffic(n) {
     c.ai = { dx, dz, lane, v: 8, cruise: 9 + rnd() * 4, prev: 0 }; c.setDyn(true);
   }
 }
-spawnTraffic(26);
+spawnTraffic(16);
 {
   const loader = new GLTFLoader();
   for (const [kind, def] of Object.entries(CAR_MODELS)) {
@@ -857,8 +916,8 @@ function animatePerson(p, phase, amp, st = {}) {
 
 // pedestrians: around block sidewalks + park paths
 const peds = [];
-function ringPath(cx, cz) {
-  const hw = 59, hd = 29, P = 2 * (hw * 2 + hd * 2);
+function ringPath(x0, x1, z0, z1) {
+  const cx = (x0 + x1) / 2, cz = (z0 + z1) / 2, hw = (x1 - x0) / 2 - 1, hd = (z1 - z0) / 2 - 1, P = 2 * (hw * 2 + hd * 2);
   return { len: P, loop: true, at(s) {
     s = ((s % P) + P) % P;
     if (s < hw * 2) return [cx - hw + s, cz - hd, 1, 0];
@@ -867,12 +926,14 @@ function ringPath(cx, cz) {
     s -= hw * 2; return [cx - hw, cz + hd - s, 0, -1];
   } };
 }
+const linePath = (x0, x1, z) => ({ len: x1 - x0, loop: false, at(s) { return [x0 + clamp(s, 0, x1 - x0), z, 1, 0]; } });
 function curvePath(curve) {
   const len = curve.getLength();
   return { len, loop: false, at(s) { const t = clamp(s / len, 0, 1), p = curve.getPointAt(t), tg = curve.getTangentAt(t); return [p.x, p.z, tg.x, tg.z]; } };
 }
 const pedPaths = [];
-for (const cz of BZ) for (const cx of BX) pedPaths.push(ringPath(cx, cz));
+for (const b of CHLOE_BLOCKS) pedPaths.push(ringPath(...b));
+pedPaths.push(linePath(-60, 108, 89), linePath(-197, -89, 89), linePath(-174, -100, -41));
 for (const c of parkCurves) pedPaths.push(curvePath(c));
 for (let i = 0; i < 44; i++) {
   const path = pedPaths[i % pedPaths.length];
@@ -882,11 +943,11 @@ for (let i = 0; i < 44; i++) {
 
 /* ================= hero ================= */
 const hero = makePerson({ skin: '#c99b7a', hair: '#2a1d16', shirt: '#b08d57', pants: '#2d2b29', unique: true });
-const P = { x: 26, z: 3, y: 0, vy: 0, heading: Math.PI, phase: 0, speed: 0, down: 0, car: null, swim: false };
+const P = { x: -104, z: 18, y: 0, vy: 0, heading: Math.PI, phase: 0, speed: 0, down: 0, car: null, swim: false };
 let yaw = 0.35, pitch = 0.3, camDist = 6.5, lastMouse = -10;
 
 /* ================= collectibles & markers ================= */
-const KEY_SPOTS = [[-15, 1.5], [-43, -24.4], [32, -8], [-150, -121], [150, 121], [-232, -142], [238, 150], [65, 0], [-245, 35], [250, -110], [0, -150]];
+const KEY_SPOTS = [[5, -3, 1.1], [38, 5, 1.6], [-196, -30, 1.1], [-140, -12, 1.1], [-157, 50.2, 1.4], [120, 5, 1.1], [215, 20, 1.1], [-232, 100, 1.1], [30, 145, 1.1], [190, -110, 1.1], [-75, 130, 1.1]];
 const goldMat = new THREE.MeshStandardMaterial({ color: '#d8b25a', metalness: 0.9, roughness: 0.25, emissive: '#6b4a10', emissiveIntensity: 0.5 });
 const keyGeo = (() => {
   const ring = new THREE.TorusGeometry(0.22, 0.06, 8, 20), shaft = new THREE.BoxGeometry(0.06, 0.5, 0.06).translate(0, -0.45, 0);
@@ -895,8 +956,8 @@ const keyGeo = (() => {
 })();
 const keys3d = [];
 {
-  const poolLot = lots[23];
-  const spots = [...KEY_SPOTS.map(([x, z]) => [x, z, x === 32 ? 1.6 : 1.1]), [poolLot.pool.x, poolLot.pool.z, 0.7]];
+  const poolLot = lots.filter(l => l.celine)[3] || lots[0];
+  const spots = [...KEY_SPOTS, [poolLot.pool.x, poolLot.pool.z, 0.7]];
   spots.forEach(([x, z, y], i) => {
     const m = new THREE.Mesh(keyGeo, goldMat); m.position.set(x, y, z); m.userData.noInk = true; m.castShadow = true;
     m.visible = !save.keys.includes(i); scene.add(m); keys3d.push({ m, i, x, z, y });
@@ -922,11 +983,11 @@ checkpoint.visible = false; checkpoint.traverse(o => { o.userData.noInk = o.user
 let waypoint = null;
 
 /* ================= missions ================= */
-const VISIT = [doors[13], doors[42], doors[59]];
-const RACE_CP = [[65, 105], [65, 35], [-65, 35], [-65, -35], [-195, -35], [-195, -105], [65, -105], [195, -105], [195, 35], [195, 105], [130, 105]];
+const VISIT = [['Chloé', 10], ['Céline', 3], ['Margaux', 5]].map(([n, k]) => doors.filter(d => d.name === n)[k] || doors.find(d => d.name === n));
+const RACE_CP = [[-75, 0], [-75, -73], [30, -73], [135, -73], [135, 0], [135, 83], [30, 83], [-75, 83], [-205, 83], [-205, 0], [-205, -73], [-75, -73]];
 const MISSIONS = {
-  visite: { title: 'Visite privée', start: [23, -2.2], reward: 25000, time: 240, color: '#f2c230', letter: 'V' },
-  course: { title: 'Contre-la-montre', start: [96, 113], reward: 15000, time: 95, color: '#5fb3e0', letter: 'C', needCar: true }
+  visite: { title: 'Visite privée', start: [-108, 12.5], reward: 25000, time: 240, color: '#f2c230', letter: 'V' },
+  course: { title: 'Contre-la-montre', start: [-122, -2], reward: 15000, time: 95, color: '#5fb3e0', letter: 'C', needCar: true }
 };
 for (const [id, m] of Object.entries(MISSIONS)) m.marker = makeMarker(m.start[0], m.start[1], m.color), m.id = id;
 let mission = null; // {m, step, t}
@@ -941,7 +1002,7 @@ function startMission(m) {
   banner(m.title, 'Mission');
   audio.sfx('start');
   if (m.id === 'visite') subtitle(`Un client veut visiter trois villas. Conduisez-le d'abord à la <b>Villa ${VISIT[0].name}</b>, lot n° ${VISIT[0].n}.`, 7);
-  else subtitle('Passez les <b>11 points de contrôle</b> avant la fin du temps. Pied au plancher.', 6);
+  else subtitle('Passez les <b>12 points de contrôle</b> avant la fin du temps. Pied au plancher.', 6);
   updateCheckpoint();
 }
 function updateCheckpoint() {
@@ -1143,7 +1204,7 @@ function applySketch() {
 /* ================= annotations (sketch) ================= */
 const notes = [];
 function note(text, x, y, z) { const el = document.createElement('div'); el.className = 'note'; el.textContent = text; $('notes').appendChild(el); notes.push({ el, p: V(x, y, z) }); }
-note('Espace commun', 32, 3.4, -8); note('Le lac', -30, 1.2, 4); note('Pergola', -43, 3.3, -24); note('Agence', 21, 3.4, -5.5);
+note('Espace commun', -104, 3.4, 48); note('Le bassin', -170, 1.2, 45); note('Pergola', 101, 3.3, -5); note('Agence', -112, 3.4, 9); note('Commerces', -150, 6, -55); note('Le parc', 30, 4, 5);
 for (const l of lots.filter(l => l.green).filter((_, i) => i % 6 === 0)) note('Toit végétalisé', l.roof.x, 7.4, l.roof.z);
 for (const l of lots.filter((_, i) => i % 7 === 3)) note('Piscine privée', l.pool.x, 1, l.pool.z);
 
@@ -1153,43 +1214,45 @@ const mapImg = document.createElement('canvas'); mapImg.width = OX * 2 * MPX; ma
 {
   const c = mapImg.getContext('2d'); c.scale(MPX, MPX); c.translate(OX, OZ);
   c.fillStyle = '#34402f'; c.fillRect(-OX, -OZ, OX * 2, OZ * 2);
-  c.fillStyle = '#3f4c3a'; c.fillRect(-202, -112, 404, 224);
-  c.fillStyle = '#4b6b40'; c.fillRect(-58, -28, 116, 56);
-  for (const cz of BZ) for (const cx of BX) { c.fillStyle = '#8c8a83'; c.fillRect(cx - 60, cz - 30, 120, 2); c.fillRect(cx - 60, cz + 28, 120, 2); c.fillRect(cx - 60, cz - 30, 2, 60); c.fillRect(cx + 58, cz - 30, 2, 60); }
+  c.fillStyle = '#3f4c3a'; c.fillRect(SITE[0], SITE[2], SITE[1] - SITE[0], SITE[3] - SITE[2]);
+  c.fillStyle = '#4b6b40'; c.fillRect(PARK[0], PARK[2], PARK[1] - PARK[0], PARK[3] - PARK[2]); c.fillRect(SHOPS[0], 0, SHOPS[1] - SHOPS[0], SHOPS[3]);
+  for (const [x0, x1, z0, z1] of CHLOE_BLOCKS) { c.fillStyle = '#8c8a83'; c.fillRect(x0, z0, x1 - x0, 2); c.fillRect(x0, z1 - 2, x1 - x0, 2); c.fillRect(x0, z0, 2, z1 - z0); c.fillRect(x1 - 2, z0, 2, z1 - z0); }
+  c.fillStyle = '#b9a98a'; for (const [x0, z0, x1, z1] of shopBoxes) c.fillRect(x0, z0, x1 - x0, z1 - z0);
   c.fillStyle = '#7b7d80'; for (const z of RZ) c.fillRect(-EXT - 20, z - 5, EXT * 2 + 40, 10); for (const x of RX) c.fillRect(x - 5, -ZEXT - 20, 10, ZEXT * 2 + 40);
-  c.fillStyle = '#6a6c70'; for (const [px, pz] of parkings) c.fillRect(px - 30, pz - 7, 60, 14);
+  c.fillStyle = '#6a6c70'; c.fillRect(shopParking[0], shopParking[2], shopParking[1] - shopParking[0], shopParking[3] - shopParking[2]);
   for (const l of lots) { c.fillStyle = '#4e5b47'; c.fillRect(l.x0 + 0.5, l.z0 + 0.5, l.x1 - l.x0 - 1, l.z1 - l.z0 - 1); c.fillStyle = '#d9d4c7'; c.fillRect(l.house[0], l.house[1], l.house[2] - l.house[0], l.house[3] - l.house[1]); c.fillStyle = '#5ec8df'; c.fillRect(l.poolR[0], l.poolR[1], l.poolR[2] - l.poolR[0], l.poolR[3] - l.poolR[1]); }
   c.fillStyle = '#4aa3c2'; for (const [x, z, rx, rz] of ponds) { c.beginPath(); c.ellipse(x, z, rx, rz, 0, 0, 7); c.fill(); }
   c.strokeStyle = '#c9b98f'; c.lineWidth = 2.6; for (const cv of parkCurves) { c.beginPath(); cv.getPoints(60).forEach((p, i) => i ? c.lineTo(p.x, p.z) : c.moveTo(p.x, p.z)); c.stroke(); }
-  c.fillStyle = '#cfc6b4'; c.beginPath(); c.arc(32, -8, 10, 0, 7); c.fill();
+  c.fillStyle = '#cfc6b4'; for (const [x, z, r] of [[38, 5, 8], [-104, 48, 9], [-140, -38, 5.5]]) { c.beginPath(); c.arc(x, z, r, 0, 7); c.fill(); }
 }
 const mm = $('minimap'), mmx = mm.getContext('2d'), MMR = mm.width / 2;
 function routeTo(tx, tz, fx, fz) {
   // shortest path on the road grid: from -> nearest road point -> intersections -> target road point -> target
+  const NX = RX.length, NZ = RZ.length, NN = NX * NZ, id = (i, j) => i * NZ + j;
   const nodes = []; for (const x of RX) for (const z of RZ) nodes.push([x, z]);
   const proj = (x, z) => {
     let best = null;
-    for (let j = 0; j < 4; j++) { const px = clamp(x, RX[0], RX[3]), d = Math.hypot(x - px, z - RZ[j]); if (!best || d < best.d) { let i = 0; while (i < 2 && RX[i + 1] < px) i++; best = { d, p: [px, RZ[j]], a: i * 4 + j, b: (i + 1) * 4 + j }; } }
-    for (let i = 0; i < 4; i++) { const pz = clamp(z, RZ[0], RZ[3]), d = Math.hypot(x - RX[i], z - pz); if (d < best.d) { let j = 0; while (j < 2 && RZ[j + 1] < pz) j++; best = { d, p: [RX[i], pz], a: i * 4 + j, b: i * 4 + j + 1 }; } }
+    for (let j = 0; j < NZ; j++) { const px = clamp(x, RX[0], RX[NX - 1]), d = Math.hypot(x - px, z - RZ[j]); if (!best || d < best.d) { let i = 0; while (i < NX - 2 && RX[i + 1] < px) i++; best = { d, p: [px, RZ[j]], a: id(i, j), b: id(i + 1, j) }; } }
+    for (let i = 0; i < NX; i++) { const pz = clamp(z, RZ[0], RZ[NZ - 1]), d = Math.hypot(x - RX[i], z - pz); if (d < best.d) { let j = 0; while (j < NZ - 2 && RZ[j + 1] < pz) j++; best = { d, p: [RX[i], pz], a: id(i, j), b: id(i, j + 1) }; } }
     return best;
   };
-  const s = proj(fx, fz), e = proj(tx, tz);
-  const N = 18, dist = new Array(N).fill(1e9), prev = new Array(N).fill(-1), used = new Array(N).fill(false);
-  const pos = i => i < 16 ? nodes[i] : i === 16 ? s.p : e.p;
+  const s = proj(fx, fz), e = proj(tx, tz), S = NN, E = NN + 1;
+  const N = NN + 2, dist = new Array(N).fill(1e9), prev = new Array(N).fill(-1), used = new Array(N).fill(false);
+  const pos = i => i < NN ? nodes[i] : i === S ? s.p : e.p;
   const adj = i => {
     const out = [];
-    if (i < 16) { const a = Math.floor(i / 4), b = i % 4; if (a > 0) out.push(i - 4); if (a < 3) out.push(i + 4); if (b > 0) out.push(i - 1); if (b < 3) out.push(i + 1); if (i === e.a || i === e.b) out.push(17); if (i === s.a || i === s.b) out.push(16); }
-    if (i === 16) { out.push(s.a, s.b); if ((s.a === e.a && s.b === e.b)) out.push(17); }
-    if (i === 17) out.push(e.a, e.b);
+    if (i < NN) { const a = Math.floor(i / NZ), b = i % NZ; if (a > 0) out.push(i - NZ); if (a < NX - 1) out.push(i + NZ); if (b > 0) out.push(i - 1); if (b < NZ - 1) out.push(i + 1); if (i === e.a || i === e.b) out.push(E); if (i === s.a || i === s.b) out.push(S); }
+    if (i === S) { out.push(s.a, s.b); if (s.a === e.a && s.b === e.b) out.push(E); }
+    if (i === E) out.push(e.a, e.b);
     return out;
   };
-  dist[16] = 0;
+  dist[S] = 0;
   for (;;) {
     let u = -1; for (let i = 0; i < N; i++) if (!used[i] && (u < 0 || dist[i] < dist[u])) u = i;
-    if (u < 0 || dist[u] >= 1e9) break; used[u] = true; if (u === 17) break;
+    if (u < 0 || dist[u] >= 1e9) break; used[u] = true; if (u === E) break;
     for (const v of adj(u)) { const [ax, az] = pos(u), [bx, bz] = pos(v), d = dist[u] + Math.abs(ax - bx) + Math.abs(az - bz); if (d < dist[v]) { dist[v] = d; prev[v] = u; } }
   }
-  const path = [[tx, tz]]; let u = 17; while (u >= 0) { path.push(pos(u)); u = prev[u]; } path.push([fx, fz]);
+  const path = [[tx, tz]]; let u = E; while (u >= 0) { path.push(pos(u)); u = prev[u]; } path.push([fx, fz]);
   return path.reverse();
 }
 let route = null, routeT = 0;
@@ -1247,7 +1310,7 @@ function drawBigmap() {
   bmx.font = `${12 * devicePixelRatio}px Jost, sans-serif`; bmx.fillStyle = 'rgba(255,255,255,.75)'; bmx.textAlign = 'center';
   RZ.forEach((z, i) => { const [x, y] = T(-232, z); bmx.fillText(ROADZ[i], x, y - 7 * devicePixelRatio); });
   RX.forEach((xx, i) => { const [x, y] = T(xx, -128); bmx.save(); bmx.translate(x, y); bmx.fillText(ROADX[i], 0, 0); bmx.restore(); });
-  { const [x, y] = T(0, 0); bmx.fillText('Parc central', x, y - 20 * devicePixelRatio); }
+  for (const [t, x, z] of [['Le parc', 30, 5], ['Commerces', -150, -55], ['Villas Chloé', 30, -38], ['Villas Chloé', 30, 48], ['Villas Céline', 24, 120], ['Villas Margaux', -143, 120], ['Villas Margaux', 183, 45]]) { const [a, b] = T(x, z); bmx.fillText(t, a, b); }
   if (route) { bmx.strokeStyle = route.c; bmx.lineWidth = 4 * devicePixelRatio; bmx.beginPath(); route.p.forEach(([x, z], i) => { const [a, b] = T(x, z); i ? bmx.lineTo(a, b) : bmx.moveTo(a, b); }); bmx.stroke(); }
   for (const bl of blipList()) { const [x, y] = T(bl.x, bl.z); drawBlip(bmx, x, y, bl, devicePixelRatio); }
   const [px, py] = T(P.car ? P.car.x : P.x, P.car ? P.car.z : P.z);
@@ -1645,13 +1708,19 @@ function updatePeds(dt) {
 
 /* ================= zones ================= */
 function zoneOf(x, z) {
-  if (Math.abs(x) < 60 && Math.abs(z) < 30) return Math.hypot(x - 32, z + 8) < 11 ? ['Parc central', 'Espace commun'] : ['Domaine Red Stone', 'Parc central'];
+  const inR = (r, a, b) => a > r[0] && a < r[1] && b > r[2] && b < r[3];
+  if (inR(PARK, x, z)) return Math.hypot(x - 38, z - 5) < 8 ? ['Le parc', 'La placette'] : ['Domaine Red Stone', 'Le parc'];
   for (const l of lots) if (x > l.x0 && x < l.x1 && z > l.z0 && z < l.z1) return [`Lot n° ${l.n}`, `Villa ${l.name}`];
-  for (let i = 0; i < 4; i++) if (Math.abs(z - RZ[i]) < 5) return ['Domaine Red Stone', ROADZ[i]];
-  for (let i = 0; i < 4; i++) if (Math.abs(x - RX[i]) < 5) return ['Domaine Red Stone', ROADX[i]];
-  for (const [px, pz] of parkings) if (Math.abs(x - px) < 31 && Math.abs(z - pz) < 8) return ['Domaine Red Stone', 'Parking visiteurs'];
-  if (Math.abs(x) > 200 || Math.abs(z) > 110) return ['Les abords', 'La pinède'];
-  return ['Domaine Red Stone', 'Le quartier'];
+  for (let i = 0; i < RZ.length; i++) if (Math.abs(z - RZ[i]) < 5) return ['Domaine Red Stone', ROADZ[i]];
+  for (let i = 0; i < RX.length; i++) if (Math.abs(x - RX[i]) < 5) return ['Domaine Red Stone', ROADX[i]];
+  if (inR(SHOPS, x, z)) {
+    if (x > shopParking[0] && x < shopParking[1] && z > shopParking[2] && z < shopParking[3]) return ['Les commerces', 'Parking'];
+    if (z < 0) return ['Domaine Red Stone', 'Les commerces'];
+    return Math.hypot(x + 104, z - 48) < 10 ? ['Jardin des commerces', 'Espace commun'] : ['Domaine Red Stone', 'Jardin des commerces'];
+  }
+  for (const b of CHLOE_BLOCKS) if (inR(b, x, z)) return ['Domaine Red Stone', 'Villas Chloé'];
+  if (!inR(SITE, x, z)) return ['Les abords', 'La pinède'];
+  return ['Domaine Red Stone', 'Le domaine'];
 }
 
 /* ================= main loop ================= */
