@@ -15,6 +15,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300;1,400&family=Jost:wght@300;400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="js/vendor/pannellum.css">
 <link rel="preload" as="image" href="img/vr/chloe/hall-sm.jpg">
+<link rel="preload" as="image" href="img/vr/chloe/nd03.jpg">
 <style>
 :root{--ink:#1f1d1a;--paper:#f7f5f0;--gold:#d8b25a;--display:'Cormorant Garamond',Georgia,serif;--body:'Jost',system-ui,sans-serif}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -48,6 +49,7 @@ html,body{height:100%;overflow:hidden;background:#0e0f12;color:var(--paper);font
 #thumbs::-webkit-scrollbar{display:none}
 #thumbs button{flex:none;position:relative;width:132px;height:82px;padding:0;border:1px solid rgba(255,255,255,.25);border-radius:6px;overflow:hidden;background:#000;cursor:pointer;opacity:.78;transition:opacity .25s,border-color .25s,transform .25s}
 #thumbs button img{display:block;width:100%;height:100%;object-fit:cover}
+#thumbs button i{position:absolute;top:6px;left:6px;font:400 9px/1 var(--body);font-style:normal;letter-spacing:.14em;color:var(--ink);background:var(--gold);border-radius:999px;padding:4px 6px}
 #thumbs button span{position:absolute;left:0;right:0;bottom:0;padding:16px 8px 6px;font:300 10px/1.2 var(--body);letter-spacing:.14em;text-transform:uppercase;color:var(--paper);text-align:left;background:linear-gradient(transparent,rgba(0,0,0,.75))}
 #thumbs button:hover{opacity:1;transform:translateY(-2px)}
 #thumbs button[aria-current=true]{opacity:1;border-color:var(--gold);box-shadow:0 0 0 1px var(--gold)}
@@ -82,18 +84,32 @@ html,body{height:100%;overflow:hidden;background:#0e0f12;color:var(--paper);font
   var maxTex = 4096;
   try { var gl = document.createElement('canvas').getContext('webgl'); if (gl) maxTex = gl.getParameter(gl.MAX_TEXTURE_SIZE); } catch (e) {}
   var HD = maxTex >= 6000 && Math.min(screen.width, screen.height) * (devicePixelRatio || 1) >= 1000;
-  // Une vue 360° par entrée : identifiant, nom, image équirectangulaire, aperçu, vignette, cap de départ et repères vers d'autres vues.
+  // Toutes les vues sont celles du studio : la vraie vue 360° du hall, puis ses rendus (vues réelles, à regarder dans la même visionneuse).
+  // kind '360' = panorama complet ; kind 'vue' = rendu perspective reprojeté en équirectangulaire (haov/vaov = étendue angulaire), on tourne la tête dans les limites de l'image.
+  var V = 'img/vr/chloe/';
   var SCENES = [
-    { id: 'hall', name: 'Salon · double hauteur', desc: 'Rendu 360° du studio, tel quel', src: HD ? 'img/vr/chloe/hall-6000.jpg' : 'img/vr/chloe/hall.jpg', preview: 'img/vr/chloe/hall-sm.jpg', thumb: 'img/vr/chloe/hall-thumb.jpg', yaw: 0, pitch: -2,
-      hotspots: [{ yaw: 79, pitch: -4, to: 'salon', text: 'Salon · cheminée' }] },
-    { id: 'salon', name: 'Salon · cheminée', desc: 'Maquette de l’atelier, en cours', src: 'img/vr/chloe/salon.jpg', preview: 'img/vr/chloe/salon-sm.jpg', thumb: 'img/vr/chloe/salon-thumb.jpg', yaw: -40, pitch: -4,
-      hotspots: [{ yaw: 22, pitch: -5, to: 'hall', text: 'Double hauteur' }] }
+    { id: 'hall', kind: '360', name: 'Salon · double hauteur', desc: 'Vue 360° du studio', src: HD ? V + 'hall-6000.jpg' : V + 'hall.jpg', preview: V + 'hall-sm.jpg', thumb: V + 'hall-thumb.jpg', yaw: 0, pitch: -2, hotspots: [] },
+    { id: 'salon', kind: 'vue', name: 'Salon · cheminée', desc: 'Vue du studio', src: V + 'nd03.jpg', thumb: V + 'nd03-thumb.jpg', haov: 86, vaov: 63.9 },
+    { id: 'sejour', kind: 'vue', name: 'Séjour', desc: 'Vue du studio', src: V + 'nd02.jpg', thumb: V + 'nd02-thumb.jpg', haov: 82, vaov: 60.4 },
+    { id: 'sejour-baie', kind: 'vue', name: 'Séjour · la baie', desc: 'Vue du studio', src: V + 'nd04.jpg', thumb: V + 'nd04-thumb.jpg', haov: 82, vaov: 60.4 },
+    { id: 'piscine', kind: 'vue', name: 'Piscine · terrasse couverte', desc: 'Vue du studio', src: V + 'nd07.jpg', thumb: V + 'nd07-thumb.jpg', haov: 74, vaov: 62.3 },
+    { id: 'facade', kind: 'vue', name: 'Façade · le soir', desc: 'Vue du studio', src: V + 'nd01.jpg', thumb: V + 'nd01-thumb.jpg', haov: 74, vaov: 79 },
+    { id: 'fontaine', kind: 'vue', name: 'Jardin · la fontaine', desc: 'Vue du studio', src: V + 'nd06.jpg', thumb: V + 'nd06-thumb.jpg', haov: 74, vaov: 62.3 },
+    { id: 'jardin', kind: 'vue', name: 'Jardin · la sculpture', desc: 'Vue du studio', src: V + 'nd05.jpg', thumb: V + 'nd05-thumb.jpg', haov: 78, vaov: 66 },
+    { id: 'entree', kind: 'vue', name: 'Jardin · l’entrée', desc: 'Vue du studio', src: V + 'nd08.jpg', thumb: V + 'nd08-thumb.jpg', haov: 78, vaov: 66 }
   ];
   var byId = {}; var scenes = {};
   SCENES.forEach(function (s) {
     byId[s.id] = s;
-    scenes[s.id] = { type: 'equirectangular', panorama: s.src, preview: s.preview, yaw: s.yaw, pitch: s.pitch, hfov: 95,
-      hotSpots: s.hotspots.map(function (h) { return { pitch: h.pitch, yaw: h.yaw, type: 'scene', sceneId: h.to, text: h.text, targetYaw: byId[h.to] ? byId[h.to].yaw : 0, targetPitch: -2 }; }) };
+    if (s.kind === '360') {
+      scenes[s.id] = { type: 'equirectangular', panorama: s.src, preview: s.preview, yaw: s.yaw, pitch: s.pitch, hfov: 95, minHfov: 40, maxHfov: 115,
+        hotSpots: (s.hotspots || []).map(function (h) { return { pitch: h.pitch, yaw: h.yaw, type: 'scene', sceneId: h.to, text: h.text, targetYaw: byId[h.to] ? byId[h.to].yaw : 0, targetPitch: -2 }; }) };
+    } else {
+      var hf = Math.min(62, s.haov - 8);
+      scenes[s.id] = { type: 'equirectangular', panorama: s.src, haov: s.haov, vaov: s.vaov, vOffset: 0, yaw: 0, pitch: 0, hfov: hf, minHfov: 30, maxHfov: Math.min(90, s.haov - 4),
+        minYaw: -s.haov / 2, maxYaw: s.haov / 2, minPitch: -s.vaov / 2, maxPitch: s.vaov / 2, avoidShowingBackground: true, autoRotate: 0, hotSpots: [] };
+      s.yaw = 0; s.pitch = 0; s.hfov = hf;
+    }
   });
   var first = (location.hash || '').slice(1); if (!scenes[first]) first = SCENES[0].id;
   var viewer = pannellum.viewer('pano', {
@@ -105,8 +121,8 @@ html,body{height:100%;overflow:hidden;background:#0e0f12;color:var(--paper);font
   var thumbs = $('thumbs');
   SCENES.forEach(function (s) {
     var b = document.createElement('button'); b.type = 'button'; b.setAttribute('aria-current', 'false'); b.dataset.id = s.id;
-    b.innerHTML = '<img src="' + s.thumb + '" alt="" loading="lazy"><span>' + s.name + '</span>';
-    b.addEventListener('click', function () { if (viewer.getScene() !== s.id) viewer.loadScene(s.id, s.pitch, s.yaw, 95); });
+    b.innerHTML = '<img src="' + s.thumb + '" alt="" loading="lazy">' + (s.kind === '360' ? '<i>360°</i>' : '') + '<span>' + s.name + '</span>';
+    b.addEventListener('click', function () { if (viewer.getScene() !== s.id) viewer.loadScene(s.id, s.pitch, s.yaw, s.hfov || 95); });
     thumbs.appendChild(b);
   });
   function current(id) {
@@ -114,7 +130,9 @@ html,body{height:100%;overflow:hidden;background:#0e0f12;color:var(--paper);font
     $('sceneName').textContent = s.name; $('sceneDesc').textContent = s.desc || '';
     thumbs.querySelectorAll('button').forEach(function (b) { b.setAttribute('aria-current', b.dataset.id === id ? 'true' : 'false'); });
     if (history.replaceState) history.replaceState(null, '', '#' + id);
+    $('rot').hidden = s.kind !== '360'; if (s.kind !== '360') viewer.stopAutoRotate(); else if (rotOn) viewer.startAutoRotate(-1.6);
   }
+  var rotOn = true;
   current(first);
   viewer.on('scenechange', current);
   var loaded = false;
@@ -124,7 +142,6 @@ html,body{height:100%;overflow:hidden;background:#0e0f12;color:var(--paper);font
   var hide = function () { $('hint').classList.remove('on'); };
   ['mousedown', 'touchstart', 'wheel', 'keydown'].forEach(function (ev) { $('pano').addEventListener(ev, hide, { passive: true }); });
   // rotation automatique
-  var rotOn = true;
   $('rot').addEventListener('click', function () { rotOn = !rotOn; this.setAttribute('aria-pressed', rotOn); if (rotOn) viewer.startAutoRotate(-1.6); else viewer.stopAutoRotate(); });
   // plein écran
   $('fs').addEventListener('click', function () { viewer.toggleFullscreen(); });
@@ -136,7 +153,7 @@ html,body{height:100%;overflow:hidden;background:#0e0f12;color:var(--paper);font
   document.addEventListener('keydown', function (e) {
     if (e.key !== 'PageDown' && e.key !== 'PageUp') return;
     var i = SCENES.findIndex(function (s) { return s.id === viewer.getScene(); }); var n = SCENES[(i + (e.key === 'PageDown' ? 1 : SCENES.length - 1)) % SCENES.length];
-    viewer.loadScene(n.id, n.pitch, n.yaw, 95);
+    viewer.loadScene(n.id, n.pitch, n.yaw, n.hfov || 95);
   });
   window.WH360 = viewer;
 })();
