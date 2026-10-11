@@ -821,3 +821,12 @@ html[dir=rtl] .wa{left:auto;right:clamp(16px,2.4vw,34px)}html[dir=rtl] .totop{ri
 .sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 :focus-visible{outline:2px solid var(--champagne-deep);outline-offset:3px}
 .hs-dot,.tour-bar{pointer-events:none}
+
+/* plans interactifs */
+.plan-hot{position:relative}
+.hot{position:absolute;left:var(--x);top:var(--y);transform:translate(-50%,-50%);width:14px;height:14px;border-radius:50%;background:var(--champagne-deep);box-shadow:0 0 0 4px rgba(181,154,106,.25);cursor:pointer;z-index:3;transition:transform .3s}
+.hot::after{content:"";position:absolute;inset:-6px;border-radius:50%;border:1px solid var(--champagne-deep);opacity:.6;animation:pulse 2.4s ease-out infinite}
+.hot span{position:absolute;left:50%;bottom:calc(100% + 10px);transform:translateX(-50%) translateY(4px);white-space:nowrap;background:var(--ink);color:var(--bg);font-size:.6rem;letter-spacing:.24em;text-transform:uppercase;padding:.45rem .8rem;opacity:0;transition:opacity .3s,transform .3s;pointer-events:none}
+.hot:hover span,.hot.on span{opacity:1;transform:translateX(-50%)}
+.hot:hover,.hot.on{transform:translate(-50%,-50%) scale(1.25)}
+.plans figure.plan-hot img{cursor:zoom-in}

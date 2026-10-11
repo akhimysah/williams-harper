@@ -129,3 +129,6 @@
   const live=document.createElement('div');live.setAttribute('aria-live','polite');live.className='sr-only';document.body.appendChild(live);
   document.addEventListener('focusin',e=>{const s=e.target.closest('section[data-nav]');if(s&&live.textContent!==s.dataset.nav)live.textContent=s.dataset.nav});
 })();
+// ---- plans interactifs : points cliquables avec le nom de la pièce
+(function(){document.querySelectorAll('.plan-hot[data-spots]').forEach(f=>{let spots=[];try{spots=JSON.parse(f.dataset.spots)}catch(e){return}
+  spots.forEach(([x,y,n])=>{const b=document.createElement('button');b.type='button';b.className='hot';b.style.setProperty('--x',x+'%');b.style.setProperty('--y',y+'%');b.setAttribute('aria-label',n);b.innerHTML='<span></span>';b.firstChild.textContent=n;b.addEventListener('click',e=>{e.stopPropagation();f.querySelectorAll('.hot.on').forEach(o=>{if(o!==b)o.classList.remove('on')});b.classList.toggle('on')});f.appendChild(b)})})})();
