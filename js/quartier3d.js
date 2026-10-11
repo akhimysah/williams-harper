@@ -1,6 +1,6 @@
 // Le Quartier 3D — Domaine Red Stone. Open-world walk / drive in the estate.
 import * as THREE from 'three';
-import { mergeGeometries } from './vendor/BufferGeometryUtils.js';
+import { mergeGeometries, mergeVertices } from './vendor/BufferGeometryUtils.js';
 
 const $ = id => document.getElementById(id);
 const isTouch = matchMedia('(pointer:coarse)').matches;
@@ -529,6 +529,7 @@ function extrudeSide(pts, w, col) {
 function carGeos(hex, kind) {
   const key = hex + kind;
   if (carGeoCache[key]) return carGeoCache[key];
+  if (kind >= 3) return (carGeoCache[key] = (kind === 3 ? buildRS6 : build911)(hex));
   const K = CAR_KINDS[kind], L = K.L, wr = K.wr;
   const parts = [], lights = [], wheelsStatic = [];
   const b = (arr, w, h, l, x, y, z, col) => { const g = new THREE.BoxGeometry(w, h, l); g.translate(x, y, z); arr.push(colorGeo(g, col)); };
@@ -554,6 +555,141 @@ function carGeos(hex, kind) {
   const stat = mergeGeometries([...parts, ...wheelsStatic, ...lightCols]);
   return (carGeoCache[key] = { body, stat, wheelGeo, wp, head, tail, L });
 }
+/* ---- hand-built hero cars: Audi RS6-R ABT (kind 3) and Porsche 911 Cabriolet 992 (kind 4) ---- */
+const zeroUV = g => { g.setAttribute('uv', new THREE.Float32BufferAttribute(new Float32Array(g.attributes.position.count * 2), 2)); return g; };
+// smooth lofted body: cross-sections (rounded superellipse) along the length, closed at both ends
+function profileFn(pts) {
+  const S = new THREE.SplineCurve(pts.map(([z, y]) => new THREE.Vector2(z, y))).getPoints(300);
+  return z => {
+    if (z <= S[0].x) return S[0].y; if (z >= S[S.length - 1].x) return S[S.length - 1].y;
+    let lo = 0, hi = S.length - 1; while (hi - lo > 1) { const m = (lo + hi) >> 1; if (S[m].x < z) lo = m; else hi = m; }
+    const a = S[lo], b = S[hi]; return a.y + (b.y - a.y) * (z - a.x) / ((b.x - a.x) || 1);
+  };
+}
+function loft({ z0, z1, N = 80, K = 18, top, bot, hw, col, n = 5, endR = 0.3, bump }) {
+  const pos = [], cols = [], idx = [], c = new THREE.Color(), R = 2 * K;
+  for (let i = 0; i <= N; i++) {
+    const z = z0 + (z1 - z0) * i / N, dEnd = Math.min(z - z0, z1 - z);
+    const e = dEnd < endR ? Math.sqrt(Math.max(0, 1 - ((endR - dEnd) / endR) ** 2)) : 1;
+    const yt = top(z), yb = bot(z), ym = (yt + yb) / 2, hh = (yt - yb) / 2 * (0.25 + 0.75 * e);
+    for (let j = 0; j < R; j++) {
+      const a = -Math.PI / 2 + Math.PI * 2 * j / R, ca = Math.cos(a), sa = Math.sin(a);
+      const sx = Math.sign(ca) * Math.abs(ca) ** (2 / n), sy = Math.sign(sa) * Math.abs(sa) ** (2 / n);
+      let y = ym + hh * sy; const x = sx * hw(z, y) * e;
+      if (bump) y += bump(z) * smooth(0.45, 0.95, Math.abs(sx)) * Math.max(0, sy);
+      pos.push(x, y, z); c.set(col(z, y, sx)); cols.push(c.r, c.g, c.b);
+    }
+  }
+  for (let i = 0; i < N; i++) for (let j = 0; j < R; j++) {
+    const a = i * R + j, b = i * R + (j + 1) % R, cc = (i + 1) * R + j, d = (i + 1) * R + (j + 1) % R;
+    idx.push(a, b, cc, b, d, cc);
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('color', new THREE.Float32BufferAttribute(cols, 3)); g.setIndex(idx);
+  g.computeVertexNormals(); zeroUV(g);
+  return g.toNonIndexed();
+}
+const archBot = (zf, zr, wy, R, base = 0.3) => z => {
+  let y = base;
+  for (const zw of [zf, zr]) if (Math.abs(z - zw) < R) y = Math.max(y, wy + Math.sqrt(R * R - (z - zw) ** 2) * 0.96);
+  return y;
+};
+function heroWheel(wr, rimCol, spokeCol, spokes, twin) {
+  const parts = [];
+  parts.push(colorGeo(new THREE.CylinderGeometry(wr, wr, 0.3, 24).rotateZ(Math.PI / 2), '#121212'));
+  parts.push(colorGeo(new THREE.CylinderGeometry(wr * 0.74, wr * 0.74, 0.31, 24).rotateZ(Math.PI / 2), '#202022'));
+  parts.push(colorGeo(new THREE.TorusGeometry(wr * 0.74, 0.025, 6, 28).rotateY(Math.PI / 2).translate(0.155, 0, 0), rimCol));
+  parts.push(colorGeo(new THREE.TorusGeometry(wr * 0.74, 0.025, 6, 28).rotateY(Math.PI / 2).translate(-0.155, 0, 0), rimCol));
+  for (const side of [-1, 1]) {
+    parts.push(colorGeo(new THREE.CylinderGeometry(wr * 0.16, wr * 0.16, 0.04, 10).rotateZ(Math.PI / 2).translate(side * 0.15, 0, 0), rimCol));
+    for (let i = 0; i < spokes; i++) for (const off of twin ? [-0.09, 0.09] : [0]) {
+      const a = i / spokes * Math.PI * 2 + off, g = new THREE.BoxGeometry(0.03, wr * 0.62, twin ? 0.045 : 0.06);
+      g.translate(0, wr * 0.42, 0); g.rotateX(a); g.translate(side * 0.155, 0, 0); parts.push(colorGeo(g, spokeCol));
+    }
+  }
+  return mergeGeometries(parts);
+}
+function finishHero(parts, lights, wheelGeo, wp, L, caliper) {
+  const head = mergeGeometries(lights.head), tail = mergeGeometries(lights.tail);
+  for (const [x, y, z] of wp) { const c = new THREE.BoxGeometry(0.08, 0.2, 0.32); c.translate(x * 0.86, y + 0.08, z + 0.12); parts.push(colorGeo(c, caliper)); }
+  const body = mergeGeometries(parts);
+  const stat = mergeGeometries([...parts, ...wp.map(([x, y, z]) => wheelGeo.clone().translate(x, y, z)),
+    ...lights.head.map(g => colorGeo(g.clone(), '#d9d5c8')), ...lights.tail.map(g => colorGeo(g.clone(), '#5a1414'))]);
+  return { body, stat, wheelGeo, wp, head, tail, L, hero: true };
+}
+function buildRS6(hex) {
+  const L = 5.0, wr = 0.38, zf = 1.5, zr = -1.45, R = 0.47, P = [], lights = { head: [], tail: [] };
+  const box = (w, h, l, x, y, z, col, rx = 0, arr = P) => { const g = new THREE.BoxGeometry(w, h, l); if (rx) g.rotateX(rx); g.translate(x, y, z); arr.push(colorGeo(g, col)); };
+  const taper = z => 1 - 0.1 * smooth(1.75, 2.55, z) - 0.07 * smooth(1.9, 2.6, -z);
+  const flare = (z, y) => 1 + 0.045 * (Math.exp(-(((z - zf) / 0.6) ** 2)) + Math.exp(-(((z - zr) / 0.6) ** 2))) * (1 - smooth(0.8, 1.0, y));
+  const bodyFn = (z, y) => taper(z) * flare(z, y) * (1 - 0.08 * smooth(0.78, 1.05, y)) * (1 - 0.05 * (1 - smooth(0.3, 0.5, y)));
+  const body = loft({ z0: -2.55, z1: 2.55, top: profileFn([[-2.55, 0.9], [-2.3, 1.05], [-0.5, 1.06], [0.95, 1.04], [1.6, 0.97], [2.3, 0.84], [2.55, 0.66]]),
+    bot: archBot(zf, zr, wr, R, 0.3), hw: (z, y) => 0.98 * taper(z) * flare(z, y) * (1 - 0.08 * smooth(0.78, 1.05, y)) * (1 - 0.06 * (1 - smooth(0.3, 0.5, y))),
+    col: (z, y) => y < 0.37 ? '#151515' : hex, bump: z => 0.035 * (Math.exp(-(((z - zf) / 0.55) ** 2)) + Math.exp(-(((z - zr) / 0.55) ** 2))), endR: 0.35 });
+  P.push(body);
+  const gTop = profileFn([[-2.45, 1.02], [-2.3, 1.3], [-1.95, 1.44], [-0.6, 1.47], [0.4, 1.4], [1.0, 1.02]]);
+  P.push(loft({ z0: -2.45, z1: 1.0, N: 70, top: gTop, bot: () => 0.98, n: 6, endR: 0.06,
+    hw: (z, y) => 0.98 * taper(z) * 0.92 * (1 - 0.24 * smooth(1.0, 1.5, y)),
+    col: (z, y) => (y > gTop(z) - 0.03 && z < 0.36 && z > -2.05) ? hex : (Math.abs(z + 0.6) < 0.07 || Math.abs(z + 1.55) < 0.07 || y < 1.03) ? '#111111' : '#141b21' }));
+  for (const sx of [-1, 1]) {
+    box(0.05, 0.05, 2.6, sx * 0.6, 1.5, -0.9, '#1a1a1a'); // roof rails
+    box(0.16, 0.12, 0.26, sx * 1.02, 1.1, 0.78, '#111'); // mirrors
+    box(0.05, 0.12, 1.9, sx * 0.99, 0.36, 0.02, '#151515'); // ABT side skirts
+    box(0.5, 0.09, 0.12, sx * 0.6, 0.82, 2.37, '#0e1114', -0.25); // headlight housings
+    box(0.46, 0.025, 0.04, sx * 0.6, 0.79, 2.43, '#fff', 0, lights.head); // LED signature
+    box(0.08, 0.06, 0.04, sx * 0.84, 0.8, 2.38, '#fff', 0, lights.head);
+    box(0.5, 0.09, 0.05, sx * 0.6, 0.93, -2.41, '#fff', 0, lights.tail);
+    const ex = new THREE.CylinderGeometry(0.075, 0.075, 0.2, 14).rotateX(Math.PI / 2); ex.scale(1.7, 1, 1); ex.translate(sx * 0.6, 0.42, -2.36); P.push(colorGeo(ex, '#2b2b2b'));
+    box(0.2, 0.18, 0.06, sx * 0.8, 0.5, 2.5, '#0f0f0f'); // side intakes
+  }
+  box(0.7, 0.025, 0.04, 0, 0.93, -2.43, '#2a2a2a'); // tail light bridge
+  const hex6 = new THREE.Shape(); [[-0.55, 0.38], [0.55, 0.38], [0.66, 0.6], [0.46, 0.8], [-0.46, 0.8], [-0.66, 0.6]].forEach(([x, y], i) => i ? hex6.lineTo(x, y) : hex6.moveTo(x, y));
+  const gr = new THREE.ExtrudeGeometry(hex6, { depth: 0.08, bevelEnabled: false }); gr.translate(0, 0, 2.47); gr.deleteAttribute('uv'); P.push(colorGeo(zeroUV(gr), '#0d0d0d'));
+  for (let y = 0.44; y < 0.78; y += 0.07) box(1.1, 0.012, 0.02, 0, y, 2.56, '#3a3a3a');
+  box(1.8, 0.035, 0.22, 0, 0.32, 2.3, '#121212'); // carbon splitter
+  box(1.3, 0.12, 0.2, 0, 0.36, -2.28, '#121212'); // diffuser
+  box(1.3, 0.04, 0.3, 0, 1.45, -2.25, '#141414', 0.15); // roof spoiler
+  const wheelGeo = heroWheel(wr, '#2a2b2e', '#3c3e42', 10, false);
+  const wp = [[0.88, wr, zf], [-0.88, wr, zf], [0.88, wr, zr], [-0.88, wr, zr]];
+  return finishHero(P, lights, wheelGeo, wp, L, '#c3202a');
+}
+function build911(hex) {
+  const L = 4.52, wr = 0.36, zf = 1.18, zr = -1.27, R = 0.44, P = [], lights = { head: [], tail: [] };
+  const box = (w, h, l, x, y, z, col, rx = 0, arr = P) => { const g = new THREE.BoxGeometry(w, h, l); if (rx) g.rotateX(rx); g.translate(x, y, z); arr.push(colorGeo(g, col)); };
+  const taper = z => 1 - 0.15 * smooth(1.5, 2.3, z) - 0.09 * smooth(1.8, 2.32, -z);
+  const hips = (z, y) => 1 + 0.06 * smooth(-0.3, -1.0, z) * (1 - smooth(0.8, 1.05, y));
+  const bodyFn = (z, y) => taper(z) * hips(z, y) * (1 - 0.1 * smooth(0.68, 1.0, y)) * (1 - 0.05 * (1 - smooth(0.3, 0.5, y)));
+  P.push(loft({ z0: -2.3, z1: 2.3, top: profileFn([[-2.3, 0.7], [-2.2, 0.86], [-1.85, 0.97], [-1.3, 1.02], [-0.75, 0.96], [0.4, 0.93], [1.0, 0.89], [1.6, 0.8], [2.05, 0.72], [2.3, 0.56]]),
+    bot: archBot(zf, zr, wr, R, 0.3), hw: (z, y) => 0.93 * taper(z) * hips(z, y) * (1 - 0.1 * smooth(0.68, 1.0, y)) * (1 - 0.06 * (1 - smooth(0.3, 0.5, y))),
+    col: (z, y) => y < 0.36 ? '#151515' : hex, endR: 0.4,
+    bump: z => 0.09 * smooth(0.9, 1.4, z) * (1 - smooth(2.05, 2.3, z)) + 0.07 * smooth(-0.6, -1.0, z) * (1 - smooth(-1.9, -2.2, z)) }));
+  // open cockpit: leather tub, dash, seats, steering wheel
+  box(1.36, 0.03, 1.6, 0, 0.955, -0.05, '#2b211b');
+  box(1.4, 0.16, 0.24, 0, 1.0, 0.72, '#151515');
+  for (const sx of [-1, 1]) {
+    box(0.5, 0.16, 0.5, sx * 0.36, 0.98, -0.12, '#8b5a3c');
+    const back = new THREE.BoxGeometry(0.5, 0.62, 0.12); back.translate(0, 0.31, 0); back.rotateX(-0.22); back.translate(sx * 0.36, 0.98, -0.42); P.push(colorGeo(back, '#8b5a3c'));
+    box(0.3, 0.2, 0.1, sx * 0.36, 1.62, -0.6, '#7a4d33');
+    box(0.12, 0.1, 0.24, sx * 0.97, 0.98, 0.62, hex); // mirrors
+    // round headlights
+    const hl = new THREE.SphereGeometry(0.17, 16, 12); hl.scale(1, 1, 0.55); hl.rotateX(-0.35); hl.translate(sx * 0.58, 0.8, 1.98); lights.head.push(colorGeo(hl, '#fff'));
+    box(0.22, 0.08, 0.04, sx * 0.5, 0.45, 2.2, '#0f0f0f');
+    const ex = new THREE.CylinderGeometry(0.06, 0.06, 0.16, 12).rotateX(Math.PI / 2); ex.scale(1.5, 1, 1); ex.translate(sx * 0.2, 0.38, -2.2); P.push(colorGeo(ex, '#2b2b2b'));
+  }
+  const sw = new THREE.TorusGeometry(0.17, 0.025, 6, 18); sw.rotateX(-0.35); sw.translate(0.36, 1.12, 0.48); P.push(colorGeo(sw, '#111'));
+  // windshield + frame
+  const ws = new THREE.BoxGeometry(1.34, 0.55, 0.02); ws.rotateX(-1.0); ws.translate(0, 1.13, 0.76); P.push(colorGeo(ws, '#24323b'));
+  const fr = new THREE.BoxGeometry(1.38, 0.045, 0.045); fr.translate(0, 1.36, 0.6); P.push(colorGeo(fr, '#111'));
+  for (const sx of [-1, 1]) { const a = new THREE.BoxGeometry(0.045, 0.55, 0.045); a.rotateX(-1.0); a.translate(sx * 0.68, 1.13, 0.76); P.push(colorGeo(a, '#111')); }
+  box(1.5, 0.045, 0.03, 0, 0.82, -2.205, '#fff', 0, lights.tail); // light bar
+  for (const sx of [-1, 1]) box(0.3, 0.09, 0.03, sx * 0.6, 0.8, -2.19, '#fff', 0, lights.tail);
+  for (let z = -1.45; z > -1.85; z -= 0.07) box(0.9, 0.02, 0.03, 0, 1.0 + (z + 1.45) * 0.2, z, '#111'); // engine grille
+  const wheelGeo = heroWheel(wr, '#c9cbcf', '#d5d7da', 5, true);
+  const wp = [[0.82, wr, zf], [-0.82, wr, zf], [0.86, wr, zr], [-0.86, wr, zr]];
+  return finishHero(P, lights, wheelGeo, wp, L, '#c8a02a');
+}
+MAT.carGloss = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.22, metalness: 0.45 });
+const CAR_NAMES = { 3: 'Audi RS6-R ABT', 4: 'Porsche 911 Cabriolet' };
 const cars = [];
 class Car {
   constructor(x, z, h, hex, kind = 0) {
@@ -561,9 +697,10 @@ class Car {
     this.kind = kind; this.hex = hex; this.ai = null; this.knock = 0; this.honk = 0;
     const G = carGeos(hex, kind); this.G = G; this.half = G.L / 2;
     this.g = new THREE.Group(); scene.add(this.g);
-    this.stat = new THREE.Mesh(G.stat, MAT.car); this.stat.castShadow = true;
+    const bm = G.hero ? MAT.carGloss : MAT.car;
+    this.stat = new THREE.Mesh(G.stat, bm); this.stat.castShadow = true;
     this.dynG = new THREE.Group();
-    this.body = new THREE.Mesh(G.body, MAT.car); this.body.castShadow = true;
+    this.body = new THREE.Mesh(G.body, bm); this.body.castShadow = true;
     this.headM = new THREE.Mesh(G.head, MAT.head); this.tailM = new THREE.Mesh(G.tail, MAT.tail);
     this.dynG.add(this.body, this.headM, this.tailM);
     this.wheels = G.wp.map(([wx, wy, wz]) => { const p = new THREE.Group(); p.position.set(wx, wy, wz); const m = new THREE.Mesh(G.wheelGeo, MAT.car); m.castShadow = true; p.add(m); this.dynG.add(p); return p; });
@@ -576,8 +713,9 @@ class Car {
   speed() { return Math.hypot(this.vx, this.vz); }
 }
 for (const [x, z, h] of parkedSpots) new Car(x, z, h, pick(CAR_COLORS), rnd() < 0.25 ? 1 : 0);
-new Car(104, 112.5, Math.PI / 2, '#b08d57', 2);
-new Car(14, -29.2, Math.PI / 2, '#1f1d1a', 2);
+new Car(104, 112.5, Math.PI / 2, '#a51c24', 4);
+new Car(12, -25.3, Math.PI / 2 + 0.25, '#8a8d8f', 3);
+new Car(4, -25.3, Math.PI / 2 + 0.25, '#d9d6cf', 4);
 
 // traffic AI
 function laneFor(dx, dz, roadCoord) { return roadCoord + (dx ? dx * 2.5 * 1 : -dz * 2.5); }
@@ -588,7 +726,8 @@ function spawnTraffic(n) {
     const along = (rnd() * 2 - 1) * (axisX ? EXT - 20 : ZEXT - 20);
     const dx = axisX ? dir : 0, dz = axisX ? 0 : dir;
     const lane = laneFor(dx, dz, road);
-    const c = new Car(axisX ? along : lane, axisX ? lane : along, Math.atan2(dx, dz), pick(CAR_COLORS), rnd() < 0.3 ? 1 : 0);
+    const hk = i % 6 === 1 ? 3 : i % 6 === 4 ? 4 : rnd() < 0.3 ? 1 : 0;
+    const c = new Car(axisX ? along : lane, axisX ? lane : along, Math.atan2(dx, dz), hk === 3 ? pick(['#8a8d8f', '#1f1f1f', '#2f4a6e']) : hk === 4 ? pick(['#a51c24', '#d9d6cf', '#c9a227']) : pick(CAR_COLORS), hk);
     c.ai = { dx, dz, lane, v: 8, cruise: 9 + rnd() * 4, prev: 0 }; c.setDyn(true);
   }
 }
@@ -1123,7 +1262,7 @@ function showRadio(name) { $('radio').textContent = name; $('radio').classList.a
 function act() {
   if (P.car) return;
   if (nearMission && !mission) {
-    if (nearMission.needCar) { hint('Il vous faut une voiture : la <b>berline dorée</b> est garée juste à côté. Montez avec <kbd>F</kbd> puis revenez sur le marqueur.', 6); return; }
+    if (nearMission.needCar) { hint('Il vous faut une voiture : la <b>Porsche 911</b> rouge est garée juste à côté. Montez avec <kbd>F</kbd> puis revenez sur le marqueur.', 6); return; }
     startMission(nearMission); return;
   }
   if (nearDoor) { suppressPause = true; document.exitPointerLock?.(); audio.sfx('door'); window.open(nearDoor.url, '_blank', 'noopener'); }
@@ -1148,6 +1287,7 @@ function toggleCar() {
   audio.sfx('door');
   yaw = c.h + Math.PI; lastMouse = -10;
   if (audio.station) showRadio(audio.STATIONS[audio.station].name);
+  if (CAR_NAMES[c.kind]) { $('area-k').textContent = 'Véhicule'; $('area-n').textContent = CAR_NAMES[c.kind]; $('area').classList.add('on'); areaT = 3; lastZone = ''; }
   hint('<kbd>Z</kbd> accélérer · <kbd>S</kbd> freiner · <kbd>Espace</kbd> frein à main · <kbd>H</kbd> klaxon · <kbd>R</kbd> radio · <kbd>F</kbd> descendre', 7, 'drive');
 }
 
@@ -1271,7 +1411,7 @@ function updateDrive(c, dt) {
   const hand = press('Space');
   const fx = c.fx, fz = c.fz;
   let along = c.vx * fx + c.vz * fz;
-  const sport = c.kind === 2, maxF = sport ? 46 : 36, acc = sport ? 13 : 9.5;
+  const sport = c.kind >= 2, maxF = c.kind === 4 ? 52 : c.kind === 3 ? 50 : sport ? 46 : 36, acc = c.kind === 4 ? 15 : c.kind === 3 ? 14 : sport ? 13 : 9.5;
   if (thr) along += acc * (1 - Math.max(0, along) / maxF) * dt * (along < -0.5 ? 2.2 : 1);
   if (brk) along -= (along > 0.5 ? 22 : 7) * dt;
   along = Math.max(along, -10);
@@ -1290,7 +1430,13 @@ function updateDrive(c, dt) {
   const h1 = carSolids(c), h2 = carCars(c), hit = Math.max(h1, h2);
   if (hit > 2.5) { audio.crash(hit); shake = Math.min(1, hit / 12); }
   c.along = c.vx * nfx + c.vz * nfz;
-  for (let i = 0; i < 4; i++) { const w = c.wheels[i]; w.children[0].rotation.x += c.along * dt / 0.36; if (i < 2) w.rotation.y = c.steer; }
+  for (let i = 0; i < 4; i++) { const w = c.wheels[i]; w.children[0].rotation.x += c.along * dt / 0.37; if (i < 2) w.rotation.y = c.steer; }
+  if (c.kind === 4) { // cabriolet: the driver stays visible
+    hero.root.visible = true;
+    hero.root.position.set(c.x + c.fz * 0.36 - c.fx * 0.22, -0.02, c.z - c.fx * 0.36 - c.fz * 0.22); hero.root.position.y = 0.1; hero.root.rotation.y = c.h;
+    animatePerson(hero, 0, 0); hero.legL.rotation.x = hero.legR.rotation.x = -1.45; hero.armL.rotation.x = hero.armR.rotation.x = -1.15;
+    hero.armL.rotation.z = -0.25; hero.armR.rotation.z = 0.25; hero.body.position.y = 0;
+  }
   c.tailM.material = brk && c.along > 0.5 ? MAT.brake : MAT.tail;
   c.sync();
   // drift smoke-ish sound
