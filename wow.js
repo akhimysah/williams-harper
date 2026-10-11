@@ -117,3 +117,15 @@
   // titre de l'onglet quand on quitte la page
   const title=document.title;document.addEventListener('visibilitychange',()=>{document.title=document.hidden?T.back:title});
 })();
+// ---- salve 5 : partage, préchargement des pages au survol, gyroscope 360, accessibilité
+(function(){
+  const L=(document.documentElement.lang||'fr').slice(0,2);const T={fr:{copied:'Lien copié',share:'Partager'},en:{copied:'Link copied',share:'Share'},nl:{copied:'Link gekopieerd',share:'Delen'},ar:{copied:'تم نسخ الرابط',share:'مشاركة'}}[L]||{copied:'OK',share:'Share'};
+  document.querySelectorAll('.share-btn').forEach(b=>b.addEventListener('click',async()=>{const data={title:b.dataset.title||document.title,text:b.dataset.title||document.title,url:location.href.split('#')[0]};if(navigator.share){try{await navigator.share(data)}catch(e){}}else{try{await navigator.clipboard.writeText(data.url);b.textContent=T.copied;setTimeout(()=>b.textContent=T.share,1800)}catch(e){}}}));
+  // préchargement des pages internes au survol / au toucher
+  const seen=new Set();const pre=u=>{if(seen.has(u))return;seen.add(u);const l=document.createElement('link');l.rel='prefetch';l.href=u;l.as='document';document.head.appendChild(l)};
+  document.addEventListener('mouseover',e=>{const a=e.target.closest('a[href]');if(!a)return;const u=new URL(a.href,location.href);if(u.origin===location.origin&&/\.html$/.test(u.pathname)&&u.pathname!==location.pathname)pre(u.pathname)},{passive:true});
+  document.addEventListener('touchstart',e=>{const a=e.target.closest('a[href]');if(!a)return;const u=new URL(a.href,location.href);if(u.origin===location.origin&&/\.html$/.test(u.pathname))pre(u.pathname)},{passive:true});
+  // accessibilité : annonce de la section courante, focus visible sur les éléments injectés
+  const live=document.createElement('div');live.setAttribute('aria-live','polite');live.className='sr-only';document.body.appendChild(live);
+  document.addEventListener('focusin',e=>{const s=e.target.closest('section[data-nav]');if(s&&live.textContent!==s.dataset.nav)live.textContent=s.dataset.nav});
+})();

@@ -114,7 +114,7 @@ html,body{height:100%;overflow:hidden;background:#0e0f12;color:var(--paper);font
   var first = (location.hash || '').slice(1); if (!scenes[first]) first = SCENES[0].id;
   var viewer = pannellum.viewer('pano', {
     default: { firstScene: first, sceneFadeDuration: 900, autoLoad: true, showControls: false, compass: false, autoRotate: -1.6, autoRotateInactivityDelay: 6000,
-      minHfov: 40, maxHfov: 115, mouseZoom: true, keyboardZoom: true, draggable: true, friction: 0.12, orientationOnByDefault: false, hotSpotDebug: false, backgroundColor: [0.055, 0.059, 0.07], crossOrigin: 'anonymous' },
+      minHfov: 40, maxHfov: 115, mouseZoom: true, keyboardZoom: true, draggable: true, friction: 0.12, orientationOnByDefault: matchMedia('(pointer:coarse)').matches, hotSpotDebug: false, backgroundColor: [0.055, 0.059, 0.07], crossOrigin: 'anonymous' },
     scenes: scenes
   });
   // vignettes
@@ -158,5 +158,7 @@ html,body{height:100%;overflow:hidden;background:#0e0f12;color:var(--paper);font
   window.WH360 = viewer;
 })();
 </script>
+<button id="gyro" type="button" style="position:fixed;right:16px;bottom:16px;z-index:50;background:rgba(10,8,6,.55);color:#fff;border:1px solid rgba(255,255,255,.6);border-radius:999px;padding:.7rem 1.1rem;font:500 .6rem/1 Jost,sans-serif;letter-spacing:.3em;text-transform:uppercase;cursor:pointer;display:none">Boussole</button>
+<script>(function(){var b=document.getElementById('gyro');if(!('DeviceOrientationEvent' in window)||!matchMedia('(pointer:coarse)').matches)return;b.style.display='block';var on=false;b.onclick=function(){var go=function(){try{if(on){viewer.stopOrientation();on=false;b.style.opacity='.7'}else{viewer.startOrientation();on=true;b.style.opacity='1'}}catch(e){}};if(DeviceOrientationEvent.requestPermission){DeviceOrientationEvent.requestPermission().then(function(r){if(r==='granted')go()}).catch(function(){})}else go()}})();</script>
 </body>
 </html>
