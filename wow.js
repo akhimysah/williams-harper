@@ -77,3 +77,43 @@
   // 9 : plans
   document.querySelectorAll('.plans figure').forEach(f=>{if(!f.classList.contains('curtain')){f.classList.add('curtain')}});
 })();
+// ---- salve 4 : visite, index de section, retour en haut, zoom galerie, météo, nuit automatique, flèches, hero, contact, galerie, onglet
+(function(){
+  const root=document.documentElement,rm=matchMedia('(prefers-reduced-motion: reduce)').matches,L=(root.lang||'fr').slice(0,2);
+  const T={fr:{top:'Haut de page',back:'Revenez voir Red Stone ✦'},en:{top:'Back to top',back:'Come back to Red Stone ✦'},nl:{top:'Naar boven',back:'Kom terug naar Red Stone ✦'}}[L]||{top:'Haut',back:'✦'};
+  // visite scrollytelling
+  const tour=document.querySelector('.tour');
+  if(tour&&innerWidth>860){const slides=[...tour.querySelectorAll('.tour-slide')],bar=tour.querySelector('.tour-bar i');let t=false;
+    const upd=()=>{const r=tour.getBoundingClientRect();const total=tour.offsetHeight-innerHeight;const k=Math.min(1,Math.max(0,-r.top/total));const i=Math.min(slides.length-1,Math.floor(k*slides.length));slides.forEach((s,j)=>s.classList.toggle('on',j===i));bar.style.height=(k*100)+'%';t=false};
+    addEventListener('scroll',()=>{if(!t){t=true;requestAnimationFrame(upd)}},{passive:true});upd()}
+  // index de section (pages avec data-nav)
+  const secs=[...document.querySelectorAll('section[data-nav]')];
+  if(secs.length>1){const nav=document.createElement('nav');nav.className='secnav';nav.setAttribute('aria-label','Sections');secs.forEach((s,i)=>{if(!s.id)s.id='sec-'+i;const a=document.createElement('a');a.href='#'+s.id;a.innerHTML='<span>'+s.dataset.nav+'</span>';nav.appendChild(a)});document.body.appendChild(nav);
+    const as=[...nav.children];let t=false;const upd=()=>{const y=scrollY+innerHeight*.4;let cur=-1;secs.forEach((s,i)=>{if(s.offsetTop<=y)cur=i});as.forEach((a,i)=>a.classList.toggle('on',i===cur));nav.classList.toggle('show',scrollY>innerHeight*.6);t=false};addEventListener('scroll',()=>{if(!t){t=true;requestAnimationFrame(upd)}},{passive:true});upd()}
+  // retour en haut avec anneau de progression
+  const tt=document.createElement('button');tt.className='totop';tt.type='button';tt.setAttribute('aria-label',T.top);tt.innerHTML='<svg viewBox="0 0 48 48"><circle cx="24" cy="24" r="22"/><circle class="p" cx="24" cy="24" r="22"/></svg>';document.body.appendChild(tt);
+  const pc=tt.querySelector('.p');let t2=false;const u2=()=>{const h=root.scrollHeight-innerHeight;const k=h>0?scrollY/h:0;pc.style.strokeDashoffset=138*(1-k);tt.classList.toggle('show',scrollY>innerHeight);t2=false};addEventListener('scroll',()=>{if(!t2){t2=true;requestAnimationFrame(u2)}},{passive:true});u2();
+  tt.addEventListener('click',()=>scrollTo({top:0,behavior:rm?'auto':'smooth'}));
+  // zoom dans la galerie plein écran
+  const lb=document.getElementById('lb'),li=document.getElementById('lb-img');
+  if(lb&&li){li.addEventListener('dblclick',()=>{li.classList.toggle('zoom');lb.classList.toggle('zoomed')});new MutationObserver(()=>{if(lb.hidden){li.classList.remove('zoom');lb.classList.remove('zoomed')}}).observe(lb,{attributes:true,attributeFilter:['hidden']});
+    addEventListener('keydown',e=>{if(!lb.hidden&&e.key==='f'&&document.fullscreenEnabled){document.fullscreenElement?document.exitFullscreen():lb.requestFullscreen().catch(()=>{})}})}
+  // météo en direct à Marrakech (Open-Meteo, sans clé)
+  const hero=document.querySelector('.full .copy .wrap');
+  if(hero&&location.pathname.match(/index\.html$|\/$/)){const m=document.createElement('div');m.className='meteo';hero.appendChild(m);
+    fetch('https://api.open-meteo.com/v1/forecast?latitude=31.5665&longitude=-8.0459&current=temperature_2m,weather_code&timezone=Africa%2FCasablanca').then(r=>r.json()).then(d=>{const c=d.current;const code=c.weather_code;const W={fr:['ciel dégagé','peu nuageux','nuageux','couvert','brume','bruine','pluie','neige','averses','orage'],en:['clear sky','few clouds','cloudy','overcast','mist','drizzle','rain','snow','showers','storm'],nl:['heldere hemel','licht bewolkt','bewolkt','betrokken','nevel','motregen','regen','sneeuw','buien','onweer']}[L]||[];
+      const idx=code===0?0:code<=2?1:code===3?3:code<=48?4:code<=57?5:code<=67?6:code<=77?7:code<=82?8:9;m.innerHTML='<b>'+Math.round(c.temperature_2m)+'°</b><span>Marrakech · '+(W[idx]||'')+'</span>';m.classList.add('on')}).catch(()=>{})}
+  // nuit automatique entre 20 h et 7 h si l'utilisateur n'a rien choisi
+  try{if(localStorage.getItem('wh-night')===null){const h=new Date().getHours();if(h>=20||h<7)root.classList.add('night')}}catch(e){}
+  // flèches ← → entre les villas
+  const prev=document.querySelector('.nextvilla a[href^="villa-"]'),next=document.querySelector('.next-band');
+  if(prev||next)addEventListener('keydown',e=>{if(e.target.matches('input,textarea,select'))return;if(e.key==='ArrowRight'&&next)location.href=next.href;if(e.key==='ArrowLeft'&&prev)location.href=prev.href});
+  // hero qui se rétracte et s'assombrit au scroll
+  const copy=document.querySelector('.full .copy');if(copy&&!rm){let t3=false;const u3=()=>{const k=Math.min(1,scrollY/innerHeight);copy.style.opacity=1-k*1.3;copy.style.transform=`translateY(${k*60}px) scale(${1-k*.08})`;t3=false};addEventListener('scroll',()=>{if(!t3){t3=true;requestAnimationFrame(u3)}},{passive:true})}
+  // contact qui s'assombrit quand on y arrive
+  const ct=document.getElementById('contact');if(ct)new IntersectionObserver(es=>es.forEach(x=>ct.classList.toggle('dark',x.intersectionRatio>.35)),{threshold:[.35]}).observe(ct);
+  // galerie : reflow animé au filtrage
+  const gal=document.getElementById('gal');if(gal){const re=()=>{[...gal.querySelectorAll('figure:not([hidden])')].forEach((f,k)=>{f.style.setProperty('--k',k);f.style.animation='none';void f.offsetWidth;f.style.animation=''})};document.querySelectorAll('.galnav button').forEach(b=>b.addEventListener('click',()=>setTimeout(re,0)))}
+  // titre de l'onglet quand on quitte la page
+  const title=document.title;document.addEventListener('visibilitychange',()=>{document.title=document.hidden?T.back:title});
+})();
