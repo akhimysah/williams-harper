@@ -530,6 +530,7 @@ function extrudeSide(pts, w, col) {
 function carGeos(hex, kind) {
   const key = hex + kind;
   if (carGeoCache[key]) return carGeoCache[key];
+  if (kind === 5) { const g = carGeos(hex, 1); return (carGeoCache[key] = { ...g, hero: true }); } // G63 placeholder until the model loads
   if (kind >= 3) return (carGeoCache[key] = (kind === 3 ? buildRS6 : build911)(hex));
   const K = CAR_KINDS[kind], L = K.L, wr = K.wr;
   const parts = [], lights = [], wheelsStatic = [];
@@ -690,7 +691,7 @@ function build911(hex) {
   return finishHero(P, lights, wheelGeo, wp, L, '#c8a02a');
 }
 MAT.carGloss = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.22, metalness: 0.45 });
-const CAR_NAMES = { 3: 'Audi RS6-R ABT', 4: 'Porsche 911 Cabriolet' };
+const CAR_NAMES = { 3: 'Audi RS6-R ABT', 4: 'Porsche 911 Cabriolet', 5: 'Mercedes-AMG G63' };
 const paintCache = {};
 function paintMat(base, hex) {
   const k = base.name + hex;
@@ -698,7 +699,43 @@ function paintMat(base, hex) {
   return paintCache[k];
 }
 // detailed models (Sketchfab, see credits in the pause menu), decimated and re-oriented with Blender
-const CAR_MODELS = { 3: { url: 'models/audi-rs6.glb', paint: ['BKit2_Paint_Geo_lodASG1'] }, 4: { url: 'models/porsche911.glb', paint: ['body'] } };
+// merge the body's many small parts into one mesh per material (paint kept apart so it can be recoloured)
+function compactModel(root, paint) {
+  for (const n of ['body', 'wheel_LF', 'wheel_RF', 'wheel_LB', 'wheel_RB']) compactNode(root, root.getObjectByName(n), paint);
+}
+function compactNode(root, body, paint) {
+  if (!body || body.isMesh) return;
+  root.updateMatrixWorld(true);
+  const meshes = []; body.traverse(o => { if (o.isMesh) meshes.push(o); });
+  const inv = body.matrixWorld.clone().invert(), groups = new Map();
+  for (const m of meshes) {
+    const mt = m.material;
+    const plain = !mt.map && !mt.normalMap && !mt.emissiveMap && !mt.roughnessMap && !mt.metalnessMap && !mt.transparent && !paint.includes(mt.name) && (!mt.emissive || mt.emissive.getHex() === 0);
+    const k = plain ? `vc|${Math.round(mt.metalness)}|${Math.round(mt.roughness * 3)}|${mt.side}`
+      : [mt.color?.getHexString(), mt.metalness, mt.roughness, mt.transparent, mt.opacity, mt.map?.uuid || '', mt.normalMap?.uuid || '', mt.emissive?.getHexString(), mt.emissiveMap?.uuid || '', mt.side, paint.includes(mt.name) ? mt.name : ''].join('|');
+    let g = m.geometry.clone(); g.applyMatrix4(new THREE.Matrix4().multiplyMatrices(inv, m.matrixWorld));
+    for (const at of Object.keys(g.attributes)) if (!['position', 'normal', 'uv'].includes(at)) g.deleteAttribute(at);
+    if (plain) { // bake the flat colour into vertex colours so all plain parts share one material
+      const n = g.attributes.position.count, a = new Float32Array(n * 3);
+      for (let i = 0; i < n; i++) { a[i * 3] = mt.color.r; a[i * 3 + 1] = mt.color.g; a[i * 3 + 2] = mt.color.b; }
+      g.setAttribute('color', new THREE.BufferAttribute(a, 3));
+    }
+    if (!g.attributes.normal) g.computeVertexNormals();
+    if (!mt.map && !mt.normalMap && !mt.emissiveMap && !mt.roughnessMap && !mt.metalnessMap && !mt.aoMap) g.deleteAttribute('uv');
+    if (!groups.has(k)) groups.set(k, { mt: plain ? new THREE.MeshStandardMaterial({ vertexColors: true, metalness: Math.round(mt.metalness), roughness: Math.max(0.15, Math.round(mt.roughness * 3) / 3), side: mt.side }) : mt, geos: [] });
+    groups.get(k).geos.push(g);
+  }
+  for (const m of meshes) m.parent.remove(m);
+  for (const { mt, geos } of groups.values()) {
+    const sig = gg => Object.keys(gg.attributes).sort().join();
+    const base = sig(geos[0]), same = geos.filter(gg => sig(gg) === base);
+    const merged = mergeGeometries(same.map(gg => gg.index ? gg.toNonIndexed() : gg));
+    if (!merged) { for (const gg of geos) body.add(new THREE.Mesh(gg, mt)); continue; }
+    body.add(new THREE.Mesh(merged, mt));
+    for (const gg of geos) if (sig(gg) !== base) body.add(new THREE.Mesh(gg, mt));
+  }
+}
+const CAR_MODELS = { 3: { url: 'models/audi-rs6.glb', paint: ['BKit2_Paint_Geo_lodASG1'] }, 4: { url: 'models/porsche911.glb', paint: ['body'] }, 5: { url: 'models/g63.glb', paint: ['bodypaint'] } };
 const cars = [];
 class Car {
   constructor(x, z, h, hex, kind = 0) {
@@ -723,15 +760,23 @@ class Car {
       o.castShadow = true;
       if (o.material && tpl.paint.includes(o.material.name)) o.material = paintMat(o.material, this.hex);
     });
-    this.wheels = ['wheel_LF', 'wheel_RF', 'wheel_LB', 'wheel_RB'].map(n => {
+    this.modelWheels = ['wheel_LF', 'wheel_RF', 'wheel_LB', 'wheel_RB'].map(n => {
       const w = m.getObjectByName(n), p = new THREE.Group(); p.position.copy(w.position); w.position.set(0, 0, 0);
       m.add(p); p.add(w); return p;
     });
-    this.g.remove(this.stat); this.g.remove(this.dynG); this.g.add(m);
-    this.stat = this.dynG = m; this.dyn = true; this.model = true;
-    this.tailM = new THREE.Mesh(); this.headM = new THREE.Mesh();
+    this.setDyn(true);
+    this.procG = this.dynG; this.procWheels = this.wheels; this.modelG = m;
+    this.model = true; this.lod = null; this.setLod(true);
   }
-  setDyn(on) { if (this.model) return; if (on === this.dyn) return; this.dyn = on; this.g.remove(on ? this.stat : this.dynG); this.g.add(on ? this.dynG : this.stat); }
+  // detailed model up close, light procedural body far away
+  setLod(near) {
+    if (this.lod === near) return; this.lod = near;
+    this.g.remove(near ? this.procG : this.modelG); this.g.add(near ? this.modelG : this.procG);
+    const from = near ? this.procWheels : this.modelWheels, to = near ? this.modelWheels : this.procWheels;
+    to.forEach((w, i) => { w.rotation.y = from[i].rotation.y; });
+    this.wheels = to;
+  }
+  setDyn(on) { if (on === this.dyn) return; this.dyn = on; this.g.remove(on ? this.stat : this.dynG); this.g.add(on ? this.dynG : this.stat); }
   sync() { this.g.position.set(this.x, 0, this.z); this.g.rotation.y = this.h; }
   get fx() { return Math.sin(this.h); } get fz() { return Math.cos(this.h); }
   circles() { const o = this.half - 0.85, fx = this.fx, fz = this.fz; return [[this.x + fx * o, this.z + fz * o], [this.x, this.z], [this.x - fx * o, this.z - fz * o]]; }
@@ -741,6 +786,7 @@ for (const [x, z, h] of parkedSpots) new Car(x, z, h, pick(CAR_COLORS), rnd() < 
 new Car(104, 112.5, Math.PI / 2, '#a51c24', 4);
 new Car(12, -25.3, Math.PI / 2 + 0.25, '#8a8d8f', 3);
 new Car(4, -25.3, Math.PI / 2 + 0.25, '#d9d6cf', 4);
+new Car(20.5, -25.3, Math.PI / 2 + 0.25, '#141414', 5);
 
 // traffic AI
 function laneFor(dx, dz, roadCoord) { return roadCoord + (dx ? dx * 2.5 * 1 : -dz * 2.5); }
@@ -751,8 +797,8 @@ function spawnTraffic(n) {
     const along = (rnd() * 2 - 1) * (axisX ? EXT - 20 : ZEXT - 20);
     const dx = axisX ? dir : 0, dz = axisX ? 0 : dir;
     const lane = laneFor(dx, dz, road);
-    const hk = i % 6 === 1 ? 3 : i % 6 === 4 ? 4 : rnd() < 0.3 ? 1 : 0;
-    const c = new Car(axisX ? along : lane, axisX ? lane : along, Math.atan2(dx, dz), hk === 3 ? pick(['#8a8d8f', '#1f1f1f', '#2f4a6e']) : hk === 4 ? pick(['#a51c24', '#d9d6cf', '#c9a227']) : pick(CAR_COLORS), hk);
+    const hk = i % 8 === 1 ? 3 : i % 8 === 4 ? 4 : i % 8 === 6 ? 5 : rnd() < 0.3 ? 1 : 0;
+    const c = new Car(axisX ? along : lane, axisX ? lane : along, Math.atan2(dx, dz), hk === 3 ? pick(['#8a8d8f', '#1f1f1f', '#2f4a6e']) : hk === 4 ? pick(['#a51c24', '#d9d6cf', '#c9a227']) : hk === 5 ? pick(['#141414', '#e9e7e2', '#4b5244']) : pick(CAR_COLORS), hk);
     c.ai = { dx, dz, lane, v: 8, cruise: 9 + rnd() * 4, prev: 0 }; c.setDyn(true);
   }
 }
@@ -761,6 +807,7 @@ spawnTraffic(26);
   const loader = new GLTFLoader();
   for (const [kind, def] of Object.entries(CAR_MODELS)) {
     loader.load(def.url, gltf => {
+      compactModel(gltf.scene, def.paint);
       const tpl = { scene: gltf.scene, paint: def.paint };
       for (const c of cars) if (c.kind === +kind) c.useModel(tpl);
       if (sketch) applySketch();
@@ -1447,7 +1494,7 @@ function updateDrive(c, dt) {
   const hand = press('Space');
   const fx = c.fx, fz = c.fz;
   let along = c.vx * fx + c.vz * fz;
-  const sport = c.kind >= 2, maxF = c.kind === 4 ? 52 : c.kind === 3 ? 50 : sport ? 46 : 36, acc = c.kind === 4 ? 15 : c.kind === 3 ? 14 : sport ? 13 : 9.5;
+  const sport = c.kind >= 2, maxF = c.kind === 4 ? 52 : c.kind === 3 ? 50 : c.kind === 5 ? 44 : sport ? 46 : 36, acc = c.kind === 4 ? 15 : c.kind === 3 ? 14 : sport ? 13 : 9.5;
   if (thr) along += acc * (1 - Math.max(0, along) / maxF) * dt * (along < -0.5 ? 2.2 : 1);
   if (brk) along -= (along > 0.5 ? 22 : 7) * dt;
   along = Math.max(along, -10);
@@ -1626,6 +1673,7 @@ function frame() {
 
   if (started) { if (P.car) updateDrive(P.car, dt); else { updateFoot(dt); audio.update(false, 0, 0, night > 0.5, dt); audio.horn(false); } }
   updateTraffic(dt, simT);
+  for (const c of cars) if (c.model) c.setLod(c === P.car || (c.x - camera.position.x) ** 2 + (c.z - camera.position.z) ** 2 < 6400);
   updatePeds(dt);
 
   // collectibles

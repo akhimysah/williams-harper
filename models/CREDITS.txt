@@ -8,3 +8,8 @@ audi-rs6.glb
   by Ddiaz Design (https://sketchfab.com/ddiaz-design), licensed under CC-BY-NC-SA-4.0 (http://creativecommons.org/licenses/by-nc-sa/4.0/).
   Changes: engine removed, decimated to ~45k triangles, textures resized, wheels split, re-oriented and scaled.
   This adapted model is shared under the same CC BY-NC-SA 4.0 license.
+
+g63.glb
+  "Mercedes-Benz G63 AMG (W464)" (https://sketchfab.com/3d-models/mercedes-benz-g63-amg-w464-3b25ec59233a4a82a6732b0a1419e553)
+  by ceron_alex (https://sketchfab.com/ceron_alex), licensed under CC-BY-NC-4.0 (http://creativecommons.org/licenses/by-nc/4.0/).
+  Changes: engine, frame and suspension removed, decimated to ~48k triangles, wheels split, re-oriented and scaled.
