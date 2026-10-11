@@ -459,11 +459,43 @@ canvas.addEventListener('touchend', endTouch); canvas.addEventListener('touchcan
 // points de visite
 const SPOTS = { jardin: [-4.4, 18.6, 0.08, 0.02], entree: [-4.5, 8.6, 0.0, 0.05], salon: [1.6, 7.9, PI / 2, 0.02], hall: [-0.4, 0.4, -PI / 2 + 0.3, 0.12], dinner: [0.2, -3.0, 0, 0.05], sejour: [5.6, -7.3, 0.4, 0.02], terrasse: [6.0, 9.2, 0.0, 0.03], piscine: [10.4, 11.0, 0.15, 0.06], suite: [-1.0, 7.8, PI / 2 + 0.4, 0.03], etage: [5.4, 5.6, -PI / 2, -0.1], chambre: [-0.6, -6.0, -0.2, 0.02], facade: [16.5, 1.2, PI / 2 + 0.55, 0.14] };
 const INSIDE = new Set(['salon', 'hall', 'dinner', 'sejour', 'suite', 'chambre']);
-function goTo(name) { if (INSIDE.has(name)) { openTour(); return; } const s = SPOTS[name]; if (!s) return; $('fade').classList.add('on'); setTimeout(() => { P.x = s[0]; P.z = s[1]; P.yaw = s[2]; P.pitch = s[3]; P.y = floorAt(P.x, P.z, name === 'suite' || name === 'etage' || name === 'chambre' ? SL : 0); if (renderer.xr.isPresenting) { rig.position.set(P.x, P.y, P.z); rig.rotation.y = P.yaw; } $('fade').classList.remove('on'); }, 260); }
+function goTo(name) { if (INSIDE.has(name)) { if (PANOS.length) { enterPano(panoById[name] || panoById.hall || PANOS[0]); } else openTour(); return; } const s = SPOTS[name]; if (!s) return; $('fade').classList.add('on'); setTimeout(() => { P.x = s[0]; P.z = s[1]; P.yaw = s[2]; P.pitch = s[3]; P.y = floorAt(P.x, P.z, name === 'suite' || name === 'etage' || name === 'chambre' ? SL : 0); if (renderer.xr.isPresenting) { rig.position.set(P.x, P.y, P.z); rig.rotation.y = P.yaw; } $('fade').classList.remove('on'); }, 260); }
 document.querySelectorAll('[data-spot]').forEach(b => b.addEventListener('click', () => goTo(b.dataset.spot)));
-// ---------------------------------------------------------------- intérieur : les vues 360° du studio (tour Kuula), telles quelles
+// ---------------------------------------------------------------- vues 360° du studio placées dans la maison (même scène, même commandes, VR comprise)
+// PANOS : une entrée par vue — id, titre, fichier équirectangulaire, position dans la villa (x, z, hauteur d'œil), rotation d'alignement (rad),
+// liens vers d'autres vues (direction yaw/pitch où afficher le repère). Tant que la liste est vide, la porte ouvre le tour Kuula.
+const PANOS = (location.search.includes('test360') ? [
+  { id: 'hall', title: 'Hall', src: 'img/vr/suite-chloe-pano.jpg', x: -4.5, z: 4.2, y: 1.6, rot: 0, links: [{ to: 'salon', yaw: -1.2, pitch: -0.1 }] },
+  { id: 'salon', title: 'Salon', src: 'img/vr/suite-chloe-pano.jpg', x: 1.0, z: 7.8, y: 1.6, rot: 1.5, links: [{ to: 'hall', yaw: 1.4, pitch: -0.1 }] },
+] : []);
+const panoById = Object.fromEntries(PANOS.map(p => [p.id, p]));
+const panoSphere = new THREE.Mesh(new THREE.SphereGeometry(12, 64, 32), new THREE.MeshBasicMaterial({ side: THREE.BackSide, depthWrite: false, depthTest: false, transparent: true, opacity: 0, toneMapped: false }));
+panoSphere.renderOrder = 50; panoSphere.visible = false; panoSphere.scale.x = -1; scene.add(panoSphere);
+const hotMat = new THREE.MeshBasicMaterial({ color: '#f0cf7a', transparent: true, opacity: 0.9, depthTest: false, side: THREE.DoubleSide });
+const hotGeo = new THREE.RingGeometry(0.16, 0.24, 36), hotCore = new THREE.CircleGeometry(0.07, 24);
+const hotspots = new THREE.Group(); hotspots.renderOrder = 60; scene.add(hotspots);
+const panoTex = {}; const loadPano = src => panoTex[src] || (panoTex[src] = new Promise(res => { new THREE.TextureLoader().load(src, t => { t.colorSpace = THREE.SRGBColorSpace; t.minFilter = THREE.LinearFilter; t.generateMipmaps = false; t.anisotropy = 8; res(t); }); }));
+let pano = null, panoFade = 0, panoTarget = 0;
+async function enterPano(def) { if (!def) return; $('fade').classList.add('on'); const t = await loadPano(def.src); setTimeout(() => $('fade').classList.remove('on'), 320);
+  pano = def; panoSphere.material.map = t; panoSphere.material.needsUpdate = true; panoSphere.rotation.y = def.rot || 0; panoSphere.visible = true; panoTarget = 1;
+  P.x = def.x; P.z = def.z; P.y = Math.max(0, def.y - EYE); if (renderer.xr.isPresenting) rig.position.set(P.x, P.y, P.z);
+  hotspots.clear(); for (const l of def.links) { const g = new THREE.Group(); g.add(new THREE.Mesh(hotGeo, hotMat)); g.add(new THREE.Mesh(hotCore, hotMat)); g.children.forEach(m => { m.renderOrder = 60; }); g.userData.to = l.to; g.userData.dir = V(-Math.sin(l.yaw) * Math.cos(l.pitch), Math.sin(l.pitch), -Math.cos(l.yaw) * Math.cos(l.pitch)); hotspots.add(g); }
+  $('panoName').textContent = def.title; $('panoBar').classList.add('on'); }
+let panoLeft = null; // vue que l'on vient de quitter : pas de ré-entrée tant qu'on ne s'en est pas éloigné
+function exitPano() { if (!pano) return; panoLeft = pano; pano = null; panoTarget = 0; hotspots.clear(); $('panoBar').classList.remove('on'); }
+function panoFrame(dt) { panoFade = damp(panoFade, panoTarget, 8, dt); panoSphere.material.opacity = panoFade; if (panoFade < 0.01 && !pano) panoSphere.visible = false;
+  const eye = renderer.xr.isPresenting ? V().setFromMatrixPosition(renderer.xr.getCamera().matrixWorld) : camera.position; panoSphere.position.copy(eye);
+  for (const g of hotspots.children) { g.position.copy(eye).addScaledVector(g.userData.dir, 5); g.lookAt(eye); g.scale.setScalar(1 + 0.12 * Math.sin(performance.now() / 300)); } }
+const hotRay = new THREE.Raycaster(); hotRay.params.Mesh = {};
+function hotspotAt(origin, dir) { hotRay.set(origin, dir); const h = hotRay.intersectObjects(hotspots.children, true)[0]; return h ? h.object.parent.userData.to : null; }
+canvas.addEventListener('click', e => { if (!pano || renderer.xr.isPresenting) return; const nd = locked ? V(0, 0, 0.5) : V((e.clientX / innerWidth) * 2 - 1, -(e.clientY / innerHeight) * 2 + 1, 0.5); const dir = nd.unproject(camera).sub(camera.position).normalize(); const to = hotspotAt(camera.position.clone(), dir); if (to) enterPano(panoById[to]); });
+$('panoExit').addEventListener('click', exitPano);
+// repères dorés dans la maison aux emplacements des vues 360°
+for (const d of PANOS) { put('led', new THREE.RingGeometry(0.3, 0.38, 32).rotateX(-PI / 2), mat4(d.x, 0.2, d.z)); }
+
+// ---------------------------------------------------------------- intérieur sans fichiers 360° : le tour Kuula du studio, tel quel, par-dessus la scène
 const tourEl = $('tour'), tourFrame = $('tour-frame'); let tourOpen = false;
-function openTour() { if (tourOpen) return; tourOpen = true; if (!tourFrame.src) tourFrame.src = tourFrame.dataset.src; if (renderer.xr.getSession()) renderer.xr.getSession().end(); if (document.pointerLockElement) document.exitPointerLock(); tourEl.classList.add('on'); tourEl.setAttribute('aria-hidden', 'false'); $('intro').classList.remove('on'); }
+function openTour() { if (PANOS.length) { enterPano(panoById.hall || PANOS[0]); return; } if (tourOpen) return; tourOpen = true; if (!tourFrame.src) tourFrame.src = tourFrame.dataset.src; if (renderer.xr.getSession()) renderer.xr.getSession().end(); if (document.pointerLockElement) document.exitPointerLock(); tourEl.classList.add('on'); tourEl.setAttribute('aria-hidden', 'false'); $('intro').classList.remove('on'); }
 function closeTour() { tourOpen = false; tourEl.classList.remove('on'); tourEl.setAttribute('aria-hidden', 'true'); const s = SPOTS.entree; P.x = s[0]; P.z = s[1] + 1.2; P.yaw = s[2]; P.pitch = s[3]; P.y = 0; }
 $('open-tour').addEventListener('click', openTour); $('close-tour').addEventListener('click', closeTour);
 if (location.hash === '#interieur') openTour();
@@ -479,7 +511,7 @@ function floorHit(origin, dir) { // intersection analytique avec les sols (plans
     if (Math.abs(dir.y) < 1e-4) continue; const t = (f.y - origin.y) / dir.y; if (t < 0.2 || t > 20) continue; const x = origin.x + dir.x * t, z = origin.z + dir.z * t; if (x < f.x0 || x > f.x1 || z < f.z0 || z > f.z1) continue; if (!best || t < best.t) best = { t, p: V(x, f.y, z) }; }
   return best; }
 for (let i = 0; i < 2; i++) { const c = renderer.xr.getController(i); const line = new THREE.Line(new THREE.BufferGeometry().setFromPoints([V(0, 0, 0), V(0, 0, -1)]), new THREE.LineBasicMaterial({ color: 0xf0cf7a })); line.scale.z = 8; c.add(line); rig.add(c); ctrls.push(c);
-  c.addEventListener('selectend', () => { const h = ctrlHit(c); if (h) { const prev = P.y; P.x = h.p.x; P.z = h.p.z; P.y = h.p.y; rig.position.set(P.x, P.y, P.z); if (Math.abs(prev - P.y) > 2.5) { /* changement d'étage */ } } });
+  c.addEventListener('selectend', () => { if (pano) { tmpM.identity().extractRotation(c.matrixWorld); const to = hotspotAt(V().setFromMatrixPosition(c.matrixWorld), V(0, 0, -1).applyMatrix4(tmpM)); if (to) { enterPano(panoById[to]); return; } } const h = ctrlHit(c); if (h) { const prev = P.y; P.x = h.p.x; P.z = h.p.z; P.y = h.p.y; rig.position.set(P.x, P.y, P.z); if (Math.abs(prev - P.y) > 2.5) { /* changement d'étage */ } } });
   const grip = renderer.xr.getControllerGrip(i); const gm = new THREE.Mesh(new THREE.CapsuleGeometry(0.02, 0.1, 3, 10).rotateX(PI / 2), new THREE.MeshStandardMaterial({ color: '#2a2a2c', roughness: 0.5, metalness: 0.5 })); grip.add(gm); rig.add(grip); }
 function ctrlHit(c) { tmpM.identity().extractRotation(c.matrixWorld); const o = V().setFromMatrixPosition(c.matrixWorld), d = V(0, 0, -1).applyMatrix4(tmpM); return floorHit(o, d); }
 let snapT = 0;
@@ -487,7 +519,7 @@ function xrUpdate(dt) { const s = renderer.xr.getSession(); if (!s) return;
   const xrCam = renderer.xr.getCamera(); const fwd = V(); xrCam.getWorldDirection(fwd); fwd.y = 0; fwd.normalize(); const right = V().crossVectors(fwd, V(0, 1, 0));
   for (const src of s.inputSources) { const g = src.gamepad; if (!g || g.axes.length < 4) continue; const ax = g.axes[2], ay = g.axes[3];
     if (src.handedness === 'right') { snapT -= dt; if (Math.abs(ax) > 0.6 && snapT <= 0) { snapT = 0.35; P.yaw -= Math.sign(ax) * PI / 6; rig.rotation.y = P.yaw; } continue; }
-    if (Math.abs(ax) < 0.15 && Math.abs(ay) < 0.15) continue; const v = 1.8 * dt; move((fwd.x * -ay + right.x * ax) * v, (fwd.z * -ay + right.z * ax) * v, dt); rig.position.set(P.x, P.y, P.z); }
+    if (Math.abs(ax) < 0.15 && Math.abs(ay) < 0.15) continue; if (pano) exitPano(); const v = 1.8 * dt; move((fwd.x * -ay + right.x * ax) * v, (fwd.z * -ay + right.z * ax) * v, dt); rig.position.set(P.x, P.y, P.z); }
   let shown = false; for (const c of ctrls) { const h = ctrlHit(c); if (h) { marker.position.copy(h.p).y += 0.02; shown = true; break; } } marker.visible = shown; }
 renderer.xr.addEventListener('sessionstart', () => { rig.position.set(P.x, P.y, P.z); rig.rotation.y = P.yaw; camera.rotation.set(0, 0, 0); camera.position.set(0, 0, 0); document.body.classList.add('xr'); });
 renderer.xr.addEventListener('sessionend', () => { rig.position.set(0, 0, 0); rig.rotation.y = 0; marker.visible = false; document.body.classList.remove('xr'); $('vr').setAttribute('aria-pressed', 'false'); });
@@ -507,14 +539,18 @@ renderer.setAnimationLoop(() => {
   else {
     let fx = 0, fz = 0; if (K('KeyW', 'KeyZ', 'ArrowUp')) fz -= 1; if (K('KeyS', 'ArrowDown')) fz += 1; if (K('KeyA', 'KeyQ', 'ArrowLeft')) fx -= 1; if (K('KeyD', 'ArrowRight')) fx += 1;
     fx += stick.dx; fz += stick.dy; const len = Math.hypot(fx, fz); if (len > 1) { fx /= len; fz /= len; }
+    if (len > 0.02 && pano) exitPano();
     if (len > 0.02) { const sp = (K('ShiftLeft', 'ShiftRight') ? 4.2 : 2.3) * dt; const c = Math.cos(P.yaw), s = Math.sin(P.yaw); move((fx * c - fz * s) * sp, (fx * s + fz * c) * sp, dt); bob += dt * (K('ShiftLeft') ? 11 : 7); } else P.y = damp(P.y, floorAt(P.x, P.z, P.y), 10, dt);
     camera.position.set(P.x, P.y + EYE + Math.sin(bob) * 0.025, P.z); camera.rotation.set(P.pitch, P.yaw, 0);
   }
   sky.position.copy(renderer.xr.isPresenting ? rig.position : camera.position); sun.target.position.set(P.x, 0, P.z); sun.position.set(P.x + MODES[mode].sunPos[0], MODES[mode].sunPos[1], P.z + MODES[mode].sunPos[2]);
-  if (!tourOpen && P.y < 1 && P.z < 5.6 && P.z > 2.5 && P.x > -6.5 && P.x < -2.7) openTour(); // la porte franchie : on entre dans les vues 360°
+  panoFrame(dt);
+  if (!tourOpen && !pano && P.y < 1 && P.z < 5.6 && P.z > 2.5 && P.x > -6.5 && P.x < -2.7) openTour();
+  if (panoLeft && Math.hypot(P.x - panoLeft.x, P.z - panoLeft.z) > 1.3) panoLeft = null;
+  if (!pano && PANOS.length) for (const d of PANOS) if (d !== panoLeft && Math.hypot(P.x - d.x, P.z - d.z) < 0.7 && Math.abs(P.y + EYE - d.y) < 1) { enterPano(d); break; } // la porte franchie : on entre dans les vues 360°
   zoneT -= dt; if (zoneT <= 0) { zoneT = 0.4; const n = zoneName(); if ($('zone').textContent !== n) { $('zone').textContent = n; $('area').classList.add('on'); } }
   renderer.render(scene, camera);
 });
 $('loader').classList.add('off');
-window.WHV = { scene, M, P, goTo, applyMode, renderer, floors, solids, openTour, closeTour };
+window.WHV = { scene, M, P, goTo, applyMode, renderer, floors, solids, openTour, closeTour, enterPano, exitPano, PANOS };
 if (isTouch) $('intro').classList.remove('on');
