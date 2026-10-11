@@ -370,4 +370,6 @@ window.WH_EN = {
 "Activer le son":"Sound on","Couper le son":"Mute"
 ,
 "Touchez l'écran pour le son":"Tap the screen for sound"
+
+,"Même écriture architecturale, même niveau de prestations. Seule l'échelle change.":"Same architectural language, same level of finish. Only the scale changes.","m² habitables":"m² living space","m² de terrain":"m² of land","suites":"suites","Terrasses couvertes":"Covered terraces","Ascenseur privé":"Private lift","Chambre d'amis au rez-de-chaussée":"Ground-floor guest room","Piscine à débordement":"Infinity pool","En verre":"Glass","Villa Chloé":"Villa Chloé","Villa Céline":"Villa Céline","Villa Margaux":"Villa Margaux","Communs aux trois villas : hauteur sous plafond jusqu'à 8 m · piscine privative à débordement · vue sur l'Atlas, sans vis-à-vis.":"Shared by all three villas: ceilings up to 8 m · private infinity pool · unobstructed Atlas views."
 };

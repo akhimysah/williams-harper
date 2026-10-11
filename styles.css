@@ -284,13 +284,22 @@ footer .brand img{width:110px}
 .plans-light{background:var(--bg)}
 .plans-light .plans img{background:transparent}
 /* Comparatif */
-.cmp-wrap{margin-top:clamp(2rem,5vw,4rem);overflow-x:auto}
-.cmp-table{width:100%;border-collapse:collapse;min-width:560px;font-size:.95rem}
-.cmp-table th,.cmp-table td{text-align:left;padding:1rem .5rem;border-bottom:1px solid var(--line);font-weight:300;vertical-align:baseline}
-.cmp-table thead th{font-family:var(--display);font-size:1.7rem;font-weight:300;padding-bottom:1.2rem}
-.cmp-table thead th a{color:var(--ink);text-decoration:none;border-bottom:1px solid var(--champagne)}
-.cmp-table tbody th{font-family:var(--label);font-size:.62rem;letter-spacing:.28em;text-transform:uppercase;color:var(--muted);width:34%}
-.cmp-table td{font-family:var(--display);font-size:1.25rem;font-variant-numeric:tabular-nums}
+.cmp-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:clamp(1.2rem,2.5vw,2.5rem);margin-top:clamp(2rem,5vw,4rem)}
+.cmp-card{display:block;color:var(--ink);text-decoration:none;position:relative}
+.cmp-card figure{margin:0;aspect-ratio:4/5;overflow:hidden;background:var(--ink)}
+.cmp-card figure img{width:100%;height:100%;object-fit:cover;display:block;transition:transform 1.2s cubic-bezier(.2,.7,.2,1)}
+.cmp-card:hover figure img{transform:scale(1.04)}
+.cmp-num{position:absolute;top:1.1rem;left:1.1rem;font-family:var(--display);font-size:1.1rem;color:#fff;letter-spacing:.1em;text-shadow:0 1px 10px rgba(0,0,0,.4)}
+.cmp-card h3{font-size:clamp(1.9rem,2.6vw,2.6rem);margin-top:1.4rem}
+.cmp-figs{display:flex;gap:1.6rem;margin-top:1rem;padding-bottom:1rem;border-bottom:1px solid var(--line)}
+.cmp-figs b{display:block;font-family:var(--display);font-size:1.7rem;font-weight:300;line-height:1;font-variant-numeric:tabular-nums}
+.cmp-figs span{display:block;font-size:.56rem;letter-spacing:.26em;text-transform:uppercase;color:var(--muted);margin-top:.45rem}
+.cmp-card ul{list-style:none;margin:0;padding:0}
+.cmp-card li{display:flex;justify-content:space-between;gap:1rem;align-items:baseline;padding:.65rem 0;border-bottom:1px solid var(--line);font-size:.86rem}
+.cmp-card li span{color:var(--muted)}.cmp-card li b{font-family:var(--display);font-size:1.1rem;font-weight:300;white-space:nowrap}
+.cmp-card .link{display:inline-block;margin-top:1.3rem}
+.cmp-common{margin-top:2.4rem;color:var(--muted);font-size:.9rem;max-width:64ch}
+@media (max-width:960px){.cmp-cards{grid-template-columns:1fr;gap:3rem}.cmp-card figure{aspect-ratio:16/10}}
 /* Questions fréquentes */
 .faq-list{margin:clamp(2rem,5vw,4rem) 0 0;max-width:62rem;border-top:1px solid var(--line)}
 .faq-list dt{font-family:var(--display);font-size:1.5rem;font-weight:300;padding:1.4rem 0 .5rem}
