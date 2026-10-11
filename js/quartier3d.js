@@ -47,7 +47,9 @@ const camera = new THREE.PerspectiveCamera(58, innerWidth / innerHeight, 0.1, 90
 const rig = new THREE.Group(); scene.add(rig); // VR: the visitor's body; the headset camera rides inside
 const propMeshes = [];
 /* ---- post-processing: ambient occlusion, bloom for the lights, anti-aliasing (desktop only) ---- */
-let hq = !isTouch;
+// two looks: the clean stylised one (default) and the photo-textured one (?rendu=photo, key G)
+const REALISM = new URLSearchParams(location.search).get('rendu') === 'photo';
+let hq = REALISM && !isTouch;
 const FX_DPR = Math.min(devicePixelRatio, 1.5);
 const composer = new EffectComposer(renderer); composer.setPixelRatio(FX_DPR);
 composer.addPass(new RenderPass(scene, camera));
@@ -88,7 +90,7 @@ scene.add(hemi, sun, sun.target);
   const sunBlob = new THREE.Mesh(new THREE.SphereGeometry(1.2, 12, 8), new THREE.MeshBasicMaterial({ color: new THREE.Color(6, 5.5, 4.5) })); sunBlob.position.set(-5, 6, 4); es.add(sunBlob);
   scene.environment = pm.fromScene(es, 0.03).texture;
   // real sky: HDR environment for reflections and ambient light (Poly Haven, CC0)
-  new RGBELoader().load('textures/sky.hdr', t => { t.mapping = THREE.EquirectangularReflectionMapping; scene.environment = pm.fromEquirectangular(t).texture; t.dispose(); pm.dispose(); }, undefined, () => pm.dispose());
+  if (REALISM) new RGBELoader().load('textures/sky.hdr', t => { t.mapping = THREE.EquirectangularReflectionMapping; scene.environment = pm.fromEquirectangular(t).texture; t.dispose(); pm.dispose(); }, undefined, () => pm.dispose());
 }
 /* sky dome + stars */
 const skyU = { top: { value: new THREE.Color() }, hor: { value: new THREE.Color() }, sunDir: { value: V(0, 1, 0) }, sunCol: { value: new THREE.Color() }, glow: { value: 1 } };
@@ -183,6 +185,7 @@ function pbr(key, name, metres, o = {}) {
   if (o.emissive) { m.emissive = new THREE.Color(o.emissive); m.emissiveMap = tex(name + '_c', true); m.emissiveIntensity = o.emissiveIntensity ?? 0.4; }
   MAT[key] = m; TEX_SCALE[key] = 1 / metres; return m;
 }
+if (REALISM) {
 pbr('grass', 'grass', 3); pbr('groof', 'grass', 2, { color: '#c9d9a8' });
 pbr('asphalt', 'asphalt', 4, { color: '#9a9a9c' });
 pbr('side', 'concrete', 2, { color: '#d3cdc1' }); pbr('curb', 'concrete', 1, { color: '#d8d2c6' });
@@ -215,6 +218,7 @@ pbr('fence', 'concrete', 1.5, { color: '#5e574f' });
   MAT.pine = new THREE.MeshStandardMaterial({ map: leafC, normalMap: leafN, color: '#3f6038', roughness: 0.9, side: THREE.DoubleSide });
   MAT.palm = new THREE.MeshStandardMaterial({ map: frondC, normalMap: frondN, color: '#7fa54a', roughness: 0.85, side: THREE.DoubleSide });
   TEX_SCALE.leaf = 1 / 0.8; TEX_SCALE.leaf2 = 1 / 0.8; TEX_SCALE.pine = 1 / 0.7; TEX_SCALE.palm = 1 / 1.0;
+}
 }
 // world-space tiling: project each face onto its dominant axis so textures tile by metres across every box
 function worldUV(geo, sc) {
@@ -1129,7 +1133,7 @@ function instanceProp(gltf, places, heightM, hideKeys) {
   }
   for (const m of worldMeshes) if (hideKeys.includes(m.userData.key)) m.visible = false;
 }
-{
+if (REALISM) {
   const loader = new GLTFLoader();
   const half = (arr, i) => arr.filter((_, k) => k % 2 === i);
   loader.load(PROPS.tree[0], g => instanceProp(g, half(PLACE.tree, 0).map(p => [p[0], p[1], p[2] * 1.0, p[3]]), 7.5, ['leaf', 'leaf2', 'trunk']), undefined, () => {});
@@ -1634,7 +1638,7 @@ addEventListener('keydown', e => {
   if (e.code === 'KeyR' && P.car) radioNext();
   if (e.code === 'KeyV') { camDist = camDist === 0 ? 6.5 : camDist < 5 ? 0 : camDist < 8 ? 10 : 4.2; hint(camDist === 0 ? 'Vue à la première personne (V pour changer)' : 'Vue à la troisième personne', 2); }
   if (e.code === 'KeyO') { const m = audio.toggleMute(); hint(m ? 'Son coupé (O)' : 'Son activé', 2); }
-  if (e.code === 'KeyG') { hq = !hq; hint(hq ? 'Qualité élevée (G) : occlusion ambiante, bloom, anticrénelage' : 'Qualité réduite (G)', 3); }
+  if (e.code === 'KeyG') { const u = new URL(location.href); if (REALISM) u.searchParams.delete('rendu'); else u.searchParams.set('rendu', 'photo'); location.href = u.toString(); }
 });
 addEventListener('keyup', e => { keys.delete(e.code); if (e.code === 'KeyH') hornHeld = false; });
 addEventListener('blur', () => { keys.clear(); hornHeld = false; });
