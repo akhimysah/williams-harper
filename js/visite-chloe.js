@@ -76,17 +76,20 @@ const T = {
   fall: tex((g, n) => { g.fillStyle = '#000000'; g.fillRect(0, 0, n, n); for (let i = 0; i < 400; i++) { g.strokeStyle = `rgba(255,255,255,${0.2 + rnd() * 0.6})`; g.lineWidth = 1 + rnd() * 2; const x = rnd() * n; g.beginPath(); g.moveTo(x, rnd() * n); g.lineTo(x + (rnd() - 0.5) * 4, rnd() * n); g.stroke(); } }, 256, 1, false),
 };
 T.ripple.repeat.set(6, 6); T.fall.repeat.set(1, 3);
+// sol et murs intérieurs : textures issues de la scène Blender du séjour (marbre crème cuit en 2 × 2 dalles de 1,20 m, enduit crème)
+const imgTex = (src, rep) => { const t = new THREE.TextureLoader().load(src); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(rep, rep); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = renderer.capabilities.getMaxAnisotropy(); return t; };
+T.tile = imgTex('textures/sol-marbre-creme.webp', 0.5); T.plaster = imgTex('textures/mur-enduit.webp', 1); T.marbleW = imgTex('textures/marbre-creme.webp', 1); T.marbleG = imgTex('textures/stone_c.webp', 1); // marbre gris veiné (photo) pour la joue d'escalier et les pylônes // escalier et marbres clairs : même marbre crème, sans joints
 
 // ---------------------------------------------------------------- matières (clé → matériau ; unit = taille d'un motif en mètres)
 const std = (o, unit = 1) => { const m = new THREE.MeshStandardMaterial(o); m.userData.unit = unit; return m; };
 const M = {
   stone: std({ map: T.stone, roughness: 0.55, metalness: 0.08, envMapIntensity: 0.6 }, 2.4),
-  marbleG: std({ map: T.marbleG, roughness: 0.28, metalness: 0.04, envMapIntensity: 1.0 }, 2.0),
-  marbleW: std({ map: T.marbleW, roughness: 0.32, metalness: 0.03, envMapIntensity: 0.8 }, 2.2),
+  marbleG: std({ map: T.marbleG, color: '#b8b8b8', roughness: 0.24, metalness: 0.04, envMapIntensity: 1.0 }, 2.0),
+  marbleW: std({ map: T.marbleW, color: '#d4d1cc', roughness: 0.22, metalness: 0.03, envMapIntensity: 0.8 }, 2.2),
   marbleB: std({ map: T.marbleB, roughness: 0.22, metalness: 0.08, envMapIntensity: 0.7 }, 1.6),
-  plaster: std({ map: T.plaster, roughness: 0.95, metalness: 0, envMapIntensity: 0.3 }, 3),
-  ceiling: std({ map: T.plaster, roughness: 0.95, metalness: 0, emissive: '#5a524a', emissiveIntensity: 0.35 }, 3),
-  tile: std({ map: T.tile, roughness: 0.45, metalness: 0.02, envMapIntensity: 0.6 }, 1.2),
+  plaster: std({ map: T.plaster, color: '#c9c6c2', roughness: 0.9, metalness: 0, envMapIntensity: 0.3 }, 3),
+  ceiling: std({ map: T.plaster, color: '#d2cfcb', roughness: 0.95, metalness: 0, emissive: '#5a524a', emissiveIntensity: 0.35 }, 3),
+  tile: std({ map: T.tile, color: '#c4c2bf', roughness: 0.18, metalness: 0.02, envMapIntensity: 1.0 }, 1.2),
   slats: std({ map: T.slats, roughness: 0.7, metalness: 0, envMapIntensity: 0.4 }, 1.0),
   fence: std({ map: T.fence, roughness: 0.8, metalness: 0 }, 1.0),
   walnut: std({ map: T.walnut, roughness: 0.5, metalness: 0.02, envMapIntensity: 0.6 }, 1.0),
@@ -418,7 +421,7 @@ for (const [key, geos] of Object.entries(buckets)) { const geo = mergeGeometries
 // éclairage cuit dans Blender (Cycles) : models/chloe-baked.glb porte, pour chaque maillage, une lightmap sur l'UV 1 ;
 // on garde nos textures (UV 0) et on les multiplie par la lightmap — ombres douces, rebonds, lumière du ciel, sans calcul en direct.
 const NOT_BAKED = new Set(['gold', 'bronze', 'mirror', 'jar']); let bakedOn = false;
-const BAKE_VERSION = '4'; const LM_GAIN = Math.PI * 2.0; // MeshBasicMaterial divise la lightmap par π
+const BAKE_VERSION = '5'; const LM_GAIN = Math.PI * 2.0; // MeshBasicMaterial divise la lightmap par π
 new GLTFLoader().load('models/chloe-baked.glb?v=' + BAKE_VERSION, g => {
   let n = 0; g.scene.traverse(o => { if (!o.isMesh) return; const key = o.name.split('.')[0]; if (NOT_BAKED.has(key)) return; const target = world.children.find(m => m.name === key); const lm = o.material && o.material.emissiveMap; if (!target || !lm || !o.geometry.attributes.uv1) return;
     lm.channel = 1; lm.colorSpace = THREE.SRGBColorSpace; lm.anisotropy = 4; const src = M[key];
@@ -452,7 +455,7 @@ const props = new THREE.Group(); props.name = 'mobilier'; world.add(props);
   const cv = document.createElement('canvas'); cv.width = cv.height = 1024; const g = cv.getContext('2d'); g.fillStyle = '#1c1b1a'; g.fillRect(0, 0, 1024, 1024); let r = 7; const rr = () => (r = (r * 9301 + 49297) % 233280) / 233280;
   for (let yy = 0; yy < 1024; yy += 24) { let xx = -rr() * 200; while (xx < 1024) { const w = 90 + rr() * 280; if (rr() < 0.5) { g.fillStyle = `hsl(38, 6%, ${70 + rr() * 12}%)`; g.fillRect(xx, yy + 1, w - 3, 22); } xx += w; } }
   const t = new THREE.CanvasTexture(cv); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8; t.center.set(0.5, 0.5); t.rotation = 0.49;
-  const rug = new THREE.Mesh(new THREE.PlaneGeometry(4.2, 4.4).rotateX(-PI / 2), new THREE.MeshStandardMaterial({ map: t, roughness: 0.95 })); rug.position.set(-2.4, F0 + 0.012, -0.6); rug.receiveShadow = true; props.add(rug); }
+  const rug = new THREE.Mesh(new THREE.PlaneGeometry(4.2, 4.4).rotateX(-PI / 2), new THREE.MeshBasicMaterial({ map: t, color: '#b9b6b2' })); rug.position.set(-2.4, F0 + 0.012, -0.6); rug.receiveShadow = true; props.add(rug); }
 // éclairages ponctuels (allumés au crépuscule)
 const lamps = []; const lamp = (x, y, z, col, dist, pow) => { const l = new THREE.PointLight(col, 0, dist, 2); l.position.set(x, y, z); l.userData.pow = pow; scene.add(l); lamps.push(l); return l; };
 lamp(-1.9, 1.0, 8.2, '#ff8a3a', 9, 18); lamp(1.2, 3.4, 7.6, '#ffc890', 10, 14); lamp(0.4, 5.4, -1.8, '#ffd3a0', 14, 26); lamp(5.6, 2.9, -8.2, '#ffcf96', 11, 18);
