@@ -4,6 +4,7 @@ import * as THREE from 'three';
 import { OrbitControls } from './vendor/OrbitControls.js';
 import { GLTFLoader } from './vendor/GLTFLoader.js';
 import { RGBELoader } from './vendor/jsm/loaders/RGBELoader.js';
+import * as BGU from './vendor/BufferGeometryUtils.js';
 
 const MODELS = {
   chloe: {
@@ -133,7 +134,19 @@ export function mount(el, opts = {}) {
   const pbr = (name, rep, o = {}) => { const t = (sfx, srgb) => { const x = loader.load(new URL(`textures/${name}_${sfx}.webp`, base).href); x.wrapS = x.wrapT = THREE.RepeatWrapping; x.repeat.set(rep, rep); x.anisotropy = 8; if (srgb) x.colorSpace = THREE.SRGBColorSpace; return x; };
     return new THREE.MeshStandardMaterial({ map: t('c', true), normalMap: t('n', false), roughnessMap: t('r', false), normalScale: new THREE.Vector2(0.6, 0.6), roughness: 1, metalness: 0, ...o }); };
   const LK = LOOK[key] || LOOK.celine;
-  const mWall = pbr(LK.wallTex, 1.3, { color: LK.wall }), mSlab = pbr('concrete', 0.6, { color: 0xd9d4ca }), mDeck = pbr('concrete', 0.8, { color: 0xd3cdc1 }), mRoof = pbr('asphalt', 2.2, { color: 0x9c968c }), mTree = mat(0x5c7a45, { roughness: 0.9 }), mTrunk = pbr('bark', 1.5, { color: 0xa08a70 });
+  const mWall = pbr(LK.wallTex, 1.3, { color: LK.wall }), mSlab = pbr('concrete', 0.6, { color: 0xd9d4ca }), mDeck = pbr('concrete', 0.8, { color: 0xd3cdc1 }), mRoof = pbr('asphalt', 2.2, { color: 0x9c968c }), mTrunk = pbr('bark', 1.5, { color: 0xa08a70 });
+  const texA = (name, srgb) => { const x = loader.load(new URL(`textures/${name}.webp`, base).href); x.wrapS = x.wrapT = THREE.RepeatWrapping; x.anisotropy = 8; if (srgb) x.colorSpace = THREE.SRGBColorSpace; return x; };
+  const mTree = new THREE.MeshStandardMaterial({ map: texA('leaf_c', true), normalMap: texA('leaf_n', false), normalScale: new THREE.Vector2(1.2, 1.2), color: 0x7f9e55, roughness: 0.9 }); mTree.map.repeat.set(2.5, 2.5); mTree.normalMap.repeat.set(2.5, 2.5);
+  const mBox = new THREE.MeshStandardMaterial({ map: texA('leaf_c', true), normalMap: texA('leaf_n', false), normalScale: new THREE.Vector2(1.2, 1.2), color: 0x5e7f3f, roughness: 0.95 }); mBox.map.repeat.set(3, 3); mBox.normalMap.repeat.set(3, 3);
+  const mFrond = new THREE.MeshStandardMaterial({ map: texA('frond_c', true), normalMap: texA('frond_n', false), color: 0x8aa857, roughness: 0.85, alphaTest: 0.45, side: THREE.DoubleSide });
+  // Palme : rachis courbé (y = -1,1 t² + 0,25 t sur 3 m) et 2 × 20 folioles prises dans l'atlas de feuilles, fusionnées en une géométrie
+  const frondGeo = (() => { const parts = []; const rach = (t) => new THREE.Vector3(3.0 * t, -1.1 * t * t + 0.25 * t, 0);
+    const spine = new THREE.TubeGeometry(new THREE.CatmullRomCurve3([rach(0), rach(0.33), rach(0.66), rach(1)]), 10, 0.018, 5, false); const sUV = spine.attributes.uv; for (let k = 0; k < sUV.count; k++) sUV.setXY(k, 0.33, 0.5); parts.push(spine);
+    const nL = 20; for (let i = 0; i < nL; i++) { const t = 0.08 + 0.9 * i / (nL - 1); const p = rach(t), p2 = rach(Math.min(1, t + 0.02)); const dir = p2.clone().sub(p).normalize(); const len = 0.75 * (1 - 0.55 * Math.pow(t - 0.35, 2)) ; const leaf = (i * 5) % 6;
+      for (const side of [1, -1]) { const g = new THREE.PlaneGeometry(0.11, len, 1, 3); const uv = g.attributes.uv; for (let k = 0; k < uv.count; k++) uv.setXY(k, (leaf + uv.getX(k)) / 6, uv.getY(k)); g.translate(0, len / 2, 0);
+        const m = new THREE.Matrix4(); const q = new THREE.Quaternion(); const e = new THREE.Euler(0, 0, 0); const yaw = Math.atan2(dir.y, dir.x);
+        g.rotateZ(-Math.PI / 2); g.rotateX(side * 0.6); g.rotateZ(yaw - side * 0.95 - 0.25 * t); g.rotateY(side * 0.15); g.translate(p.x, p.y, p.z + side * 0.015); parts.push(g); } }
+    const merged = (BGU.mergeGeometries || BGU.mergeBufferGeometries)(parts, false); merged.computeVertexNormals(); return merged; })();
   const travMap = loader.load(new URL('img/tex/travertin.jpg', base).href); travMap.colorSpace = THREE.SRGBColorSpace; travMap.wrapS = travMap.wrapT = THREE.RepeatWrapping; travMap.anisotropy = 8; travMap.repeat.set(1, 1);
   const travNor = loader.load(new URL('img/tex/travertin-normal.jpg', base).href); travNor.wrapS = travNor.wrapT = THREE.RepeatWrapping; const travRgh = loader.load(new URL('img/tex/travertin-rough.jpg', base).href); travRgh.wrapS = travRgh.wrapT = THREE.RepeatWrapping;
   const marbleTex = canvasTex((g) => { g.fillStyle = '#626466'; g.fillRect(0, 0, 512, 512);
@@ -299,15 +312,19 @@ export function mount(el, opts = {}) {
   setStage(0.3, 0.46, 'grow');
   // poteaux
   M.columns.forEach(([x0, y0, x1, y1, lv]) => { const yt = lv === 'rdc' ? Y1 : Y2; const yb = lv === 'etage' ? Y1 + H.slab : 0.15; box(x0, y0, x1, y1, yb, yt, mStone, lv === 'rdc' ? groups.rdc : lv === 'etage' ? groups.etage : groups.roof); });
-  setStage(0.92, 0.98, 'pop'); const mBoule = mat(0xf3f0ea, { roughness: 0.85 });
+  setStage(0.92, 0.98, 'pop'); const mBoule = mBox;
   (M.spheres || []).forEach(([x, y, r]) => { const b = new THREE.Mesh(new THREE.SphereGeometry(r, 36, 24), mBoule); b.position.set(px(x), r, pz(y)); b.castShadow = b.receiveShadow = true; groups.site.add(b); tag(b); });
   // arbres : palmiers stylisés (tronc + couronne), buissons (sphères)
   setStage(0.9, 1.0, 'pop'); M.trees.forEach(([x, y, h]) => {
     const X = px(x), Z = pz(y);
-    if (h > 0) {
-      const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.16, h, 8), mTrunk); trunk.position.set(X, h / 2, Z); trunk.castShadow = true; groups.site.add(trunk); tag(trunk);
-      for (let k = 0; k < 9; k++) { const a = (k / 9) * Math.PI * 2 + (h % 1); const leaf = new THREE.Mesh(new THREE.ConeGeometry(0.22, 2.4, 4), mTree); leaf.position.set(X + Math.cos(a) * 0.95, h + 0.1, Z + Math.sin(a) * 0.95); leaf.lookAt(X + Math.cos(a) * 3, h - 1.3, Z + Math.sin(a) * 3); leaf.rotateX(Math.PI / 2); leaf.castShadow = true; groups.site.add(leaf); tag(leaf); }
-    } else { const b = new THREE.Mesh(new THREE.SphereGeometry(1.1, 14, 10), mTree); b.position.set(X, 0.7, Z); b.scale.y = 0.65; b.castShadow = true; groups.site.add(b); tag(b); }
+    if (h > 0) { // palmier : stipe incliné en écorce, couronne de palmes texturées retombantes
+      const lean = ((h * 7.3) % 1 - 0.5) * 0.14, seed = (h * 13.7) % 1;
+      const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.22, h, 9), mTrunk); trunk.position.set(X, h / 2, Z); trunk.rotation.set(lean, 0, lean); trunk.castShadow = true; groups.site.add(trunk); tag(trunk);
+      const crown = new THREE.Group(); crown.position.set(X + Math.sin(lean) * h / 2, h, Z - Math.sin(lean) * h / 2); groups.site.add(crown); tag(crown);
+      const n = 13; for (let k = 0; k < n; k++) { const a = seed * 6.28 + (k / n) * Math.PI * 2; const f = new THREE.Mesh(frondGeo, mFrond); f.rotation.set(0, -a, 0.35 + ((k * 0.37) % 1) * 0.3); f.scale.setScalar(0.85 + ((k * 0.61) % 1) * 0.35); f.castShadow = true; crown.add(f); }
+      for (let k = 0; k < 4; k++) { const a = seed * 6.28 + (k / 4) * Math.PI * 2 + 0.4; const f = new THREE.Mesh(frondGeo, mFrond); f.rotation.set(0, -a, 1.25); f.scale.setScalar(0.8); crown.add(f); } // palmes basses
+    } else { // buisson taillé : sphère de feuillage légèrement aplatie
+      const b = new THREE.Mesh(new THREE.IcosahedronGeometry(1.1, 3), mTree); b.position.set(X, 0.7, Z); b.scale.set(1, 0.65, 0.9); b.rotation.y = (X * 3.1) % 6.28; b.castShadow = b.receiveShadow = true; groups.site.add(b); tag(b); }
   });
 
   // Nuit / jour : ciel crépusculaire, soleil bas et chaud, baies allumées, lampes sous les terrasses.
