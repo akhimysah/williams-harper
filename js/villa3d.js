@@ -160,7 +160,7 @@ export function mount(el, opts = {}) {
   const soffitTex = canvasTex((g) => { g.fillStyle = '#6b4b32'; g.fillRect(0, 0, 512, 512); for (let i = 0; i < 24; i++) { g.fillStyle = `hsl(${24 + Math.random() * 6},${40 + Math.random() * 10}%,${26 + Math.random() * 8}%)`; g.fillRect(0, i * 21.3, 512, 15); g.fillStyle = '#1f1612'; g.fillRect(0, i * 21.3 + 15, 512, 6.3); } }, 1);
   const mSoffit = pbr('wood', 0.8, { color: LK.slat, roughness: 0.6 }); mSoffit.map.rotation = Math.PI / 2; mSoffit.normalMap.rotation = Math.PI / 2; mSoffit.roughnessMap.rotation = Math.PI / 2; const mCoping = new THREE.MeshStandardMaterial({ map: travMap, normalMap: travNor, normalScale: new THREE.Vector2(0.4, 0.4), roughness: 0.85 });
   const mGlass = new THREE.MeshPhysicalMaterial({ color: 0x2c3a41, transparent: true, opacity: 0.74, roughness: 0.03, metalness: 0, transmission: 0, envMapIntensity: 1.1, emissive: new THREE.Color(0xffd79a), emissiveIntensity: 0 });
-  const mWater = new THREE.MeshPhysicalMaterial({ color: 0x4fa8bb, transparent: true, opacity: 0.92, roughness: 0.02, metalness: 0.05, envMapIntensity: 1.8, normalMap: rippleTex, normalScale: new THREE.Vector2(0.35, 0.35), emissive: new THREE.Color(0x7fb5c4), emissiveIntensity: 0 });
+  const mWater = new THREE.MeshPhysicalMaterial({ color: 0x1f8ca6, transparent: true, opacity: 0.72, roughness: 0.22, metalness: 0.0, envMapIntensity: 0.3, normalMap: rippleTex, normalScale: new THREE.Vector2(0.35, 0.35), emissive: new THREE.Color(0x7fb5c4), emissiveIntensity: 0 });
   // Façades : les élévations des architectes (avant, arrière, latérales) sont projetées sur les murs extérieurs selon leur orientation.
   const facMats = {}; let facBox = null;
   if (M.facades && opts.elevations) {
@@ -290,6 +290,7 @@ export function mount(el, opts = {}) {
   const poolShape = new THREE.Shape(M.pool.map(([x, y]) => new THREE.Vector2(px(x), -pz(y))));
   const pool = new THREE.Mesh(new THREE.ShapeGeometry(poolShape), mWater); pool.rotation.x = -Math.PI / 2; pool.position.y = 0.2; groups.rdc.add(pool); setStage(0.9, 0.97, 'rise'); tag(pool); setStage(0.14, 0.24, 'grow');
   const rim = new THREE.Mesh(new THREE.ExtrudeGeometry(poolShape, { depth: 1.5, bevelEnabled: false }), pbr('tiles', 2, { color: 0x3f8e9c, roughness: 0.4 })); rim.rotation.x = Math.PI / 2; rim.position.y = 0.18; rim.receiveShadow = true; groups.rdc.add(rim); setStage(0.16, 0.24, 'pop'); tag(rim);
+  { const floor = new THREE.Mesh(new THREE.ShapeGeometry(poolShape), pbr('tiles', 1.2, { color: 0x2f8ea6, roughness: 0.5 })); floor.rotation.x = -Math.PI / 2; floor.position.y = -1.3; floor.receiveShadow = true; groups.rdc.add(floor); tag(floor); } // fond du bassin en mosaïque bleue
   const copingShape = new THREE.Shape(M.pool.map(([x, y]) => new THREE.Vector2(px(x), -pz(y)))); const cop = new THREE.Mesh(new THREE.ExtrudeGeometry(copingShape, { depth: 0.06, bevelEnabled: false }), mCoping); cop.rotation.x = Math.PI / 2; cop.position.y = 0.24; cop.scale.set(1.04, 1.04, 1); groups.rdc.add(cop); tag(cop); cop.position.x -= (cop.scale.x - 1) * 0; 
   // murs RDC
   setStage(0.22, 0.42, 'grow'); M.rdc.forEach((poly) => walls(poly, 0.15, Y1, groups.rdc));
