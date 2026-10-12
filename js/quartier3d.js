@@ -1235,7 +1235,8 @@ const G_SHOE = new THREE.BoxGeometry(0.13, 0.08, 0.26).translate(0, -0.02, 0.05)
 // allégés (models/persos/*.glb). Le bonhomme stylisé reste dessous en secours tant que le modèle n'est pas chargé.
 const CHAR_KEYS = ['femme-lin', 'homme-lin', 'femme-sport', 'homme-polo', 'senior', 'femme-chemise', 'enfant', 'homme-noir'];
 const CHAR_H = { enfant: 1.28, 'femme-lin': 1.68, 'femme-sport': 1.7, 'femme-chemise': 1.65, senior: 1.75, hero: 1.8 };
-const CHAR_CLIPS = { hero: { run: 'hero-run', idle: 'hero-idle', sit: 'hero-sit' } }; // clips supplémentaires du héros (fichiers à part, même squelette)
+const CHAR_CLIPS = { hero: { run: 'hero-run', idle: 'hero-idle', sit: 'hero-sit' } }; // clips supplémentaires (fichiers à part, même squelette)
+for (const k of CHAR_KEYS) CHAR_CLIPS[k] = { idle: k + '-idle' }; // repos des passants quand ils s'arrêtent
 const charCache = {}, charLoader = new GLTFLoader();
 function parallelTraverse(a, b, cb) { cb(a, b); for (let i = 0; i < a.children.length; i++) parallelTraverse(a.children[i], b.children[i], cb); }
 function cloneSkinned(source) { // équivalent de SkeletonUtils.clone : chaque clone garde son propre squelette
@@ -1255,7 +1256,7 @@ function attachChar(p, key) {
   charEntry(key).then(e => { if (!e) return; const c = cloneSkinned(e.scene); c.scale.setScalar(e.k); c.position.y = e.y0;
     p.body.children.forEach(ch => { ch.visible = false; }); p.body.add(c);
     const mixer = new THREE.AnimationMixer(c), actions = {}; for (const [k, clip] of Object.entries(e.clips)) { const a = mixer.clipAction(clip); a.play(); a.setEffectiveWeight(0); actions[k] = a; }
-    p.glb = { mixer, actions }; });
+    p.glb = { mixer, actions, w: { walk: 1 }, t0: Math.random() * 20, last: performance.now() }; });
 }
 function makePerson(o) {
   const root = new THREE.Group(), body = new THREE.Group(); root.add(body);
@@ -1281,9 +1282,11 @@ function makePerson(o) {
 function animatePerson(p, phase, amp, st = {}) {
   if (p.glb) { // personnage réel : on choisit le clip et on cale son temps sur la phase de marche (pieds synchrones avec le déplacement)
     const A = p.glb.actions, want = st.sit && A.sit ? 'sit' : (amp > 0.62 && A.run) ? 'run' : amp > 0.05 ? 'walk' : A.idle ? 'idle' : 'walk';
-    for (const k in A) A[k].setEffectiveWeight(k === want ? 1 : 0);
-    const a = A[want], d = a.getClip().duration; const cyc = (((phase / (Math.PI * 2)) % 1) + 1) % 1;
-    a.time = want === 'walk' || want === 'run' ? (amp > 0.05 ? cyc * d : 0) : (performance.now() / 1000) % d;
+    const now = performance.now(), dt = Math.min(0.1, (now - p.glb.last) / 1000), W = p.glb.w, f = st.sit ? 1 : Math.min(1, dt * 6); p.glb.last = now;
+    const cyc = (((phase / (Math.PI * 2)) % 1) + 1) % 1, t = now / 1000 + p.glb.t0;
+    for (const k in A) { // fondu de ~0,3 s entre marche, course et repos ; chaque repos décalé pour que les passants ne bougent pas en chœur
+      W[k] = (W[k] || 0) + ((k === want ? 1 : 0) - (W[k] || 0)) * f; A[k].setEffectiveWeight(W[k]);
+      const d = A[k].getClip().duration; A[k].time = k === 'walk' || k === 'run' ? cyc * d : t % d; }
     p.glb.mixer.update(0);
     p.body.position.y = 0; p.body.rotation.x = 0; p.body.rotation.z = 0;
     if (st.swim) { p.body.rotation.x = -1.2; p.body.position.y = -0.5; }
@@ -2094,6 +2097,7 @@ function updatePeds(dt) {
     }
     if (pc && hd < 1.6 && sp > 4 && p.down <= 0) { p.down = 2.4; p.vy = 3; say(pick(['Aïe…', 'Mon dos !', 'Ça va, ça va…']), p.p.root); }
     if (p.wait > 0) { p.wait -= dt; block = true; }
+    else if (p.down <= 0 && p.offT <= 0 && rnd() < dt / 22) p.wait = 3 + rnd() * 6; // petite pause de temps en temps : on souffle, on regarde autour
     if (!block && p.down <= 0) {
       p.s += p.dir * p.v * dt;
       if (!p.path.loop && (p.s > p.path.len || p.s < 0)) { p.dir *= -1; p.s = clamp(p.s, 0, p.path.len); p.wait = 1 + rnd() * 3; }
@@ -2363,4 +2367,4 @@ applySketch();
 renderer.setAnimationLoop(frame);
 go.disabled = false; go.textContent = 'Jouer';
 
-window.WHQ = { P, doors, lots, act }; // accès de débogage (tests)
+window.WHQ = { P, doors, lots, act, peds }; // accès de débogage (tests)
