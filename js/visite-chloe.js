@@ -349,12 +349,12 @@ glazing('z', -6.7, -2.0, 1.5, SL + 0.9, Y2 - 0.9, { mullions: 2 });
 // ---------------------------------------------------------------- intérieurs
 // cuisine : îlot en marbre noir, plan de travail et colonnes en noyer, LED sous les meubles hauts
 box('walnut', -6.55, -2.3, F0, 0.95, -13.25, -12.6, true); box('marbleB', -6.6, -2.25, 0.95, 1.0, -13.3, -12.55); box('walnut', -6.55, -2.3, 2.2, 3.0, -13.25, -12.9); box('led', -6.5, -2.35, 2.19, 2.21, -12.92, -12.9);
-box('walnut', -6.55, -5.9, F0, 3.0, -12.6, -8.3, true); box('marbleB', -5.1, -2.8, F0, 0.97, -11.2, -10.2, true); box('marbleB', -5.2, -2.7, 0.97, 1.03, -11.3, -10.1); box('led', -5.1, -2.8, 0.17, 0.2, -11.19, -11.17);
+box('walnut', -6.55, -5.9, F0, 3.0, -12.6, -8.3, true); // colonnes noyer (l'îlot est un meuble extrait)
 for (let i = 0; i < 3; i++) { cyl('frame', -4.6 + i * 0.8, 2.9, 3.0, -10.65, 0.006, 0.006, 4); put('bronze', new THREE.ConeGeometry(0.16, 0.22, 16, 1, true), mat4(-4.6 + i * 0.8, 2.1, -10.65)); }
-for (let i = 0; i < 3; i++) chair(-4.5 + i * 0.75, -9.7, PI, 'leatherC');
+// (cuisine) tabourets : mobilier extrait
 // salle à manger : table noire, huit chaises, suspension dorée en disque, bibliothèque LED sur le mur ouest
-table(0, -6.2, 3.2, 1.1, 0.75, 'marbleB', 'frame');
-for (let i = 0; i < 4; i++) { chair(-1.2 + i * 0.8, -6.95, 0, 'fabricD'); chair(-1.2 + i * 0.8, -5.45, PI, 'fabricD'); }
+// (salle à manger) table : mobilier extrait
+// (salle à manger) chaises : mobilier extrait
 put('gold', new THREE.SphereGeometry(0.75, 28, 10, 0, PI * 2, 0, PI * 0.45).scale(1, 0.4, 1), mat4(0, 2.0, -6.2)); cyl('frame', 0, 2.3, Y1, -6.2, 0.006, 0.006, 4);
 { const x = -2.5; for (let y = 0.6; y < 3.4; y += 0.65) { box('steelBk', x, x + 0.3, y, y + 0.03, -7.8, -4.5); box('led', x + 0.02, x + 0.28, y + 0.03, y + 0.05, -7.78, -4.52); for (let k = 0; k < 4; k++) if (rnd() < 0.7) box(rnd() < 0.5 ? 'book' : 'copper', x + 0.04, x + 0.26, y + 0.04, y + 0.3 + rnd() * 0.15, -7.6 + k * 0.8, -7.0 + k * 0.8 + rnd() * 0.3); } }
 // séjour d'après les rendus : banquette capitonnée cuir vert, pouf cognac sur socle noyer, grand canapé crème à boudins,
@@ -454,6 +454,15 @@ const props = new THREE.Group(); props.name = 'mobilier'; world.add(props);
     ['j-lampe-spheres', 3.45, -11.25, F0, 2.1, 'h', 0], ['j-lampadaire', 3.3, -9.9, F0, 2.0, 'h', 0], ['j-lampadaire', 7.9, -4.75, F0, 2.0, 'h', 0],
     ['j-sphere-sculptee', 7.45, -5.1, F0, 0.9, 'w', 0.4], ['j-sphere-sculptee', 3.25, -6.0, F0, 0.6, 'w', 2.1], ['j-sphere-bois', 7.95, -5.95, F0, 0.5, 'w', 0],
     ['j-sculpture', 3.0, -11.5, 1.1, 1.3, 'h', 0.3, false],
+    // cuisine (rendu de l'îlot courbe) : îlot en marbre blanc ceinturé d'or, trois tabourets, coupe d'oranges, plante
+    ['k-ilot', -3.95, -10.7, F0, 2.1, 'w', 0], ['k-coupe', -4.35, -10.75, F0 + 1.0, 0.34, 'w', 0, false],
+    ['k-tabouret', -4.6, -9.65, F0, 1.02, 'h', PI], ['k-tabouret', -3.95, -9.65, F0, 1.02, 'h', PI], ['k-tabouret', -3.3, -9.65, F0, 1.02, 'h', PI],
+    ['s-plante', -2.5, -8.45, F0, 1.4, 'h', 1.2],
+    // salle à manger : table en marbre gris sur pieds noirs, huit chaises en velours vert, vase de fleurs séchées
+    ['d-table', 0, -6.2, F0, 3.2, 'w', 0], ['d-vase', 0.35, -6.2, F0 + 0.74, 0.6, 'h', 0, false],
+    ['d-chaise2', -1.05, -7.2, F0, 0.82, 'h', 0], ['d-chaise2', 0, -7.2, F0, 0.82, 'h', 0], ['d-chaise2', 1.05, -7.2, F0, 0.82, 'h', 0],
+    ['d-chaise2', -1.05, -5.2, F0, 0.82, 'h', PI], ['d-chaise2', 0, -5.2, F0, 0.82, 'h', PI], ['d-chaise2', 1.05, -5.2, F0, 0.82, 'h', PI],
+    ['d-chaise2', -2.0, -6.2, F0, 0.82, 'h', PI / 2], ['d-chaise2', 2.0, -6.2, F0, 0.82, 'h', -PI / 2],
     ['woman-stairs', -5.7, 2.5 - 6.5 * tread, F0 + rise * 7, 1.68, 'h', -0.52, false], // silhouette qui descend l'escalier
   ];
   const cache = {}, loader = new GLTFLoader();
