@@ -361,20 +361,20 @@ put('gold', new THREE.SphereGeometry(0.75, 28, 10, 0, PI * 2, 0, PI * 0.45).scal
 // tables basses marbre noir et acier, lampe aux sphères dorées, sphères de bois sculpté, lit de galets, fauteuils tressés,
 // lampadaires noirs, niche en noyer éclairée, sculpture noire sur socle, rideaux en plis de part et d'autre des baies
 box('fabric', 3.3, 8.1, F0, 0.2, -11.0, -7.6); box('fabricD', 3.3, 8.1, 0.2, 0.215, -11.0, -7.6); // tapis
-tufted(6.0, -10.4, 3.6, 1.05, 0, 'fabric', 0.42, true); tufted(3.65, -8.6, 2.4, 1.0, PI / 2, 'fabric', 0.42, true);
-tufted(5.4, -8.2, 1.4, 0.95, 0, 'leatherC', 0.42); box('walnut', 4.55, 6.25, F0, F0 + 0.12, -8.75, -7.6);
-tufted(6.5, -5.9, 2.8, 1.05, 0, 'leatherG', 0.44);
-table(5.2, -9.1, 1.4, 0.75, 0.36, 'marbleB', 'steelBk', F0, 0.14); box('steelBk', 6.1, 6.9, F0 + 0.28, F0 + 0.32, -9.5, -8.75); box('steelBk', 6.1, 6.15, F0, F0 + 0.32, -9.5, -8.75); box('steelBk', 6.85, 6.9, F0, F0 + 0.32, -9.5, -8.75);
-domeLamp(5.0, F0 + 0.36, -9.3, 0.14); domeLamp(6.05, F0 + 0.42, -8.3, 0.12);
-{ const x = 3.4, z = -11.4; cyl('gold', x, F0, F0 + 0.03, z, 0.28, 0.28, 24); cyl('bronze', x, F0, 2.3, z, 0.015, 0.015, 8); for (const [dx, dy, dz, r] of [[0, 2.35, 0, 0.3], [0.32, 2.0, 0.15, 0.22], [-0.25, 1.85, -0.1, 0.2], [0.1, 1.55, 0.25, 0.25], [-0.3, 1.45, 0.2, 0.17], [0.28, 1.2, -0.2, 0.19]]) put('gold', new THREE.SphereGeometry(r, 18, 14), mat4(x + dx, dy, z + dz)); }
-for (const [x, z, r] of [[7.5, -5.1, 0.46], [7.95, -5.9, 0.28], [3.2, -6.0, 0.32]]) { put('woodBall', new THREE.SphereGeometry(r, 24, 18), mat4(x, F0 + r, z, 0.3, rnd() * 3, 0.2)); solid(x - r, x + r, z - r, z + r, 0, r * 2); }
-put('walnut', new THREE.SphereGeometry(0.2, 18, 14), mat4(7.2, F0 + 0.2, -6.4));
+// (séjour) remplacé par le mobilier extrait : tufted(6.0, -10.4
+// (séjour) remplacé par le mobilier extrait : tufted(5.4, -8.2
+// (séjour) remplacé par le mobilier extrait : tufted(6.5, -5.9
+// (séjour) remplacé par le mobilier extrait : table(5.2, -9.1
+// (séjour) remplacé par le mobilier extrait : domeLamp(5.0, F0 + 0.36
+// (séjour) remplacé par le mobilier extrait : { const x = 3.4, z = -11.4
+// (séjour) remplacé par le mobilier extrait : for (const [x, z, r] of [[7.5, -5.1
+// (séjour) remplacé par le mobilier extrait : put('walnut', new THREE.SphereGeometry(0.2, 18, 14)
 box('frame', 2.9, 3.5, F0 - 0.1, F0 + 0.02, -8.0, -4.6); box('pebble', 2.95, 3.45, F0 - 0.1, F0 + 0.06, -7.95, -4.65); sph('leaf2', 3.2, F0 + 0.3, -6.3, 0.26, 1, 0.8);
-armchair(7.7, -7.6, -PI / 2 + 0.3); armchair(7.7, -9.0, -PI / 2 - 0.2); armchair(4.1, -6.0, PI / 2 + 0.4);
-floorLamp(3.3, -9.9, 0.6); floorLamp(7.9, -4.7, -2.4, F0, 2.1);
+// (séjour) remplacé par le mobilier extrait : armchair(7.7, -7.6
+// (séjour) remplacé par le mobilier extrait : floorLamp(3.3, -9.9
 plant(7.9, -11.4, F0, 1.1); plant(3.1, -4.9, F0, 0.9);
 { const x = 8.2; box('walnut', x, x + 0.33, F0 + 0.4, 2.6, -11.9, -10.6, true); box('jar', x + 0.02, x + 0.3, F0 + 0.45, 2.55, -11.88, -10.62); for (let y = 0.5; y < 2.3; y += 0.5) { box('walnut', x + 0.02, x + 0.31, F0 + y, F0 + y + 0.03, -11.88, -10.62); box('led', x + 0.04, x + 0.3, F0 + y + 0.03, F0 + y + 0.05, -11.87, -11.85); for (let k = 0; k < 3; k++) if (rnd() < 0.7) cyl(rnd() < 0.5 ? 'jar' : 'gold', x + 0.17, F0 + y + 0.03, F0 + y + 0.25 + rnd() * 0.15, -11.7 + k * 0.4, 0.035, 0.035, 8); } }
-{ const x = 3.0, z = -11.5; box('marbleB', x - 0.16, x + 0.16, F0, 1.1, z - 0.16, z + 0.16, true); for (let i = 0; i < 6; i++) put('steelBk', new THREE.BoxGeometry(0.18 + rnd() * 0.12, 0.26, 0.06), mat4(x + (rnd() - 0.5) * 0.08, 1.25 + i * 0.22, z, 0, rnd() * 1.2, (rnd() - 0.5) * 0.5)); }
+{ const x = 3.0, z = -11.5; box('marbleB', x - 0.16, x + 0.16, F0, 1.1, z - 0.16, z + 0.16, true); } // socle de la sculpture (extraite, posée dessus)
 curtain('x', -11.72, 3.25, 4.4, F0, Y1 - 0.06); curtain('x', -11.72, 6.8, 7.95, F0, Y1 - 0.06); curtain('z', 8.22, -10.4, -9.3, F0, Y1 - 0.06); curtain('z', 8.22, -5.3, -4.4, F0, Y1 - 0.06);
 box('led', 2.9, 8.2, Y1 - 0.12, Y1 - 0.1, -11.75, -11.72); box('led', 2.9, 2.93, Y1 - 0.12, Y1 - 0.1, -11.7, -4.5); // gorge lumineuse
 // hall double hauteur : sculpture dorée en spirale sur socle de marbre noir, suspension en grappe, console
@@ -389,10 +389,10 @@ box('marbleG', -6.55, -5.15, F0, 2.3, 2.6, 3.2, true); for (let y = 0.55; y < 2.
   for (const [y0, y1, z0, z1] of [[1.5, 2.3, 8.3, 9.65], [2.3, 3.05, 6.55, 7.6], [F0 + 0.6, 1.5, 7.8, 8.6], [3.05, Y1 - 0.25, 8.8, 9.65]]) { box('copper', xw + 0.04, xw + 0.07, y0 + 0.03, y1 - 0.03, z0 + 0.03, z1 - 0.03); box('led', xw + 0.06, xw + 0.42, y0 + 0.03, y1 - 0.03, z1 - 0.05, z1 - 0.03); }
   for (let i = 0; i < 14; i++) { const r = rows[i % 4], z = 6.7 + rnd() * 2.6; box('book', xw + 0.08, xw + 0.36, r + 0.03, r + 0.25 + rnd() * 0.18, z, z + 0.06 + rnd() * 0.12); }
   box('frame', xw + 0.45, xw + 0.95, F0, F0 + 0.45, 6.7, 9.5, true); box('pebble', xw + 0.5, xw + 0.9, F0 + 0.4, F0 + 0.47, 6.8, 9.4); box('steelBk', xw + 0.45, xw + 0.95, F0 + 0.45, F0 + 0.48, 6.7, 9.5); box('steelBk', xw + 0.45, xw + 0.95, F0 + 0.1, F0 + 0.12, 6.7, 6.72); }
-box('fabric', -0.4, 3.0, F0, 0.18, 6.0, 9.4); tufted(0.3, 6.8, 1.3, 0.9, 0, 'fabric', 0.42); tufted(0.3, 8.9, 1.3, 0.9, 0, 'fabric', 0.42); tufted(2.6, 8.3, 1.6, 0.9, 0, 'fabric', 0.42); tufted(2.6, 6.5, 1.3, 0.9, 0, 'fabric', 0.42);
-put('marbleB', new THREE.CylinderGeometry(0.62, 0.62, 0.05, 28), mat4(1.4, F0 + 0.36, 7.7)); put('steelBk', new THREE.CylinderGeometry(0.2, 0.3, 0.33, 14), mat4(1.4, F0 + 0.17, 7.7)); put('marbleB', new THREE.CylinderGeometry(0.4, 0.4, 0.05, 24), mat4(1.1, F0 + 0.28, 8.5)); put('steelBk', new THREE.CylinderGeometry(0.12, 0.2, 0.25, 12), mat4(1.1, F0 + 0.13, 8.5)); solid(0.7, 2.1, 7.0, 8.9, 0, 0.5); cyl('steelBk', 1.9, F0, F0 + 0.45, 8.6, 0.32, 0.32, 20);
-plant(-1.3, 5.9, F0, 1.2, 8); plant(3.6, 9.7, F0, 0.9);
-floorLamp(3.3, 6.3, -2.2, F0, 2.4); floorLamp(-1.6, 9.6, 2.6, F0, 2.2); domeLamp(1.9, F0 + 0.45, 8.6, 0.15);
+box('fabric', -0.4, 3.0, F0, 0.18, 6.0, 9.4); // tapis (poufs, canapé et table : mobilier extrait)
+cyl('marbleB', 1.55, F0, F0 + 0.5, 9.75, 0.22, 0.22, 24, true); // guéridon de la lampe dôme
+// (salon) plantes : mobilier extrait
+// (salon) lampadaires et lampe dôme : mobilier extrait
 box('steelBk', 3.9, 4.1, F0, Y1, 2.8, 5.5); for (let y = 0.6; y < 3.5; y += 0.5) { box('steelBk', 3.75, 3.9, F0 + y, F0 + y + 0.02, 2.85, 5.45); box('led', 3.77, 3.88, F0 + y + 0.02, F0 + y + 0.035, 2.9, 5.4); }
 curtain('z', 4.02, 2.9, 4.0, F0, Y1 - 0.06); curtain('z', 4.02, 9.0, 9.9, F0, Y1 - 0.06);
 // terrasse couverte : grande table de marbre, dix fauteuils tressés, deux suspensions dorées en coupole, lounge au bord du bassin
@@ -420,10 +420,11 @@ const world = new THREE.Group(); scene.add(world);
 for (const [key, geos] of Object.entries(buckets)) { const geo = mergeGeometries(geos, false); const mesh = new THREE.Mesh(geo, M[key]); mesh.name = key; if (!NO_SHADOW.has(key)) { mesh.castShadow = true; mesh.receiveShadow = true; } else if (key === 'lawn' || key === 'curtain') mesh.receiveShadow = true; if (key === 'glass' || key === 'railGlass' || key === 'water' || key === 'waterDark' || key === 'fall') mesh.renderOrder = 10; world.add(mesh); }
 // éclairage cuit dans Blender (Cycles) : models/chloe-baked.glb porte, pour chaque maillage, une lightmap sur l'UV 1 ;
 // on garde nos textures (UV 0) et on les multiplie par la lightmap — ombres douces, rebonds, lumière du ciel, sans calcul en direct.
-const NOT_BAKED = new Set(['gold', 'bronze', 'mirror', 'jar']); let bakedOn = false;
+const NOT_BAKED = new Set(['gold', 'bronze', 'mirror', 'jar', 'curtain']); // rideaux : la lightmap y laissait des taches noires let bakedOn = false;
 const BAKE_VERSION = '5'; const LM_GAIN = Math.PI * 2.0; // MeshBasicMaterial divise la lightmap par π
 new GLTFLoader().load('models/chloe-baked.glb?v=' + BAKE_VERSION, g => {
   let n = 0; g.scene.traverse(o => { if (!o.isMesh) return; const key = o.name.split('.')[0]; if (NOT_BAKED.has(key)) return; const target = world.children.find(m => m.name === key); const lm = o.material && o.material.emissiveMap; if (!target || !lm || !o.geometry.attributes.uv1) return;
+    if (o.geometry.attributes.position.count !== target.geometry.attributes.position.count) { console.log('cuisson ignorée (géométrie modifiée) :', key); return; } // sinon les anciens meubles cuits réapparaissent
     lm.channel = 1; lm.colorSpace = THREE.SRGBColorSpace; lm.anisotropy = 4; const src = M[key];
     const mat = new THREE.MeshBasicMaterial({ map: src.map || null, color: src.color, lightMap: lm, lightMapIntensity: LM_GAIN, transparent: !!src.transparent, opacity: src.opacity ?? 1, side: src.side ?? THREE.FrontSide, toneMapped: true });
     target.geometry.dispose(); target.geometry = o.geometry; target.material = mat; target.receiveShadow = false; n++; });
@@ -440,6 +441,19 @@ const props = new THREE.Group(); props.name = 'mobilier'; world.add(props);
     ['coffee-table-dark', 1.5, 3.3, F0, 0.9, 'w', 0], ['armchair-teal', 0.6, 2.6, F0, 0.82, 'h', 0.85], ['armchair-teal', 2.15, 4.15, F0, 0.82, 'h', -2.42], ['ottoman', 0.55, 4.1, F0, 0.44, 'h', 0],
     ['ring-lamp', 2.25, -3.7, F0, 1.9, 'h', -0.6],
     ['topiary', 2.2, 5.2, F0 + 0.5, 0.6, 'h', 0, false], ['topiary', 2.2, 5.2, F0 + 1.06, 0.48, 'h', 1, false], ['topiary', 2.2, 5.2, F0 + 1.5, 0.36, 'h', 2, false],
+    // salon-cheminée (rendu 03) : table basse noire devant le foyer, deux poufs crème, canapé gris face au feu, lampe dôme, plantes
+    ['s-table-noire', -0.55, 8.1, F0, 1.7, 'w', PI / 2], ['s-pouf-creme', 0.75, 7.15, F0, 1.15, 'w', 0], ['s-pouf-creme', 0.75, 9.05, F0, 1.15, 'w', 0],
+    ['s-canape-gris', 2.35, 8.1, F0, 2.7, 'w', -PI / 2], ['s-lampe-dome', 1.55, 9.75, F0 + 0.5, 0.55, 'h', 0, false],
+    ['s-plante', -1.3, 5.95, F0, 1.7, 'h', 0.6], ['s-plante', 3.6, 9.7, F0, 1.5, 'h', 2.2], ['j-lampadaire', 3.4, 6.2, F0, 2.2, 'h', 0],
+    // séjour (rendus 02 et 04) : canapés crème capitonnés, pouf cognac, banquette cuir vert, table marbre noir, fauteuils verts,
+    // lampe aux sphères dorées, sphères de bois sculpté, lampadaires noirs, sculpture noire sur socle
+    ['j-canape-creme', 6.0, -10.85, F0, 3.0, 'w', 0], ['j-canape-creme', 3.65, -8.6, F0, 2.3, 'w', PI / 2],
+    ['j-pouf-cognac', 5.55, -7.95, F0, 1.3, 'w', 0], ['j-banquette-verte', 6.3, -6.1, F0, 2.8, 'w', 0],
+    ['j-table-marbre-noir', 5.35, -9.3, F0, 1.4, 'w', 0], ['j-table-marbre', 7.55, -8.3, F0, 0.7, 'w', 0], ['s-lampe-dome', 5.0, -9.35, F0 + 0.35, 0.45, 'h', 0, false],
+    ['j-fauteuil', 7.6, -7.25, F0, 0.95, 'h', -PI / 2 + 0.3], ['j-fauteuil', 7.6, -9.35, F0, 0.95, 'h', -PI / 2 - 0.2], ['j-fauteuil', 4.3, -6.0, F0, 0.95, 'h', PI / 2 + 0.4],
+    ['j-lampe-spheres', 3.45, -11.25, F0, 2.1, 'h', 0], ['j-lampadaire', 3.3, -9.9, F0, 2.0, 'h', 0], ['j-lampadaire', 7.9, -4.75, F0, 2.0, 'h', 0],
+    ['j-sphere-sculptee', 7.45, -5.1, F0, 0.9, 'w', 0.4], ['j-sphere-sculptee', 3.25, -6.0, F0, 0.6, 'w', 2.1], ['j-sphere-bois', 7.95, -5.95, F0, 0.5, 'w', 0],
+    ['j-sculpture', 3.0, -11.5, 1.1, 1.3, 'h', 0.3, false],
     ['woman-stairs', -5.7, 2.5 - 6.5 * tread, F0 + rise * 7, 1.68, 'h', -0.52, false], // silhouette qui descend l'escalier
   ];
   const cache = {}, loader = new GLTFLoader();
@@ -509,8 +523,8 @@ document.querySelectorAll('[data-spot]').forEach(b => b.addEventListener('click'
 // liens vers d'autres vues (direction yaw/pitch où afficher le repère). Tant que la liste est vide, la porte ouvre le tour Kuula.
 const PANOS = [ // vue 360° du studio dans le hall (les rendus Blender des autres pièces, jugés insuffisants, sont désactivés)
   { id: 'hall', title: 'Salon · double hauteur', src: 'img/vr/chloe/hall.jpg', depth: 'img/vr/chloe/hall-depth.png', x: -0.4, z: -0.3, y: 1.6, rot: PI, walk: 2.6, auto: false }, // meublé en 3D : on n'y entre plus en marchant
-  { id: 'salon', title: 'Salon · cheminée', src: 'img/vr/chloe/salon.jpg', depth: 'img/vr/chloe/salon-depth.png', x: 1.2, z: 7.6, y: 1.75, rot: 0, walk: 2.0 }, // modélisé et rendu dans Blender, étape par étape
-  { id: 'sejour', title: 'Séjour', src: 'img/vr/chloe/sejour.jpg', depth: 'img/vr/chloe/sejour-depth.png', x: 5.6, z: -8.0, y: 1.75, rot: -PI / 2, walk: 2.2 },
+  { id: 'salon', title: 'Salon · cheminée', src: 'img/vr/chloe/salon.jpg', depth: 'img/vr/chloe/salon-depth.png', x: 1.2, z: 7.6, y: 1.75, rot: 0, walk: 2.0, auto: false }, // modélisé et rendu dans Blender, étape par étape
+  { id: 'sejour', title: 'Séjour', src: 'img/vr/chloe/sejour.jpg', depth: 'img/vr/chloe/sejour-depth.png', x: 5.6, z: -8.0, y: 1.75, rot: -PI / 2, walk: 2.2, auto: false },
   { id: 'suite', title: 'Suite parentale', src: 'img/vr/chloe/suite.jpg', depth: 'img/vr/chloe/suite-depth.png', x: -1.6, z: 7.6, y: 5.82, rot: -PI / 2, walk: 2.2 },
 ];
 const NEIGH = { hall: ['salon', 'dinner', 'entree', 'terrasse'], salon: ['hall', 'terrasse', 'entree'], dinner: ['hall', 'sejour', 'cuisine'], sejour: ['dinner', 'hall'], cuisine: ['dinner'], entree: ['hall', 'salon', 'jardin'],
