@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<title>Visite 3D — Williams &amp; Harper</title>
+<meta name="description" content="Entrez dans les villas Céline et Margaux à l'échelle 1 : murs, baies et mobilier reconstitués d'après les photos.">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<meta name="theme-color" content="#0e0f12">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300;1,400&family=Jost:wght@300;400;500&display=swap" rel="stylesheet">
+<script type="importmap">{ "imports": { "three": "./js/vendor/three.module.min.js" } }</script>
+<style>
+:root{--ink:#1f1d1a;--paper:#f7f5f0;--gold:#d8b25a;--display:'Cormorant Garamond',Georgia,serif;--body:'Jost',system-ui,sans-serif}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden;background:#0e0f12;color:var(--paper);font-family:var(--body);font-weight:300;-webkit-user-select:none;user-select:none;touch-action:none}
+#view{position:fixed;inset:0}
+#view canvas{display:block;cursor:crosshair}
+.hud{position:fixed;z-index:5}
+.sh{text-shadow:0 1px 2px rgba(0,0,0,.8),0 0 12px rgba(0,0,0,.5)}
+#brand{top:max(14px,env(safe-area-inset-top));left:16px;display:flex;align-items:center;gap:14px;color:inherit;text-decoration:none}
+#brand img{height:26px;opacity:.9}
+#brand .t{font-family:var(--display);font-style:italic;font-size:22px;line-height:1}
+#brand .t small{display:block;font-family:var(--body);font-style:normal;font-size:10px;letter-spacing:.3em;text-transform:uppercase;opacity:.7;margin-bottom:4px}
+#tools{top:max(14px,env(safe-area-inset-top));right:16px;display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+#tools button,#tools a{font:inherit;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--paper);background:rgba(10,10,14,.55);border:1px solid rgba(255,255,255,.28);border-radius:999px;padding:8px 14px;cursor:pointer;text-decoration:none}
+#tools button:hover,#tools a:hover{background:var(--paper);color:var(--ink)}
+#tools #back{border-color:var(--gold);color:var(--gold)}
+#intro{inset:0;display:grid;place-items:center;background:rgba(8,8,12,.42);transition:opacity .3s}
+#intro.off{opacity:0;pointer-events:none}
+#intro .card{max-width:520px;margin:16px;text-align:center;padding:32px 34px;border:1px solid rgba(255,255,255,.18);background:rgba(10,10,14,.62);backdrop-filter:blur(14px)}
+#intro h1{font-family:var(--display);font-weight:300;font-style:italic;font-size:40px;line-height:1.05}
+#intro p{margin-top:14px;font-size:15px;line-height:1.6;opacity:.9}
+#intro kbd{font-family:var(--body);font-size:.85em;border:1px solid rgba(255,255,255,.5);border-radius:4px;padding:0 6px;background:rgba(255,255,255,.08)}
+#intro .go{display:inline-block;margin-top:22px;font:inherit;font-size:11px;letter-spacing:.3em;text-transform:uppercase;border:1px solid var(--gold);color:var(--gold);padding:12px 26px;cursor:pointer;background:none}
+#intro .go:hover{background:var(--gold);color:var(--ink)}
+#hint{left:18px;bottom:max(18px,env(safe-area-inset-bottom));font-size:12px;opacity:.75}
+@media (pointer:coarse){#brand .t{font-size:18px}}
+</style>
+</head>
+<body>
+<div id="view" data-model="celine"></div>
+<a class="hud" id="brand" href="index.html"><img src="img/logo.png" alt="Williams &amp; Harper"><span class="t sh"><small>Visite immersive</small><span id="vname">Villa</span></span></a>
+<div class="hud" id="tools"><a id="back" href="quartier-3d.html" hidden>Retour au quartier</a><button type="button" id="night">Soir</button><a id="page" href="index.html">La villa</a></div>
+<div class="hud sh" id="hint">Clavier : <b>ZQSD</b> ou flèches · souris pour regarder · Maj pour courir</div>
+<div class="hud" id="intro"><div class="card"><h1 id="ititle">Entrer dans la villa</h1><p>Vous êtes devant la porte d'entrée. Avancez pour entrer : murs, baies et mobilier sont reconstitués d'après les photos de la villa, à l'échelle 1.</p><p><kbd>Z</kbd><kbd>Q</kbd><kbd>S</kbd><kbd>D</kbd> ou flèches pour marcher, souris pour regarder, <kbd>Maj</kbd> pour courir. Sur téléphone : pouce gauche pour marcher, pouce droit pour regarder.</p><button class="go" id="go" type="button">Entrer</button></div></div>
+<script type="module">
+import { mount } from './js/villa3d.js';
+// Mobilier extrait des photos du site (Higgsfield 3D Objects), en coordonnées du plan (px) : [fichier, x, y, taille m, 'h'|'w', rotation, collision, hauteur]
+const PI = Math.PI;
+const VILLAS = {
+  celine: { name: 'Villa Céline', page: 'villa-celine.html', rugs: [[645, 842, 4.4, 3.4], [385, 850, 3.6, 3.0, 0x9c9184], [880, 1062, 2.6, 3.4, 0x6f6a63]], props: [
+    // salon double hauteur (photo du grand salon) : deux canapés en velours capitonné face à face, table basse noyer, fauteuils velours vert
+    ['c-canape-velours', 645, 760, 2.6, 'w', 0], ['c-canape-velours', 645, 925, 2.6, 'w', PI], ['c-table-noyer', 645, 842, 1.3, 'w', 0],
+    ['c-fauteuil-vert', 560, 842, 0.95, 'h', PI / 2], ['c-fauteuil-vert', 735, 842, 0.95, 'h', -PI / 2],
+    // salon (photo du coin feu) : canapé courbe, tables rondes, ours sculpté
+    ['c-canape-courbe', 385, 905, 3.0, 'w', PI], ['c-table-basse', 385, 822, 1.0, 'w', 0], ['c-table-ronde', 300, 780, 0.9, 'w', 0.4], ['c-sculpture-ours', 480, 760, 1.3, 'h', -0.6],
+    // séjour : plante, fauteuil
+    ['c-plante', 905, 745, 1.5, 'h', 0], ['c-fauteuil-vert', 850, 905, 0.95, 'h', PI - 0.4],
+    // cuisine : îlot noyer et marbre, tabourets
+    ['m-ilot', 868, 612, 2.2, 'w', 0], ['m-tabouret', 840, 655, 1.0, 'h', PI], ['m-tabouret', 896, 655, 1.0, 'h', PI],
+    // salle à manger : table, six chaises en velours sauge
+    ['c-table-diner', 880, 1062, 2.4, 'w', PI / 2], ['c-chaise-sauge', 838, 1015, 0.85, 'h', PI / 2], ['c-chaise-sauge', 838, 1062, 0.85, 'h', PI / 2], ['c-chaise-sauge', 838, 1109, 0.85, 'h', PI / 2],
+    ['c-chaise-sauge', 922, 1015, 0.85, 'h', -PI / 2], ['c-chaise-sauge', 922, 1062, 0.85, 'h', -PI / 2], ['c-chaise-sauge', 922, 1109, 0.85, 'h', -PI / 2],
+    // salle de bains d'amis : baignoire et meuble vasque
+    ['c-baignoire', 1040, 905, 1.7, 'w', 0], ['c-vasque', 1010, 760, 1.5, 'w', PI / 2],
+  ] },
+  margaux: { name: 'Villa Margaux', page: 'villa-margaux.html', rugs: [[590, 820, 4.6, 3.6, 0x9c9184], [882, 790, 3.6, 4.6], [330, 658, 3.0, 3.0, 0x6f6a63]], props: [
+    // hall double hauteur : le cerf doré
+    ['m-cerf', 830, 560, 1.9, 'h', 0.6],
+    // salon double hauteur (bibliothèque) : canapé d'angle, table ronde, fauteuils crème
+    ['m-canape-angle', 590, 862, 3.2, 'w', PI], ['m-table-ronde', 590, 790, 1.2, 'w', 0], ['m-fauteuil', 500, 780, 0.9, 'h', PI / 2], ['m-fauteuil', 680, 780, 0.9, 'h', -PI / 2],
+    // salon : deux canapés crème face à face, banquette en velours vert
+    ['m-canape-creme', 882, 700, 2.8, 'w', 0], ['m-canape-creme', 882, 880, 2.8, 'w', PI], ['m-pouf-vert', 882, 790, 1.6, 'w', 0],
+    // séjour : fauteuils en velours olive, plante
+    ['m-chaise-olive', 1060, 760, 0.85, 'h', PI / 2], ['m-chaise-olive', 1140, 760, 0.85, 'h', -PI / 2], ['c-plante', 1165, 690, 1.5, 'h', 0],
+    // cuisine : îlot noyer et marbre, trois tabourets
+    ['m-ilot', 332, 535, 2.4, 'w', 0], ['m-tabouret', 290, 575, 1.0, 'h', PI], ['m-tabouret', 332, 575, 1.0, 'h', PI], ['m-tabouret', 374, 575, 1.0, 'h', PI],
+    // salle à manger : table ronde, quatre chaises olive
+    ['m-table-diner', 330, 658, 1.5, 'w', 0], ['m-chaise-olive', 330, 612, 0.85, 'h', 0], ['m-chaise-olive', 330, 704, 0.85, 'h', PI], ['m-chaise-olive', 284, 658, 0.85, 'h', PI / 2], ['m-chaise-olive', 376, 658, 0.85, 'h', -PI / 2],
+  ] },
+};
+const q = new URLSearchParams(location.search); const key = VILLAS[q.get('v')] ? q.get('v') : 'celine'; const V = VILLAS[key];
+document.title = V.name + ' en 3D — visite — Williams & Harper'; document.getElementById('vname').textContent = V.name; document.getElementById('ititle').textContent = 'Entrer dans la ' + V.name;
+const pg = document.getElementById('page'); pg.href = V.page;
+if (q.get('retour')) { const b = document.getElementById('back'); b.hidden = false; b.href = 'quartier-3d.html?' + q.get('retour'); }
+const el = document.getElementById('view'); el.dataset.model = key;
+const viewer = mount(el, { walk: true, sky: true, props: V.props, rugs: V.rugs });
+window.WHW = viewer;
+let night = false; document.getElementById('night').addEventListener('click', (e) => { night = !night; viewer.setNight(night ? 1 : 0); e.target.textContent = night ? 'Jour' : 'Soir'; });
+document.getElementById('go').addEventListener('click', () => { document.getElementById('intro').classList.add('off'); if (!matchMedia('(pointer:coarse)').matches) el.querySelector('canvas')?.requestPointerLock?.(); });
+</script>
+</body>
+</html>

@@ -1244,6 +1244,7 @@ for (let i = 0; i < 44; i++) {
 /* ================= hero ================= */
 const hero = makePerson({ skin: '#c99b7a', hair: '#2a1d16', shirt: '#b08d57', pants: '#2d2b29', unique: true });
 const P = { x: PX(165, 273)[0], z: PX(165, 273)[1], y: 0, vy: 0, heading: Math.PI, phase: 0, speed: 0, down: 0, car: null, swim: false };
+{ const q = new URLSearchParams(location.search); if (q.has('x') && q.has('z')) { P.x = +q.get('x'); P.z = +q.get('z'); P.heading = +(q.get('h') || 0) + Math.PI; } } // retour d'une visite de villa : dos à la porte
 let yaw = -1.57, pitch = 0.3, camDist = 6.5, lastMouse = -10;
 
 /* ================= collectibles & markers ================= */
@@ -1725,7 +1726,10 @@ function act() {
     if (nearMission.needCar) { hint('Il vous faut une voiture : la <b>Porsche 911</b> rouge est garée juste à côté. Montez avec <kbd>F</kbd> puis revenez sur le marqueur.', 6); return; }
     startMission(nearMission); return;
   }
-  if (nearDoor) { suppressPause = true; document.exitPointerLock?.(); audio.sfx('door'); window.open(nearDoor.url, '_blank', 'noopener'); }
+  if (nearDoor) { suppressPause = true; document.exitPointerLock?.(); audio.sfx('door');
+    const back = 'x=' + P.x.toFixed(2) + '&z=' + P.z.toFixed(2) + '&h=' + P.heading.toFixed(3) + (REALISM ? '&rendu=photo' : '');
+    const inside = { 'Chloé': 'visite-chloe.html?', 'Céline': 'visite-villa.html?v=celine&', 'Margaux': 'visite-villa.html?v=margaux&' }[nearDoor.name];
+    if (inside) location.href = inside + 'retour=' + encodeURIComponent(back); else window.open(nearDoor.url, '_blank', 'noopener'); }
 }
 function distToCar(c, x, z) {
   const fx = c.fx, fz = c.fz, dx = x - c.x, dz = z - c.z, along = clamp(dx * fx + dz * fz, -c.half, c.half);
@@ -2115,7 +2119,7 @@ function frame() {
   }
   const pr = $('prompt');
   if (nearCar) { pr.innerHTML = `<b>F</b>${nearCar.ai ? 'Emprunter cette voiture' : 'Conduire'}`; pr.classList.add('on'); }
-  else if (nearDoor) { pr.innerHTML = `<b>E</b>Découvrir la Villa ${nearDoor.name}`; pr.classList.add('on'); }
+  else if (nearDoor) { pr.innerHTML = `<b>E</b>Entrer dans la Villa ${nearDoor.name}`; pr.classList.add('on'); }
   else pr.classList.remove('on');
   $('m-car').textContent = P.car ? 'Sortir' : 'Voiture';
   document.body.classList.toggle('driving', !!P.car);
@@ -2272,3 +2276,5 @@ hero.root.position.set(P.x, 0, P.z); hero.root.rotation.y = P.heading;
 applySketch();
 renderer.setAnimationLoop(frame);
 go.disabled = false; go.textContent = 'Jouer';
+
+window.WHQ = { P, doors, act }; // accès de débogage (tests)

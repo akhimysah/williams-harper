@@ -88,6 +88,7 @@ const MODELS = {
 const LOOK = { chloe: { wallTex: 'stone', wall: 0x4d4c4e, colTex: 'stone', column: 0xd9d9dc, slat: 0x8a5a34 }, celine: { wallTex: 'travertine', wall: 0xe9e2d6, colTex: 'marbled', column: 0xa9a9ad, slat: 0x9a6a3e }, margaux: { wallTex: 'travertine', wall: 0xf0e9dc, colTex: 'marbled', column: 0xa9a9ad, slat: 0x9a6a3e } };
 const C = { ivory: 0xf5f3ee, wall: 0xffffff, slab: 0xf1eee7, deck: 0xe6e1d6, roof: 0xfbfaf7, glass: 0xc9dde2, water: 0xa9cdd4, ground: 0xf0ede6, tree: 0xd9dccf, trunk: 0xe3ddd0, line: 0xb59a6a };
 
+export { MODELS };
 export function mount(el, opts = {}) {
   const key = el.dataset.model; const M = MODELS[key]; if (!M) return null;
   el.querySelectorAll('canvas').forEach((c) => c.remove());
@@ -177,6 +178,11 @@ export function mount(el, opts = {}) {
     return [u, y / b.h];
   };
   const groups = { rdc: new THREE.Group(), etage: new THREE.Group(), roof: new THREE.Group(), site: new THREE.Group() };
+  // mode marche (visite à la première personne) : enduit intérieur, sol en marbre crème, segments de collision, porte ouverte
+  const WALK = !!opts.walk; const walkSegs = [], walkBoxes = []; let doorInfo = null;
+  const imgT = (f, rep) => { const x = loader.load(new URL(f, base).href); x.wrapS = x.wrapT = THREE.RepeatWrapping; x.repeat.set(rep, rep); x.colorSpace = THREE.SRGBColorSpace; x.anisotropy = 8; return x; };
+  const mPlaster = WALK ? new THREE.MeshStandardMaterial({ map: imgT('textures/mur-enduit.webp', 0.4), color: 0xd8d0c4, roughness: 0.9, side: THREE.DoubleSide }) : null;
+  const mFloorIn = WALK ? new THREE.MeshStandardMaterial({ map: imgT('textures/sol-marbre-creme.webp', 1 / 2.4), color: 0xcbc5bb, roughness: 0.22, envMapIntensity: 0.9 }) : null;
   const mCurtain = pbr('fabric', 3, { color: 0xeee8dc, roughness: 1, transparent: true, opacity: 0.9, side: THREE.DoubleSide }); const curtains = []; // voilages derrière les baies, vue Volumes seulement
   // Film de construction : étape courante appliquée aux objets créés ensuite ([début, fin] en fraction du film, mode)
   let stage = null; const staged = []; const setStage = (a, b, mode) => { stage = a === null ? null : { a, b, mode }; };
@@ -209,15 +215,17 @@ export function mount(el, opts = {}) {
         const mesh = new THREE.Mesh(new THREE.BoxGeometry(len, ht - hb, m === mGlass ? 0.06 : t), m);
         const cx = ax + (bx - ax) * (t0 + t1) / 2, cz = az + (bz - az) * (t0 + t1) / 2;
         mesh.position.set(cx + nx * t / 2, (hb + ht) / 2, cz + nz * t / 2); mesh.rotation.y = -ang; mesh.castShadow = cast; mesh.receiveShadow = true; g.add(mesh); mesh.userData.h = ht - hb; tag(mesh);
+        if (WALK && m === mWall) { const pl = new THREE.Mesh(new THREE.PlaneGeometry(len, ht - hb), mPlaster); pl.position.set(cx + nx * (t + 0.004), (hb + ht) / 2, cz + nz * (t + 0.004)); pl.rotation.y = -ang; pl.receiveShadow = true; g.add(pl); }
+        if (WALK && g === groups.rdc && hb < 1.2) { const sx = ax + (bx - ax) * t0 + nx * t / 2, sz = az + (bz - az) * t0 + nz * t / 2, ex = ax + (bx - ax) * t1 + nx * t / 2, ez = az + (bz - az) * t1 + nz * t / 2; walkSegs.push([sx, sz, ex, ez]); }
       };
       const ox = -nx, oz = -nz; // normale extérieure
       // Menuiseries aluminium noir en relief devant une baie : cadre, meneaux, traverse
-      const frames = (gl2) => {
+      const frames = (gl2, noMull) => {
         const t0 = gl2[0], t1 = gl2[1], len = L * (t1 - t0), hb = yb + 0.02, ht = yt - 0.05, h = ht - hb; const cx = ax + (bx - ax) * (t0 + t1) / 2, cz = az + (bz - az) * (t0 + t1) / 2; const off = 0.045;
         const fr = new THREE.Group(); fr.position.set(cx + ox * off, 0, cz + oz * off); fr.rotation.y = -ang; g.add(fr); setStage(0.80, 0.88, 'pop'); tag(fr); setStage(stageSave.a, stageSave.b, stageSave.mode);
         const bar = (w_, h_, d_, x_, y_) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w_, h_, d_), mAlu); m.position.set(x_, y_, 0); m.castShadow = true; fr.add(m); };
         bar(len, 0.05, 0.05, 0, hb + 0.025); bar(len, 0.05, 0.05, 0, ht - 0.025); bar(0.05, h, 0.05, -len / 2 + 0.025, hb + h / 2); bar(0.05, h, 0.05, len / 2 - 0.025, hb + h / 2);
-        const nm = Math.max(0, Math.round(len / 1.3) - 1); for (let k = 1; k <= nm; k++) bar(0.035, h, 0.035, -len / 2 + len * k / (nm + 1), hb + h / 2);
+        const nm = noMull ? 0 : Math.max(0, Math.round(len / 1.3) - 1); for (let k = 1; k <= nm; k++) bar(0.035, h, 0.035, -len / 2 + len * k / (nm + 1), hb + h / 2);
       };
       // Panneau de lames de bois verticales sur le mur plein voisin d'une baie (comme sur les photos)
       const slats = (t0, t1) => {
@@ -229,13 +237,16 @@ export function mount(el, opts = {}) {
         const gl = poly.glass && poly.glass[i];
         if (!gl) { seg(0, 1, mWall, yb, yt, true); }
         else {
+          const dr = WALK && g === groups.rdc && poly.door && poly.door[0] === i ? poly.door : null;
           seg(0, gl[0], mWall, yb, yt, true); seg(gl[1], 1, mWall, yb, yt, true);
-          seg(gl[0], gl[1], mGlass, yb + 0.05, yt - 0.25, false); seg(gl[0], gl[1], mWall, yt - 0.25, yt, true); // linteau
-          { const len = L * (gl[1] - gl[0]); const c = new THREE.Mesh(new THREE.PlaneGeometry(len * 0.98, yt - yb - 0.35, Math.max(2, Math.round(len * 3)), 1), mCurtain); const pos = c.geometry.attributes.position; for (let k = 0; k < pos.count; k++) pos.setZ(k, Math.sin(pos.getX(k) * 9) * 0.05); c.geometry.computeVertexNormals();
+          if (dr) { seg(gl[0], dr[1], mGlass, yb + 0.05, yt - 0.25, false); seg(dr[2], gl[1], mGlass, yb + 0.05, yt - 0.25, false); doorInfo = { x: ax + (bx - ax) * (dr[1] + dr[2]) / 2, z: az + (bz - az) * (dr[1] + dr[2]) / 2, ox, oz }; }
+          else seg(gl[0], gl[1], mGlass, yb + 0.05, yt - 0.25, false);
+          seg(gl[0], gl[1], mWall, yt - 0.25, yt, true); // linteau
+          if (!dr) { const len = L * (gl[1] - gl[0]); const c = new THREE.Mesh(new THREE.PlaneGeometry(len * 0.98, yt - yb - 0.35, Math.max(2, Math.round(len * 3)), 1), mCurtain); const pos = c.geometry.attributes.position; for (let k = 0; k < pos.count; k++) pos.setZ(k, Math.sin(pos.getX(k) * 9) * 0.05); c.geometry.computeVertexNormals();
             c.position.set(ax + (bx - ax) * (gl[0] + gl[1]) / 2 + nx * (t + 0.35), (yb + yt) / 2 - 0.1, az + (bz - az) * (gl[0] + gl[1]) / 2 + nz * (t + 0.35)); c.rotation.y = -ang; c.receiveShadow = true; g.add(c); curtains.push(c); tag(c); }
-          frames(gl); if (gl[0] > 0.12 && gl[0] * L > 1.2) slats(Math.max(0.02, gl[0] - Math.min(0.3, 1.8 / L)), gl[0] - 0.01); if (gl[1] < 0.88 && (1 - gl[1]) * L > 1.2) slats(gl[1] + 0.01, Math.min(0.98, gl[1] + Math.min(0.3, 1.8 / L)));
+          frames(gl, !!dr); if (gl[0] > 0.12 && gl[0] * L > 1.2) slats(Math.max(0.02, gl[0] - Math.min(0.3, 1.8 / L)), gl[0] - 0.01); if (gl[1] < 0.88 && (1 - gl[1]) * L > 1.2) slats(gl[1] + 0.01, Math.min(0.98, gl[1] + Math.min(0.3, 1.8 / L)));
         }
-        if (poly.door && poly.door[0] === i) {
+        if (poly.door && poly.door[0] === i && !(WALK && g === groups.rdc)) {
           const [, d0, d1] = poly.door; const len = L * (d1 - d0), cx = ax + (bx - ax) * (d0 + d1) / 2, cz = az + (bz - az) * (d0 + d1) / 2; const hd = Math.min(2.7, yt - yb - 0.2);
           const dg = new THREE.Group(); dg.position.set(cx + ox * 0.03, 0, cz + oz * 0.03); dg.rotation.y = -ang; g.add(dg); setStage(0.84, 0.9, 'pop'); tag(dg); setStage(stageSave.a, stageSave.b, stageSave.mode);
           const door = new THREE.Mesh(new THREE.BoxGeometry(len, hd, 0.06), new THREE.MeshStandardMaterial({ map: walnutTex, roughness: 0.5 })); door.position.set(0, yb + hd / 2, 0); door.castShadow = true; dg.add(door);
@@ -281,7 +292,7 @@ export function mount(el, opts = {}) {
   const planTex = (file, y, g, size) => {
     const tex = loader.load(new URL(file, base).href); tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 8;
     const m = new THREE.MeshStandardMaterial({ map: tex, transparent: true, roughness: 1, opacity: g === groups.rdc ? 0.82 : 1 });
-    const s = size / M.scale; const mesh = new THREE.Mesh(new THREE.PlaneGeometry(s, s), m); mesh.rotation.x = -Math.PI / 2; mesh.position.y = y; mesh.receiveShadow = true; if (opts.sky && g === groups.rdc) mesh.visible = false; g.add(mesh); return mesh;
+    const s = size / M.scale; const mesh = new THREE.Mesh(new THREE.PlaneGeometry(s, s), m); mesh.rotation.x = -Math.PI / 2; mesh.position.y = y; mesh.receiveShadow = true; if ((opts.sky && g === groups.rdc) || WALK) mesh.visible = false; g.add(mesh); return mesh;
   };
   setStage(0.08, 0.2, 'grow'); const [g0, g1] = M.ground; box(g0[0], g0[1], g1[0], g1[1], 0, 0.15, mSlab, groups.rdc, false);
   M.deck.forEach(([x0, y0, x1, y1]) => box(x0, y0, x1, y1, 0.15, 0.17, mDeck, groups.rdc, false));
@@ -331,9 +342,10 @@ export function mount(el, opts = {}) {
     if (i === 0) { for (let k = -1; k <= 1; k++) lounger(cx + (long ? k * 1.1 : 0), cz + (long ? 0 : k * 1.1), ry); }
     else if (i === 1) dining(cx, cz, ry); else if (i === 2) fire(cx, cz, ry); });
   setStage(0.92, 0.98, 'pop'); const mBoule = mBox;
-  (M.spheres || []).forEach(([x, y, r]) => { const b = new THREE.Mesh(new THREE.SphereGeometry(r, 36, 24), mBoule); b.position.set(px(x), r, pz(y)); b.castShadow = b.receiveShadow = true; groups.site.add(b); tag(b); });
+  const inRdc = (x, y) => M.rdc.some((poly) => { let c = false; const P = poly.pts; for (let i = 0, j = P.length - 1; i < P.length; j = i++) { const [xi, yi] = P[i], [xj, yj] = P[j]; if ((yi > y) !== (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) c = !c; } return c; });
+  (M.spheres || []).filter(([x, y]) => !(WALK && inRdc(x, y))).forEach(([x, y, r]) => { const b = new THREE.Mesh(new THREE.SphereGeometry(r, 36, 24), mBoule); b.position.set(px(x), r, pz(y)); b.castShadow = b.receiveShadow = true; groups.site.add(b); tag(b); });
   // arbres : palmiers stylisés (tronc + couronne), buissons (sphères)
-  setStage(0.9, 1.0, 'pop'); M.trees.forEach(([x, y, h]) => {
+  setStage(0.9, 1.0, 'pop'); M.trees.filter(([x, y]) => !(WALK && inRdc(x, y))).forEach(([x, y, h]) => {
     const X = px(x), Z = pz(y);
     if (h > 0) { // palmier : stipe incliné en écorce, couronne de palmes texturées retombantes
       const lean = ((h * 7.3) % 1 - 0.5) * 0.14, seed = (h * 13.7) % 1;
@@ -457,13 +469,61 @@ export function mount(el, opts = {}) {
       const xrCam = renderer.xr.getCamera(); const fwd = new THREE.Vector3(); xrCam.getWorldDirection(fwd); fwd.y = 0; fwd.normalize(); const right = new THREE.Vector3().crossVectors(fwd, new THREE.Vector3(0, 1, 0));
       rig.position.addScaledVector(fwd, -ay * dt * 1.6).addScaledVector(right, ax * dt * 1.6); }
   };
+  // ---------------------------------------------------------------- mode marche : intérieur, mobilier, commandes à la première personne
+  const WS = { x: 0, z: 0, y: 0.17, yaw: 0, pitch: 0, keys: new Set(), stick: { dx: 0, dy: 0 } };
+  let walkStep = null;
+  if (WALK) {
+    controls.enabled = false; controls.autoRotate = false; camera.fov = 72; camera.near = 0.05; camera.updateProjectionMatrix();
+    // sol intérieur en marbre crème et plafond en enduit sous la dalle d'étage
+    M.rdc.forEach((poly) => { const sh = new THREE.Shape(poly.pts.map(([x, y]) => new THREE.Vector2(px(x), -pz(y)))); const f = new THREE.Mesh(new THREE.ShapeGeometry(sh), mFloorIn); f.rotation.x = -Math.PI / 2; f.position.y = 0.172; f.receiveShadow = true; groups.rdc.add(f);
+      const c = new THREE.Mesh(new THREE.ShapeGeometry(sh), mPlaster); c.rotation.x = -Math.PI / 2; c.position.y = Y1 - 0.004; groups.rdc.add(c);
+      const xs = poly.pts.map((p) => px(p[0])), zs = poly.pts.map((p) => pz(p[1])); const x0 = Math.min(...xs), x1 = Math.max(...xs), z0 = Math.min(...zs), z1 = Math.max(...zs);
+      for (let x = x0 + 2.5; x < x1; x += 5) for (let z = z0 + 2.5; z < z1; z += 5) { const l = new THREE.PointLight(0xffd9b0, 3.6, 9, 1.6); l.position.set(x, Y1 - 0.5, z); scene.add(l); } });
+    mCurtain.color.set(0xf4efe6); mCurtain.opacity = 0.82; // voilages clairs, comme sur les photos
+    // tapis sous les salons : [x, y (px du plan), largeur, profondeur (m), teinte]
+    (opts.rugs || []).forEach(([x, y, w, d, col = 0xb9ae9e]) => { const r = new THREE.Mesh(new THREE.PlaneGeometry(w, d), pbr('fabric', 2, { color: col, roughness: 1 })); r.rotation.x = -Math.PI / 2; r.position.set(px(x), 0.176, pz(y)); r.receiveShadow = true; groups.rdc.add(r); });
+    // collisions : poteaux, bassin (bord), limites de parcelle
+    M.columns.forEach(([x0, y0, x1, y1, lv]) => { if (lv !== 'etage') walkBoxes.push([px(x0), pz(y0), px(x1), pz(y1)]); });
+    const poolP = M.pool.map(([x, y]) => [px(x), pz(y)]); const [q0, q1] = M.plot; const lim = [px(q0[0]) + 0.4, pz(q0[1]) + 0.4, px(q1[0]) - 0.4, pz(q1[1]) - 0.4];
+    const inPoly = (P, x, z) => { let c = false; for (let i = 0, j = P.length - 1; i < P.length; j = i++) { const [xi, zi] = P[i], [xj, zj] = P[j]; if ((zi > z) !== (zj > z) && x < (xj - xi) * (z - zi) / (zj - zi) + xi) c = !c; } return c; };
+    const [g0, g1] = M.ground; const onSlab = (x, z) => (x > px(g0[0]) && x < px(g1[0]) && z > pz(g0[1]) && z < pz(g1[1])) || M.deck.some(([a, b, c, d]) => x > px(a) && x < px(c) && z > pz(b) && z < pz(d));
+    // mobilier extrait des photos : [fichier, x, y (px du plan), taille (m), 'h' | 'w', rotation, collision]
+    const gl = new GLTFLoader(), cache = {};
+    (opts.props || []).forEach(([f, x, y, size, axis, ry = 0, collide = true, lift = 0]) => {
+      (cache[f] || (cache[f] = new Promise((res) => gl.load(new URL('models/interieur/' + f + '.glb', base).href, (g) => res(g.scene), undefined, () => res(null))))).then((src) => {
+        if (!src) return; const o = src.clone(true); const b = new THREE.Box3().setFromObject(o), d = b.getSize(new THREE.Vector3()), c = b.getCenter(new THREE.Vector3());
+        o.position.set(-c.x, -b.min.y, -c.z); const pv = new THREE.Group(); pv.add(o); pv.scale.setScalar(size / (axis === 'h' ? d.y : Math.max(d.x, d.z))); pv.rotation.y = ry; pv.position.set(px(x), 0.172 + lift, pz(y));
+        o.traverse((m) => { if (!m.isMesh) return; m.castShadow = true; m.receiveShadow = true; const mt = m.material; if (mt && mt.map && !mt.userData.lit) { mt.userData.lit = 1; mt.emissiveMap = mt.map; mt.emissive = new THREE.Color(0.22, 0.21, 0.2); mt.needsUpdate = true; } });
+        groups.rdc.add(pv); if (collide) { pv.updateMatrixWorld(true); const w = new THREE.Box3().setFromObject(pv); walkBoxes.push([w.min.x + 0.06, w.min.z + 0.06, w.max.x - 0.06, w.max.z - 0.06]); } });
+    });
+    // départ : dehors, face à la porte d'entrée
+    const di = doorInfo || { x: 0, z: 0, ox: 0, oz: 1 }; WS.x = di.x + di.ox * 4; WS.z = di.z + di.oz * 4; WS.yaw = Math.atan2(di.ox, di.oz);
+    const R = 0.3, EYE = 1.62;
+    const push = (x, z) => { for (let it = 0; it < 3; it++) {
+      for (const [sx, sz, ex, ez] of walkSegs) { const vx = ex - sx, vz = ez - sz, L2 = vx * vx + vz * vz || 1; let t = ((x - sx) * vx + (z - sz) * vz) / L2; t = Math.max(0, Math.min(1, t)); const cx = sx + vx * t, cz = sz + vz * t; const dx = x - cx, dz = z - cz, d = Math.hypot(dx, dz); if (d < R && d > 1e-6) { x = cx + dx / d * R; z = cz + dz / d * R; } }
+      for (const [x0, z0, x1, z1] of walkBoxes) { const cx = Math.max(x0, Math.min(x1, x)), cz = Math.max(z0, Math.min(z1, z)); const dx = x - cx, dz = z - cz, d = Math.hypot(dx, dz); if (d < R) { if (d > 1e-6) { x = cx + dx / d * R; z = cz + dz / d * R; } else { const m = Math.min(x - x0, x1 - x, z - z0, z1 - z); if (m === x - x0) x = x0 - R; else if (m === x1 - x) x = x1 + R; else if (m === z - z0) z = z0 - R; else z = z1 + R; } } } }
+      x = Math.max(lim[0], Math.min(lim[2], x)); z = Math.max(lim[1], Math.min(lim[3], z)); return [x, z]; };
+    const cv = renderer.domElement; cv.style.touchAction = 'none';
+    addEventListener('keydown', (e) => { WS.keys.add(e.code); }); addEventListener('keyup', (e) => { WS.keys.delete(e.code); });
+    cv.addEventListener('click', () => { if (!matchMedia('(pointer:coarse)').matches && document.pointerLockElement !== cv) cv.requestPointerLock?.(); });
+    addEventListener('mousemove', (e) => { if (document.pointerLockElement !== cv) return; WS.yaw -= e.movementX * 0.0022; WS.pitch = Math.max(-1.2, Math.min(1.2, WS.pitch - e.movementY * 0.0022)); });
+    const touches = {}; cv.addEventListener('pointerdown', (e) => { if (e.pointerType === 'mouse') return; touches[e.pointerId] = { x: e.clientX, y: e.clientY, sx: e.clientX, sy: e.clientY, move: e.clientX < innerWidth / 2 }; });
+    cv.addEventListener('pointermove', (e) => { const t = touches[e.pointerId]; if (!t) return; if (t.move) { WS.stick.dx = Math.max(-1, Math.min(1, (e.clientX - t.sx) / 50)); WS.stick.dy = Math.max(-1, Math.min(1, (e.clientY - t.sy) / 50)); } else { WS.yaw -= (e.clientX - t.x) * 0.005; WS.pitch = Math.max(-1.2, Math.min(1.2, WS.pitch - (e.clientY - t.y) * 0.004)); } t.x = e.clientX; t.y = e.clientY; });
+    const up = (e) => { const t = touches[e.pointerId]; if (t && t.move) { WS.stick.dx = 0; WS.stick.dy = 0; } delete touches[e.pointerId]; }; cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', up);
+    const K = (...c) => c.some((k) => WS.keys.has(k)); let bob = 0;
+    walkStep = (dt) => { let fx = 0, fz = 0; if (K('KeyW', 'KeyZ', 'ArrowUp')) fz -= 1; if (K('KeyS', 'ArrowDown')) fz += 1; if (K('KeyA', 'KeyQ', 'ArrowLeft')) fx -= 1; if (K('KeyD', 'ArrowRight')) fx += 1;
+      fx += WS.stick.dx; fz += WS.stick.dy; const len = Math.hypot(fx, fz); if (len > 1) { fx /= len; fz /= len; }
+      if (len > 0.02) { const sp = (K('ShiftLeft', 'ShiftRight') ? 4.2 : 2.2) * dt, c = Math.cos(WS.yaw), s = Math.sin(WS.yaw); let nx = WS.x + (fx * c + fz * s) * sp, nz = WS.z + (-fx * s + fz * c) * sp; if (inPoly(poolP, nx, nz)) { nx = WS.x; nz = WS.z; } [WS.x, WS.z] = push(nx, nz); bob += dt * 7; }
+      const fy = onSlab(WS.x, WS.z) ? 0.172 : 0; WS.y += (fy - WS.y) * Math.min(1, dt * 10);
+      camera.position.set(WS.x, WS.y + EYE + Math.sin(bob) * 0.02, WS.z); camera.rotation.set(WS.pitch, WS.yaw, 0, 'YXZ'); };
+  }
   let alive = true;
   const loop = () => {
     if (!alive) return; if (!visible && !renderer.xr.isPresenting) return;
     if (anim) { anim.t = Math.min(1, anim.t + 0.02); const k = ease(anim.t); camera.position.lerpVectors(anim.p0, anim.p1, k); controls.target.lerpVectors(anim.t0, anim.t1, k); if (anim.t >= 1) anim = null; }
     const now = performance.now(), dt = Math.min(0.1, (now - (loop.t || now)) / 1000); loop.t = now;
     if (night !== nightTarget) { night += Math.sign(nightTarget - night) * dt / 1.2; if (Math.abs(night - nightTarget) < 0.03) night = nightTarget; applyNight(night); }
-    if (renderer.xr.isPresenting) walk(dt); else controls.update();
+    if (renderer.xr.isPresenting) walk(dt); else if (walkStep) walkStep(dt); else controls.update();
     rippleTex.offset.x += dt * 0.012; rippleTex.offset.y -= dt * 0.008; // eau qui bouge
     renderer.render(scene, camera);
   };
@@ -471,7 +531,7 @@ export function mount(el, opts = {}) {
   const snapshot = (type = 'image/jpeg', q = 0.92) => { controls.update(); renderer.render(scene, camera); return renderer.domElement.toDataURL(type, q); };
   const setCam = (a, el_, dist, ty = 2.5) => { const R = 46 * (M.cam || 1) * dist; camera.position.set(Math.cos(a) * R * Math.cos(el_), R * Math.sin(el_), Math.sin(a) * R * Math.cos(el_)); controls.target.set(0, ty, 0); controls.update(); };
   const setNight = (k) => { night = nightTarget = k; applyNight(k); };
-  return { snapshot, setBuild, setCam, setNight, scene: opts.exportMode ? scene : undefined, dispose() { alive = false; renderer.setAnimationLoop(null); ro.disconnect(); controls.dispose(); renderer.dispose(); renderer.domElement.remove(); } };
+  return { snapshot, setBuild, setCam, setNight, walk: WS, scene: opts.exportMode ? scene : undefined, dispose() { alive = false; renderer.setAnimationLoop(null); ro.disconnect(); controls.dispose(); renderer.dispose(); renderer.domElement.remove(); } };
 }
 export const available = Object.keys(MODELS);
 window.WH3D = { mount, available };

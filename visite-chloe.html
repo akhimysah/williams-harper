@@ -76,7 +76,7 @@ body.xr .hud{display:none}
 <body>
 <canvas id="view"></canvas>
 <a class="hud" id="brand" href="villa-chloe.html" aria-label="Retour à la villa Chloé"><img src="img/logo.png" alt="Williams &amp; Harper"><span class="t sh"><small>Visite immersive</small>Villa Chloé</span></a>
-<div class="hud" id="tools"><button type="button" id="open-tour">Intérieur 360°</button><button type="button" id="mode" aria-pressed="false">Jour</button><button type="button" id="fs">Plein écran</button><button type="button" id="vr" aria-pressed="false" hidden>Entrer en VR</button></div>
+<div class="hud" id="tools"><a id="back-q" href="quartier-3d.html" hidden style="font:inherit;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--gold);background:rgba(10,10,14,.55);border:1px solid var(--gold);border-radius:999px;padding:8px 14px;text-decoration:none">Retour au quartier</a><button type="button" id="open-tour">Intérieur 360°</button><button type="button" id="mode" aria-pressed="false">Jour</button><button type="button" id="fs">Plein écran</button><button type="button" id="vr" aria-pressed="false" hidden>Entrer en VR</button></div>
 <div class="hud" id="area"><div class="k sh">Vous êtes</div><div class="n sh" id="zone">Jardin</div></div>
 <div class="hud" id="spots" role="group" aria-label="Points de visite">
   <button type="button" data-spot="jardin">Jardin</button><button type="button" data-spot="entree">Entrée</button><button type="button" data-spot="salon">Salon · cheminée</button><button type="button" data-spot="hall">Double hauteur</button><button type="button" data-spot="dinner">Salle à manger</button><button type="button" data-spot="sejour">Séjour</button><button type="button" data-spot="terrasse">Terrasse</button><button type="button" data-spot="piscine">Piscine</button><button type="button" data-spot="facade">Façade</button><button type="button" data-spot="suite">Suite parentale</button><button type="button" data-spot="etage">Terrasse de la suite</button><button type="button" data-spot="chambre">Chambre 2</button>
@@ -91,5 +91,6 @@ body.xr .hud{display:none}
 <script type="importmap">{"imports":{"three":"./js/vendor/three.module.min.js"}}</script>
 <script>document.getElementById('intro').classList.add('on');</script>
 <script type="module" src="js/visite-chloe.js"></script>
+<script>{ const r = new URLSearchParams(location.search).get('retour'); if (r) { const a = document.getElementById('back-q'); a.hidden = false; a.href = 'quartier-3d.html?' + r; } }</script>
 </body>
 </html>
