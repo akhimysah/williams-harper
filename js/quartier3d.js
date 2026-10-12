@@ -2324,4 +2324,4 @@ applySketch();
 renderer.setAnimationLoop(frame);
 go.disabled = false; go.textContent = 'Jouer';
 
-window.WHQ = { P, doors, act }; // accès de débogage (tests)
+window.WHQ = { P, doors, lots, act }; // accès de débogage (tests)

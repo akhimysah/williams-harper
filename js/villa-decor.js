@@ -8,7 +8,7 @@ export const EXT = {
     ['x-pierre-rayee', 860, 1320, 1.3, 'w', 0.5], ['x-tronc-blanc', 760, 1300, 1.9, 'h', 0.7],
     ['x-bonsai', 965, 1210, 2.4, 'h', 0], ['x-bonsai', 300, 1050, 2.0, 'h', 1.2],
     ['x-rocher', 700, 1355, 1.8, 'w', 0.4], ['x-rocher', 1080, 1285, 1.4, 'w', 2.2],
-    ['x-buis', 400, 1100, 1.0, 'w', 0], ['x-buis', 590, 1365, 1.1, 'w', 0], ['x-buis', 820, 1175, 0.9, 'w', 0], ['x-buis', 1180, 1345, 1.0, 'w', 0], ['x-buis', 280, 960, 0.9, 'w', 0],
+    
     ['x-jarre', 400, 960, 1.0, 'h', 0], ['x-jarre', 432, 1010, 0.75, 'h', 0],
     ['x-topiaire-pot', 1215, 620, 2.0, 'h', 0], ['x-topiaire-pot', 1215, 1030, 2.0, 'h', 0], ['x-bananier', 300, 520, 2.2, 'h', 0, true, D],
     ['x-transat', 840, 620, 1.9, 'w', PI / 2, true, D], ['x-transat', 840, 700, 1.9, 'w', PI / 2, true, D], ['x-transat', 840, 780, 1.9, 'w', PI / 2, true, D],
@@ -19,7 +19,7 @@ export const EXT = {
     ['x-canape-ext', 980, 1190, 2.8, 'w', 0, true, D], ['x-table-feu', 980, 1252, 1.4, 'w', 0, true, D],
     ['x-transat', 850, 1335, 1.9, 'w', 0], ['x-transat', 930, 1335, 1.9, 'w', 0], ['x-transat', 1010, 1335, 1.9, 'w', 0],
     ['x-heron-or', 560, 330, 1.7, 'h', 0.5], ['x-rocher', 450, 380, 1.6, 'w', 0], ['x-bananier', 230, 420, 2.2, 'h', 0], ['x-bananier', 700, 420, 2.0, 'h', 1.0],
-    ['x-buis', 600, 400, 1.0, 'w', 0], ['x-buis', 350, 300, 1.0, 'w', 0], ['x-jarre', 395, 520, 1.0, 'h', 0], ['x-jarre', 478, 520, 0.8, 'h', 0],
+    ['x-jarre', 395, 520, 1.0, 'h', 0], ['x-jarre', 478, 520, 0.8, 'h', 0],
     ['x-pin', 1265, 700, 6, 'h', 0], ['x-pin', 1270, 1000, 5.5, 'h', 1.5],
   ],
   margaux: [ // deux salons d'extérieur et transats autour du bassin, cour d'entrée au nord
@@ -28,6 +28,6 @@ export const EXT = {
     ['x-transat', 960, 1255, 1.9, 'w', 0], ['x-transat', 1040, 1255, 1.9, 'w', 0], ['x-transat', 220, 1255, 1.9, 'w', 0], ['x-transat', 295, 1255, 1.9, 'w', 0],
     ['x-rocher', 200, 1335, 1.7, 'w', 0.5], ['x-rocher', 1000, 1365, 1.5, 'w', 1.8], ['x-pin', 150, 1150, 6.5, 'h', 0], ['x-pin', 1262, 1050, 6, 'h', 2.0],
     ['x-topiaire-pot', 750, 300, 2.0, 'h', 0, true, D], ['x-topiaire-pot', 890, 300, 2.0, 'h', 0, true, D], ['x-bananier', 600, 400, 2.2, 'h', 0],
-    ['x-buis', 520, 420, 1.0, 'w', 0], ['x-buis', 690, 420, 1.0, 'w', 0], ['x-monolithes', 1255, 600, 2.4, 'h', 0], ['x-bonsai', 1255, 350, 2.2, 'h', 0],
+    ['x-monolithes', 1255, 600, 2.4, 'h', 0], ['x-bonsai', 1255, 350, 2.2, 'h', 0],
   ],
 };
