@@ -137,8 +137,8 @@ export function mount(el, opts = {}) {
   const LK = LOOK[key] || LOOK.celine;
   const mWall = pbr(LK.wallTex, 1.3, { color: LK.wall }), mSlab = pbr('concrete', 0.6, { color: 0xd9d4ca }), mDeck = pbr('concrete', 0.8, { color: 0xd3cdc1 }), mRoof = pbr('asphalt', 2.2, { color: 0x9c968c }), mTrunk = pbr('bark', 1.5, { color: 0xa08a70 });
   const texA = (name, srgb) => { const x = loader.load(new URL(`textures/${name}.webp`, base).href); x.wrapS = x.wrapT = THREE.RepeatWrapping; x.anisotropy = 8; if (srgb) x.colorSpace = THREE.SRGBColorSpace; return x; };
-  const mTree = new THREE.MeshStandardMaterial({ map: texA('leaf_c', true), normalMap: texA('leaf_n', false), normalScale: new THREE.Vector2(1.2, 1.2), color: 0x7f9e55, roughness: 0.9 }); mTree.map.repeat.set(2.5, 2.5); mTree.normalMap.repeat.set(2.5, 2.5);
-  const mBox = new THREE.MeshStandardMaterial({ map: texA('leaf_c', true), normalMap: texA('leaf_n', false), normalScale: new THREE.Vector2(1.2, 1.2), color: 0x5e7f3f, roughness: 0.95 }); mBox.map.repeat.set(3, 3); mBox.normalMap.repeat.set(3, 3);
+  const mTree = pbr('grass', 2, { color: 0x6f8f4a, roughness: 0.95 }); // feuillage plein (la texture de feuilles détourée donnait des taches noires à l'export)
+  const mBox = pbr('grass', 2.5, { color: 0x56753a, roughness: 0.95 });
   const mFrond = new THREE.MeshStandardMaterial({ map: texA('frond_c', true), normalMap: texA('frond_n', false), color: 0x8aa857, roughness: 0.85, alphaTest: 0.45, side: THREE.DoubleSide });
   // Palme : rachis courbé (y = -1,1 t² + 0,25 t sur 3 m) et 2 × 20 folioles prises dans l'atlas de feuilles, fusionnées en une géométrie
   const frondGeo = (() => { const parts = []; const rach = (t) => new THREE.Vector3(3.0 * t, -1.1 * t * t + 0.25 * t, 0);
@@ -471,7 +471,17 @@ export function mount(el, opts = {}) {
   };
   // ---------------------------------------------------------------- mode marche : intérieur, mobilier, commandes à la première personne
   const WS = { x: 0, z: 0, y: 0.17, yaw: 0, pitch: 0, keys: new Set(), stick: { dx: 0, dy: 0 } };
-  let walkStep = null;
+  let walkStep = null; const propsPending = [];
+  // objets extraits des photos : [fichier, x, y (px du plan), taille (m), 'h' | 'w', rotation, collision, hauteur]
+  const propLoader = new GLTFLoader(), propCache = {};
+  const placeProp = ([f, x, y, size, axis, ry = 0, collide = true, lift = 0], base0 = 0, group = groups.rdc) => {
+    propsPending.push((propCache[f] || (propCache[f] = new Promise((res) => propLoader.load(new URL('models/interieur/' + f + '.glb', base).href, (g) => res(g.scene), undefined, () => res(null))))).then((src) => {
+      if (!src) return; const o = src.clone(true); const b = new THREE.Box3().setFromObject(o), d = b.getSize(new THREE.Vector3()), c = b.getCenter(new THREE.Vector3());
+      o.position.set(-c.x, -b.min.y, -c.z); const pv = new THREE.Group(); pv.add(o); pv.scale.setScalar(size / (axis === 'h' ? d.y : Math.max(d.x, d.z))); pv.rotation.y = ry; pv.position.set(px(x), base0 + lift, pz(y)); pv.name = 'prop_' + f;
+      o.traverse((m) => { if (!m.isMesh) return; m.castShadow = true; m.receiveShadow = true; const mt = m.material; if (mt && mt.map && !mt.userData.lit) { mt.userData.lit = 1; mt.emissiveMap = mt.map; mt.emissive = new THREE.Color(0.22, 0.21, 0.2); mt.needsUpdate = true; } });
+      group.add(pv); if (collide) { pv.updateMatrixWorld(true); const w = new THREE.Box3().setFromObject(pv); walkBoxes.push([w.min.x + 0.06, w.min.z + 0.06, w.max.x - 0.06, w.max.z - 0.06]); } }));
+  };
+  (opts.extProps || []).forEach((p) => placeProp(p, 0, groups.site)); // décor extérieur (jardin, terrasses, bassin)
   if (WALK) {
     controls.enabled = false; controls.autoRotate = false; camera.fov = 72; camera.near = 0.05; camera.updateProjectionMatrix();
     // sol intérieur en marbre crème et plafond en enduit sous la dalle d'étage
@@ -487,15 +497,7 @@ export function mount(el, opts = {}) {
     const poolP = M.pool.map(([x, y]) => [px(x), pz(y)]); const [q0, q1] = M.plot; const lim = [px(q0[0]) + 0.4, pz(q0[1]) + 0.4, px(q1[0]) - 0.4, pz(q1[1]) - 0.4];
     const inPoly = (P, x, z) => { let c = false; for (let i = 0, j = P.length - 1; i < P.length; j = i++) { const [xi, zi] = P[i], [xj, zj] = P[j]; if ((zi > z) !== (zj > z) && x < (xj - xi) * (z - zi) / (zj - zi) + xi) c = !c; } return c; };
     const [g0, g1] = M.ground; const onSlab = (x, z) => (x > px(g0[0]) && x < px(g1[0]) && z > pz(g0[1]) && z < pz(g1[1])) || M.deck.some(([a, b, c, d]) => x > px(a) && x < px(c) && z > pz(b) && z < pz(d));
-    // mobilier extrait des photos : [fichier, x, y (px du plan), taille (m), 'h' | 'w', rotation, collision]
-    const gl = new GLTFLoader(), cache = {};
-    (opts.props || []).forEach(([f, x, y, size, axis, ry = 0, collide = true, lift = 0]) => {
-      (cache[f] || (cache[f] = new Promise((res) => gl.load(new URL('models/interieur/' + f + '.glb', base).href, (g) => res(g.scene), undefined, () => res(null))))).then((src) => {
-        if (!src) return; const o = src.clone(true); const b = new THREE.Box3().setFromObject(o), d = b.getSize(new THREE.Vector3()), c = b.getCenter(new THREE.Vector3());
-        o.position.set(-c.x, -b.min.y, -c.z); const pv = new THREE.Group(); pv.add(o); pv.scale.setScalar(size / (axis === 'h' ? d.y : Math.max(d.x, d.z))); pv.rotation.y = ry; pv.position.set(px(x), 0.172 + lift, pz(y));
-        o.traverse((m) => { if (!m.isMesh) return; m.castShadow = true; m.receiveShadow = true; const mt = m.material; if (mt && mt.map && !mt.userData.lit) { mt.userData.lit = 1; mt.emissiveMap = mt.map; mt.emissive = new THREE.Color(0.22, 0.21, 0.2); mt.needsUpdate = true; } });
-        groups.rdc.add(pv); if (collide) { pv.updateMatrixWorld(true); const w = new THREE.Box3().setFromObject(pv); walkBoxes.push([w.min.x + 0.06, w.min.z + 0.06, w.max.x - 0.06, w.max.z - 0.06]); } });
-    });
+    (opts.props || []).forEach((p) => placeProp(p, 0.172));
     // départ : dehors, face à la porte d'entrée
     const di = doorInfo || { x: 0, z: 0, ox: 0, oz: 1 }; WS.x = di.x + di.ox * 4; WS.z = di.z + di.oz * 4; WS.yaw = Math.atan2(di.ox, di.oz);
     const R = 0.3, EYE = 1.62;
@@ -531,7 +533,8 @@ export function mount(el, opts = {}) {
   const snapshot = (type = 'image/jpeg', q = 0.92) => { controls.update(); renderer.render(scene, camera); return renderer.domElement.toDataURL(type, q); };
   const setCam = (a, el_, dist, ty = 2.5) => { const R = 46 * (M.cam || 1) * dist; camera.position.set(Math.cos(a) * R * Math.cos(el_), R * Math.sin(el_), Math.sin(a) * R * Math.cos(el_)); controls.target.set(0, ty, 0); controls.update(); };
   const setNight = (k) => { night = nightTarget = k; applyNight(k); };
-  return { snapshot, setBuild, setCam, setNight, walk: WS, scene: opts.exportMode ? scene : undefined, dispose() { alive = false; renderer.setAnimationLoop(null); ro.disconnect(); controls.dispose(); renderer.dispose(); renderer.domElement.remove(); } };
+  const exportRoot = async () => { await Promise.all(propsPending); await new Promise((r) => setTimeout(r, 1500)); const root = new THREE.Group(); [groups.rdc, groups.etage, groups.roof, groups.site].forEach((g) => root.add(g.clone(true))); root.traverse((o) => { if (o.isLight) o.visible = false; }); const gi = groups.site.children.indexOf(ground); if (gi >= 0) root.children[3].children[gi].visible = false; return root; };
+  return { snapshot, setBuild, setCam, setNight, walk: WS, exportRoot, doorInfo: () => doorInfo, scene: opts.exportMode ? scene : undefined, dispose() { alive = false; renderer.setAnimationLoop(null); ro.disconnect(); controls.dispose(); renderer.dispose(); renderer.domElement.remove(); } };
 }
 export const available = Object.keys(MODELS);
 window.WH3D = { mount, available };

@@ -46,6 +46,7 @@ html,body{height:100%;overflow:hidden;background:#0e0f12;color:var(--paper);font
 <div class="hud" id="intro"><div class="card"><h1 id="ititle">Entrer dans la villa</h1><p>Vous êtes devant la porte d'entrée. Avancez pour entrer : murs, baies et mobilier sont reconstitués d'après les photos de la villa, à l'échelle 1.</p><p><kbd>Z</kbd><kbd>Q</kbd><kbd>S</kbd><kbd>D</kbd> ou flèches pour marcher, souris pour regarder, <kbd>Maj</kbd> pour courir. Sur téléphone : pouce gauche pour marcher, pouce droit pour regarder.</p><button class="go" id="go" type="button">Entrer</button></div></div>
 <script type="module">
 import { mount } from './js/villa3d.js';
+import { EXT } from './js/villa-decor.js';
 // Mobilier extrait des photos du site (Higgsfield 3D Objects), en coordonnées du plan (px) : [fichier, x, y, taille m, 'h'|'w', rotation, collision, hauteur]
 const PI = Math.PI;
 const VILLAS = {
@@ -85,7 +86,7 @@ document.title = V.name + ' en 3D — visite — Williams & Harper'; document.ge
 const pg = document.getElementById('page'); pg.href = V.page;
 if (q.get('retour')) { const b = document.getElementById('back'); b.hidden = false; b.href = 'quartier-3d.html?' + q.get('retour'); }
 const el = document.getElementById('view'); el.dataset.model = key;
-const viewer = mount(el, { walk: true, sky: true, props: V.props, rugs: V.rugs });
+const viewer = mount(el, { walk: true, sky: true, props: V.props, rugs: V.rugs, extProps: EXT[key] });
 window.WHW = viewer;
 let night = false; document.getElementById('night').addEventListener('click', (e) => { night = !night; viewer.setNight(night ? 1 : 0); e.target.textContent = night ? 'Jour' : 'Soir'; });
 document.getElementById('go').addEventListener('click', () => { document.getElementById('intro').classList.add('off'); if (!matchMedia('(pointer:coarse)').matches) el.querySelector('canvas')?.requestPointerLock?.(); });

@@ -2,6 +2,7 @@
 import * as THREE from 'three';
 import { mergeGeometries, mergeVertices } from './vendor/BufferGeometryUtils.js';
 import { GLTFLoader } from './vendor/GLTFLoader.js';
+import { MODELS } from './villa3d.js';
 import { RGBELoader } from './vendor/jsm/loaders/RGBELoader.js';
 import { EffectComposer } from './vendor/jsm/postprocessing/EffectComposer.js';
 import { RenderPass } from './vendor/jsm/postprocessing/RenderPass.js';
@@ -450,6 +451,49 @@ function facadePhoto(name, B, s, sc) {
   m.userData = { noInk: true, noSketch: true, facade: true, day, night };
   scene.add(m); facades.push(m);
 }
+// ---- villas en 3D complètes (bâtiment d'après les plans + décor extrait des photos, allégées dans Blender : models/villas/*.glb),
+// une instance par lot, porte tournée vers la rue ; ?anciennes revient aux façades photo
+const USE_VILLA_GLB = !new URLSearchParams(location.search).has('anciennes');
+const VKEY = { 'Chloé': 'chloe', 'Céline': 'celine', 'Margaux': 'margaux' }, VILLA_INST = { chloe: [], celine: [], margaux: [] }; const villaGlass = [];
+function villaFrame(key) { // géométrie utile d'un plan : conversion px → m, porte, emprise, bassin
+  const M = MODELS[key], px = x => (x - M.plan / 2) / M.scale, pz = y => (y - M.plan / 2) / M.scale;
+  const poly = M.rdc[0], P = poly.pts; let area = 0; for (let i = 0; i < P.length; i++) { const a = P[i], b = P[(i + 1) % P.length]; area += a[0] * b[1] - b[0] * a[1]; }
+  const [ei, d0, d1] = poly.door, a = P[ei], b = P[(ei + 1) % P.length], ax = px(a[0]), az = pz(a[1]), bx = px(b[0]), bz = pz(b[1]);
+  const ang = Math.atan2(bz - az, bx - ax), inw = area > 0 ? 1 : -1, ox = Math.sin(ang) * inw, oz = -Math.cos(ang) * inw;
+  const door = { x: ax + (bx - ax) * (d0 + d1) / 2, z: az + (bz - az) * (d0 + d1) / 2, ox, oz };
+  const [q0, q1] = M.plot; const plot = [px(q0[0]), pz(q0[1]), px(q1[0]), pz(q1[1])];
+  const houses = M.rdc.map(pl => { const xs = pl.pts.map(p => px(p[0])), zs = pl.pts.map(p => pz(p[1])); return [Math.min(...xs), Math.min(...zs), Math.max(...xs), Math.max(...zs)]; });
+  const pp = M.pool.map(([x, y]) => [px(x), pz(y)]), ys = [...new Set(pp.map(p => p[1]))].sort((u, v) => u - v), poolRects = []; // bassin découpé en rectangles
+  for (let i = 0; i < ys.length - 1; i++) { const zm = (ys[i] + ys[i + 1]) / 2, xs = []; for (let k = 0; k < pp.length; k++) { const [x0, z0] = pp[k], [x1, z1] = pp[(k + 1) % pp.length]; if ((z0 > zm) !== (z1 > zm)) xs.push(x0 + (zm - z0) * (x1 - x0) / (z1 - z0)); } xs.sort((u, v) => u - v); for (let k = 0; k + 1 < xs.length; k += 2) poolRects.push([xs[k], ys[i], xs[k + 1], ys[i + 1]]); }
+  return { door, plot, houses, poolRects };
+}
+const VFRAME = {}; for (const k of ['chloe', 'celine', 'margaux']) VFRAME[k] = villaFrame(k);
+function villaLot(vname, lx, lz, ry, sc, record) {
+  const key = VKEY[vname], F = VFRAME[key], th = Math.PI - Math.atan2(F.door.ox, F.door.oz), c = Math.cos(th), sn = Math.sin(th);
+  const rot = (x, z) => [x * c + z * sn, -x * sn + z * c]; // rotation.y de th
+  const corners = [[F.plot[0], F.plot[1]], [F.plot[2], F.plot[1]], [F.plot[2], F.plot[3]], [F.plot[0], F.plot[3]]].map(([x, z]) => rot(x, z));
+  const u0 = Math.min(...corners.map(p => p[0])), u1 = Math.max(...corners.map(p => p[0])), v0 = Math.min(...corners.map(p => p[1])), v1 = Math.max(...corners.map(p => p[1]));
+  const k = Math.min(LW * sc / (u1 - u0), LD * sc / (v1 - v0)) * 0.98, tu = -(u0 + u1) / 2 * k, tv = -v0 * k + 0.15;
+  const lotM = mat4(lx, 0, lz, 0, ry, 0, 1, 1, 1), local = new THREE.Matrix4().compose(V(tu, 0, tv), new THREE.Quaternion().setFromEuler(new THREE.Euler(0, th, 0)), V(k, k, k));
+  const Mw = lotM.clone().multiply(local); VILLA_INST[key].push(Mw);
+  const W = (x, z) => V(x, 0, z).applyMatrix4(Mw), WQ = ([x0, z0, x1, z1]) => [W(x0, z0), W(x1, z0), W(x1, z1), W(x0, z1)].map(p => [p.x, p.z]);
+  for (const h of F.houses) { const cc = W((h[0] + h[2]) / 2, (h[1] + h[3]) / 2); solidR(cc.x, cc.z, (h[2] - h[0]) / 2 * k, (h[3] - h[1]) / 2 * k, ry + th, 7.5); }
+  for (const r of F.poolRects) { pools.push(WQ(r)); const cc = W((r[0] + r[2]) / 2, (r[1] + r[3]) / 2); solidR(cc.x, cc.z, (r[2] - r[0]) / 2 * k + 0.25, (r[3] - r[1]) / 2 * k + 0.25, ry + th, 0.3, 'pool'); }
+  const d = W(F.door.x + F.door.ox * 0.8, F.door.z + F.door.oz * 0.8), H0 = F.houses[0], R0 = F.poolRects[0];
+  const door = { x: d.x, z: d.z, name: vname, url: VILLAS[vname], n: lots.length + 1 };
+  const pc = W((R0[0] + R0[2]) / 2, (R0[1] + R0[3]) / 2), hc = W((H0[0] + H0[2]) / 2, (H0[1] + H0[3]) / 2);
+  record({ door, green: false, roof: hc, pool: pc, house: WQ(H0), poolR: WQ(R0), celine: vname === 'Céline', margaux: vname === 'Margaux' });
+}
+function loadVillaGLBs() {
+  const loader = new GLTFLoader();
+  for (const key of Object.keys(VILLA_INST)) { const list = VILLA_INST[key]; if (!list.length) continue;
+    loader.load('models/villas/' + key + '.glb', g => { g.scene.updateMatrixWorld(true);
+      g.scene.traverse(o => { if (!o.isMesh) return; const im = new THREE.InstancedMesh(o.geometry, o.material, list.length), tmp = new THREE.Matrix4();
+        list.forEach((m, i) => im.setMatrixAt(i, tmp.multiplyMatrices(m, o.matrixWorld)));
+        const mt = o.material; if (mt && mt.transparent && !mt.map && !mt.normalMap && (mt.opacity ?? 1) > 0.4 && !villaGlass.includes(mt)) villaGlass.push(mt);
+        im.instanceMatrix.needsUpdate = true; im.computeBoundingSphere(); im.castShadow = true; im.receiveShadow = true; im.userData = { noInk: true, noSketch: true, villa: key }; scene.add(im); });
+    }, undefined, e => console.warn('villa', key, e)); }
+}
 function lot(lx, front, dir, vname, sc = 1) { return lotAt(lx, front, dir > 0 ? 0 : Math.PI, vname, sc); }
 // a lot with its front line at (lx, lz), facing -local z, rotated by ry, scaled by sc in plan
 function lotAt(lx, lz, ry, vname, sc = 1) {
@@ -463,8 +507,9 @@ function lotAt(lx, lz, ry, vname, sc = 1) {
   lb('fence', -hw, -hw + 0.1, 0, 1.6, 0.3, LD); lb('fence', hw - 0.1, hw, 0, 1.6, 0.3, LD); lb('fence', -hw, hw, 0, 1.6, LD - 0.1, LD);
   ls(-hw, -hw + 0.1, 0.3, LD, 1.7); ls(hw - 0.1, hw, 0.3, LD, 1.7); ls(-hw, hw, LD - 0.1, LD, 1.7);
   const vurl = VILLAS[vname];
-  facadePhoto(vname, B, s, sc);
   const record = extra => { const poly = quad(-hw, hw, 0, LD), bb = bboxOf(poly); doors.push(extra.door); lots.push({ x0: bb[0], z0: bb[1], x1: bb[2], z1: bb[3], poly, name: vname, n: lots.length + 1, ...extra }); };
+  if (USE_VILLA_GLB && VKEY[vname]) return villaLot(vname, lx, lz, ry, sc, record);
+  facadePhoto(vname, B, s, sc);
   if (vname === 'Céline') return celine(ry, s, B, lb, W, quad, ls, vname, vurl, record);
   if (vname === 'Margaux') return margaux(ry, s, B, lb, W, quad, ls, vname, vurl, record);
   const gl = rnd() < 0.65 ? 'glassLit' : 'glass';
@@ -708,6 +753,7 @@ lotPX(1062, 870, 'W', 'Chloé', 1.0);
 for (let k = 0; k < 4; k++) lotPX(397 + k * 134, 1083, 'N', 'Céline', 1.25);
 lotAt(...PX(1030, 990), 0.615, 'Céline', 1.3);
 lotAt(...PX(930, 1075), 0.35, 'Céline', 1.3);
+if (USE_VILLA_GLB) loadVillaGLBs();
 // palms along the big roads' verges and the eastern servitude strip
 for (let x = 140; x < 1240; x += 55) palm(...PX(x, 160), 7 + rnd() * 2);
 for (let y = 180; y < 1250; y += 55) palm(...PX(1268, y), 6 + rnd() * 2);
@@ -1475,6 +1521,7 @@ function updateSky() {
   for (const m of Object.values(MAT)) if (m.isMeshStandardMaterial) m.envMapIntensity = 0.1 + 0.9 * day;
   MAT.waterC.envMapIntensity = 0.1 + 0.5 * day; MAT.marbleD.envMapIntensity = 0.15 + 0.6 * day;
   MAT.led.color.setRGB(1 + night * 1.2, 0.85 + night * 0.9, 0.63 + night * 0.5);
+  for (const m of villaGlass) { m.emissive.setRGB(1, 0.78, 0.48); m.emissiveIntensity = sketch ? 0 : night * 0.75; } // baies des villas allumées la nuit
   for (const f of facades) { const nt = night > 0.55 && f.userData.night; f.material.map = nt ? f.userData.night : f.userData.day; f.material.emissiveIntensity = sketch ? 0 : (nt ? 0.9 : 0.12 * night); f.visible = !sketch; }
   for (const m of propMeshes) if (m.material.userData.leafy) m.material.emissiveIntensity = 0.05 + 0.3 * day;
   MAT.woodIn.emissiveIntensity = sketch ? 0 : 0.4 + night * 0.5; MAT.floorIn.emissiveIntensity = sketch ? 0 : 0.3 + night * 0.4;
