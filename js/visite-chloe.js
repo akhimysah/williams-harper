@@ -377,7 +377,7 @@ box('led', 2.9, 8.2, Y1 - 0.12, Y1 - 0.1, -11.75, -11.72); box('led', 2.9, 2.93,
 // hall double hauteur : sculpture dorée en spirale sur socle de marbre noir, suspension en grappe, console
 { const pts = []; for (let i = 0; i <= 60; i++) { const t = i / 60, a = t * PI * 3.2; const r = 0.9 * (1 - t * 0.55); pts.push(V(0.4 + Math.cos(a) * r, 0.5 + t * 4.6, -1.0 + Math.sin(a) * r)); } put('gold', new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 160, 0.17, 10, false), null); box('marbleB', -0.5, 1.3, F0, 0.45, -1.9, -0.1, true); box('led', -0.52, 1.32, 0.4, 0.43, -1.92, -0.08);
   for (let i = 0; i < 9; i++) { const a = i / 9 * PI * 2, r = 0.5 + (i % 3) * 0.35, y = 5.2 + (i % 4) * 0.4; const x = 0.5 + Math.cos(a) * r, z = -2.4 + Math.sin(a) * r; cyl('frame', x, y, Y2, z, 0.004, 0.004, 4); put('bulb', new THREE.SphereGeometry(0.1, 10, 8), mat4(x, y, z)); } }
-table(-3.8, 4.4, 1.6, 0.45, 0.85, 'marbleB', 'bronze'); jar(-6.0, 4.3, 0.3, 0.7, F0);
+table(-3.8, 4.4, 1.6, 0.45, 0.85, 'marbleB', 'bronze'); cyl('jar', 2.2, F0, F0 + 0.5, 5.2, 0.3, 0.26, 24, true); // pot de la topiaire jar(-6.0, 4.3, 0.3, 0.7, F0);
 box('marbleG', -6.55, -5.15, F0, 2.3, 2.6, 3.2, true); for (let y = 0.55; y < 2.2; y += 0.42) box('led', -6.5, -5.2, F0 + y, F0 + y + 0.015, 3.2, 3.215); // tableau d'étagères de marbre sous l'escalier
 // salon-cheminée : pilastres en plâtre gris, bibliothèque noire aux fonds cuivre et réglettes LED, foyer linéaire à galets,
 // poufs crème, tables basses noires, tapis, plantes, bibliothèque noire pleine hauteur
@@ -426,6 +426,33 @@ new GLTFLoader().load('models/chloe-baked.glb?v=' + BAKE_VERSION, g => {
     target.geometry.dispose(); target.geometry = o.geometry; target.material = mat; target.receiveShadow = false; n++; });
   bakedOn = n > 0; console.log('éclairage cuit :', n, 'maillages'); if (bakedOn) { sun.intensity *= 0.35; hemi.intensity *= 0.5; }
 }, undefined, e => console.warn('pas d\'éclairage cuit', e));
+// ---------------------------------------------------------------- mobilier du hall, extrait des rendus du studio (Higgsfield 3D Objects) et remis à l'échelle réelle
+// [fichier models/interieur/*.glb, x, z, hauteur du pied, taille (m), 'h' = hauteur | 'w' = plus grande largeur, rotation (le modèle regarde vers +z), collision]
+const props = new THREE.Group(); props.name = 'mobilier'; world.add(props);
+{ const rise = (SL + 0.02 - F0) / 21, tread = 5.8 / 21;
+  const PROPS = [
+    ['sofa-sam', -2.4, 1.25, F0, 2.9, 'w', PI], ['sofa-sam', -2.4, -2.45, F0, 2.7, 'w', 0],
+    ['coffee-table-taupe', -2.55, -0.45, F0, 1.05, 'w', 0], ['coffee-table-taupe', -1.75, -0.8, F0, 0.8, 'w', 0.6], ['vase-drop', -2.55, -0.45, F0 + 0.35, 0.48, 'h', 0],
+    ['armchair-grey', -4.1, -0.6, F0, 0.8, 'h', PI / 2], ['side-table-drum', -4.15, 1.45, F0, 0.52, 'h', 0], ['floor-lamp', -0.55, 1.85, F0, 1.75, 'h', 0],
+    ['coffee-table-dark', 1.5, 3.3, F0, 0.9, 'w', 0], ['armchair-teal', 0.6, 2.6, F0, 0.82, 'h', 0.85], ['armchair-teal', 2.15, 4.15, F0, 0.82, 'h', -2.42], ['ottoman', 0.55, 4.1, F0, 0.44, 'h', 0],
+    ['ring-lamp', 2.25, -3.7, F0, 1.9, 'h', -0.6],
+    ['topiary', 2.2, 5.2, F0 + 0.5, 0.6, 'h', 0, false], ['topiary', 2.2, 5.2, F0 + 1.06, 0.48, 'h', 1, false], ['topiary', 2.2, 5.2, F0 + 1.5, 0.36, 'h', 2, false],
+    ['woman-stairs', -5.7, 2.5 - 6.5 * tread, F0 + rise * 7, 1.68, 'h', -0.52, false], // silhouette qui descend l'escalier
+  ];
+  const cache = {}, loader = new GLTFLoader();
+  for (const [f, x, z, y, size, axis, ry, collide = true] of PROPS) {
+    (cache[f] || (cache[f] = new Promise(res => loader.load('models/interieur/' + f + '.glb', g => res(g.scene), undefined, () => res(null))))).then(src => {
+      if (!src) return; const o = src.clone(true); const b = new THREE.Box3().setFromObject(o), d = b.getSize(V()), c = b.getCenter(V());
+      o.position.set(-c.x, -b.min.y, -c.z); const pv = new THREE.Group(); pv.add(o); pv.scale.setScalar(size / (axis === 'h' ? d.y : Math.max(d.x, d.z))); pv.rotation.y = ry; pv.position.set(x, y, z);
+      o.traverse(m => { if (!m.isMesh) return; m.castShadow = true; m.receiveShadow = true; const mt = m.material; if (mt && mt.map && !mt.userData.lit) { mt.userData.lit = 1; mt.emissiveMap = mt.map; mt.emissive = new THREE.Color(0.32, 0.31, 0.3); mt.envMapIntensity = 1.4; mt.needsUpdate = true; } }); props.add(pv); // texture issue des rendus : on la relève pour l'accorder aux murs à éclairage cuit
+      if (collide) { pv.updateMatrixWorld(true); const w = new THREE.Box3().setFromObject(pv); solid(w.min.x + 0.08, w.max.x - 0.08, w.min.z + 0.08, w.max.z - 0.08, w.min.y, w.max.y); }
+    });
+  }
+  // tapis en lanières noires et blanches posées en biais, comme sur le rendu du studio
+  const cv = document.createElement('canvas'); cv.width = cv.height = 1024; const g = cv.getContext('2d'); g.fillStyle = '#1c1b1a'; g.fillRect(0, 0, 1024, 1024); let r = 7; const rr = () => (r = (r * 9301 + 49297) % 233280) / 233280;
+  for (let yy = 0; yy < 1024; yy += 24) { let xx = -rr() * 200; while (xx < 1024) { const w = 90 + rr() * 280; if (rr() < 0.5) { g.fillStyle = `hsl(38, 6%, ${70 + rr() * 12}%)`; g.fillRect(xx, yy + 1, w - 3, 22); } xx += w; } }
+  const t = new THREE.CanvasTexture(cv); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8; t.center.set(0.5, 0.5); t.rotation = 0.49;
+  const rug = new THREE.Mesh(new THREE.PlaneGeometry(4.2, 4.4).rotateX(-PI / 2), new THREE.MeshStandardMaterial({ map: t, roughness: 0.95 })); rug.position.set(-2.4, F0 + 0.012, -0.6); rug.receiveShadow = true; props.add(rug); }
 // éclairages ponctuels (allumés au crépuscule)
 const lamps = []; const lamp = (x, y, z, col, dist, pow) => { const l = new THREE.PointLight(col, 0, dist, 2); l.position.set(x, y, z); l.userData.pow = pow; scene.add(l); lamps.push(l); return l; };
 lamp(-1.9, 1.0, 8.2, '#ff8a3a', 9, 18); lamp(1.2, 3.4, 7.6, '#ffc890', 10, 14); lamp(0.4, 5.4, -1.8, '#ffd3a0', 14, 26); lamp(5.6, 2.9, -8.2, '#ffcf96', 11, 18);
@@ -478,7 +505,7 @@ document.querySelectorAll('[data-spot]').forEach(b => b.addEventListener('click'
 // PANOS : une entrée par vue — id, titre, fichier équirectangulaire, position dans la villa (x, z, hauteur d'œil), rotation d'alignement (rad),
 // liens vers d'autres vues (direction yaw/pitch où afficher le repère). Tant que la liste est vide, la porte ouvre le tour Kuula.
 const PANOS = [ // vue 360° du studio dans le hall (les rendus Blender des autres pièces, jugés insuffisants, sont désactivés)
-  { id: 'hall', title: 'Salon · double hauteur', src: 'img/vr/chloe/hall.jpg', depth: 'img/vr/chloe/hall-depth.png', x: -0.4, z: -0.3, y: 1.6, rot: PI, walk: 2.6 },
+  { id: 'hall', title: 'Salon · double hauteur', src: 'img/vr/chloe/hall.jpg', depth: 'img/vr/chloe/hall-depth.png', x: -0.4, z: -0.3, y: 1.6, rot: PI, walk: 2.6, auto: false }, // meublé en 3D : on n'y entre plus en marchant
   { id: 'salon', title: 'Salon · cheminée', src: 'img/vr/chloe/salon.jpg', depth: 'img/vr/chloe/salon-depth.png', x: 1.2, z: 7.6, y: 1.75, rot: 0, walk: 2.0 }, // modélisé et rendu dans Blender, étape par étape
   { id: 'sejour', title: 'Séjour', src: 'img/vr/chloe/sejour.jpg', depth: 'img/vr/chloe/sejour-depth.png', x: 5.6, z: -8.0, y: 1.75, rot: -PI / 2, walk: 2.2 },
   { id: 'suite', title: 'Suite parentale', src: 'img/vr/chloe/suite.jpg', depth: 'img/vr/chloe/suite-depth.png', x: -1.6, z: 7.6, y: 5.82, rot: -PI / 2, walk: 2.2 },
@@ -568,9 +595,9 @@ renderer.setAnimationLoop(() => {
   }
   sky.position.copy(renderer.xr.isPresenting ? rig.position : camera.position); sun.target.position.set(P.x, 0, P.z); sun.position.set(P.x + MODES[mode].sunPos[0], MODES[mode].sunPos[1], P.z + MODES[mode].sunPos[2]);
   panoFrame(dt);
-  if (!tourOpen && !pano && P.y < 1 && P.z < 5.6 && P.z > 2.5 && P.x > -6.5 && P.x < -2.7) openTour();
+  if (!tourOpen && !pano && !PANOS.length && P.y < 1 && P.z < 5.6 && P.z > 2.5 && P.x > -6.5 && P.x < -2.7) openTour();
   if (panoLeft && Math.hypot(P.x - panoLeft.x, P.z - panoLeft.z) > (panoLeft.walk || 2.5) + 0.3) panoLeft = null;
-  if (!pano && PANOS.length) for (const d of PANOS) if (d !== panoLeft && Math.hypot(P.x - d.x, P.z - d.z) < (d.walk || 2.5) - 0.2 && Math.abs(P.y + EYE - d.y) < 1) { enterPano(d); break; } // la porte franchie : on entre dans les vues 360°
+  if (!pano && PANOS.length) for (const d of PANOS) if (d.auto !== false && d !== panoLeft && Math.hypot(P.x - d.x, P.z - d.z) < (d.walk || 2.5) - 0.2 && Math.abs(P.y + EYE - d.y) < 1) { enterPano(d); break; } // la porte franchie : on entre dans les vues 360°
   zoneT -= dt; if (zoneT <= 0) { zoneT = 0.4; const n = zoneName(); if ($('zone').textContent !== n) { $('zone').textContent = n; $('area').classList.add('on'); } }
   renderer.render(scene, camera);
 });
