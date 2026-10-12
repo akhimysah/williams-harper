@@ -98,9 +98,9 @@ export function mount(el, opts = {}) {
 
   const scene = new THREE.Scene(); scene.background = new THREE.Color(C.ivory);
   let skyPaint = null;
-  if (opts.sky) { const c = document.createElement('canvas'); c.width = 2; c.height = 512; const g = c.getContext('2d'); const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
+  { const DAYSKY = opts.sky ? ['#6f9fd1', '#c9dcec', '#efeee8'] : ['#dfe7ee', '#f0efea', '#f5f3ee']; const c = document.createElement('canvas'); c.width = 2; c.height = 512; const g = c.getContext('2d'); const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
     const mix = (a, b, k) => '#' + [0, 1, 2].map((i) => Math.round(parseInt(a.substr(1 + i * 2, 2), 16) * (1 - k) + parseInt(b.substr(1 + i * 2, 2), 16) * k).toString(16).padStart(2, '0')).join('');
-    skyPaint = (k) => { const gr = g.createLinearGradient(0, 0, 0, 512); gr.addColorStop(0, mix('#6f9fd1', '#2f3550', k)); gr.addColorStop(0.55, mix('#c9dcec', '#7d6c84', k)); gr.addColorStop(1, mix('#efeee8', '#d9b08f', k)); g.fillStyle = gr; g.fillRect(0, 0, 2, 512); t.needsUpdate = true; };
+    skyPaint = (k) => { const gr = g.createLinearGradient(0, 0, 0, 512); gr.addColorStop(0, mix(DAYSKY[0], '#2f3550', k)); gr.addColorStop(0.55, mix(DAYSKY[1], '#7d6c84', k)); gr.addColorStop(1, mix(DAYSKY[2], '#d9b08f', k)); g.fillStyle = gr; g.fillRect(0, 0, 2, 512); t.needsUpdate = true; };
     skyPaint(0); scene.background = t; }
   const W = el.clientWidth, Hh = el.clientHeight;
   const camera = new THREE.PerspectiveCamera(30, W / Hh, 0.5, 400); const kA = () => (M.cam || 1) * Math.max(1, 1.5 / (el.clientWidth / el.clientHeight)); // écrans étroits : on recule
@@ -159,8 +159,8 @@ export function mount(el, opts = {}) {
   const mSlabEdge = [mBronze, mBronze, mSlab, mBronze, mBronze, mBronze];
   const soffitTex = canvasTex((g) => { g.fillStyle = '#6b4b32'; g.fillRect(0, 0, 512, 512); for (let i = 0; i < 24; i++) { g.fillStyle = `hsl(${24 + Math.random() * 6},${40 + Math.random() * 10}%,${26 + Math.random() * 8}%)`; g.fillRect(0, i * 21.3, 512, 15); g.fillStyle = '#1f1612'; g.fillRect(0, i * 21.3 + 15, 512, 6.3); } }, 1);
   const mSoffit = pbr('wood', 0.8, { color: LK.slat, roughness: 0.6 }); mSoffit.map.rotation = Math.PI / 2; mSoffit.normalMap.rotation = Math.PI / 2; mSoffit.roughnessMap.rotation = Math.PI / 2; const mCoping = new THREE.MeshStandardMaterial({ map: travMap, normalMap: travNor, normalScale: new THREE.Vector2(0.4, 0.4), roughness: 0.85 });
-  const mGlass = new THREE.MeshPhysicalMaterial({ color: 0x6f8a92, transparent: true, opacity: 0.55, roughness: 0.04, metalness: 0, transmission: 0, envMapIntensity: 1.6, emissive: new THREE.Color(0xffd79a), emissiveIntensity: 0 });
-  const mWater = new THREE.MeshPhysicalMaterial({ color: 0x4fa6b8, transparent: true, opacity: 0.88, roughness: 0.03, metalness: 0.05, envMapIntensity: 1.4, normalMap: rippleTex, normalScale: new THREE.Vector2(0.35, 0.35), emissive: new THREE.Color(0x7fb5c4), emissiveIntensity: 0 });
+  const mGlass = new THREE.MeshPhysicalMaterial({ color: 0x2c3a41, transparent: true, opacity: 0.74, roughness: 0.03, metalness: 0, transmission: 0, envMapIntensity: 1.1, emissive: new THREE.Color(0xffd79a), emissiveIntensity: 0 });
+  const mWater = new THREE.MeshPhysicalMaterial({ color: 0x4fa8bb, transparent: true, opacity: 0.92, roughness: 0.02, metalness: 0.05, envMapIntensity: 1.8, normalMap: rippleTex, normalScale: new THREE.Vector2(0.35, 0.35), emissive: new THREE.Color(0x7fb5c4), emissiveIntensity: 0 });
   // Façades : les élévations des architectes (avant, arrière, latérales) sont projetées sur les murs extérieurs selon leur orientation.
   const facMats = {}; let facBox = null;
   if (M.facades && opts.elevations) {
@@ -312,6 +312,17 @@ export function mount(el, opts = {}) {
   setStage(0.3, 0.46, 'grow');
   // poteaux
   M.columns.forEach(([x0, y0, x1, y1, lv]) => { const yt = lv === 'rdc' ? Y1 : Y2; const yb = lv === 'etage' ? Y1 + H.slab : 0.15; box(x0, y0, x1, y1, yb, yt, mStone, lv === 'rdc' ? groups.rdc : lv === 'etage' ? groups.etage : groups.roof); });
+  // Mobilier des terrasses (volumes simples, échelle humaine) : transats sur la première terrasse, table et chaises sur la deuxième, feu de table sur la troisième
+  const mCanvas = mat(0xe9e2d5, { roughness: 0.9 }), mFrame = mat(0x3a332d, { roughness: 0.5, metalness: 0.4 }), mTop = pbr('wood', 1, { color: 0xb08a62, roughness: 0.6 });
+  const addBox = (g, m, w, h, d, x, y, z, ry = 0) => { const b = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m); b.position.set(x, y, z); b.rotation.y = ry; b.castShadow = b.receiveShadow = true; g.add(b); return b; };
+  const lounger = (x, z, ry) => { const g = new THREE.Group(); g.position.set(x, 0.17, z); g.rotation.y = ry; addBox(g, mCanvas, 0.7, 0.12, 1.5, 0, 0.3, 0.1); const back = addBox(g, mCanvas, 0.7, 0.12, 0.7, 0, 0.5, -0.85); back.rotation.x = -0.9; addBox(g, mFrame, 0.72, 0.04, 2.0, 0, 0.22, 0); for (const [dx, dz] of [[-0.3, -0.9], [0.3, -0.9], [-0.3, 0.8], [0.3, 0.8]]) addBox(g, mFrame, 0.04, 0.22, 0.04, dx, 0.11, dz); groups.site.add(g); tag(g); };
+  const dining = (x, z, ry) => { const g = new THREE.Group(); g.position.set(x, 0.17, z); g.rotation.y = ry; addBox(g, mTop, 2.2, 0.05, 1.0, 0, 0.74, 0); addBox(g, mFrame, 0.08, 0.72, 0.9, -0.95, 0.36, 0); addBox(g, mFrame, 0.08, 0.72, 0.9, 0.95, 0.36, 0);
+    for (const [dx, dz] of [[-0.7, 0.75], [0, 0.75], [0.7, 0.75], [-0.7, -0.75], [0, -0.75], [0.7, -0.75]]) { addBox(g, mCanvas, 0.46, 0.06, 0.46, dx, 0.45, dz); addBox(g, mCanvas, 0.46, 0.5, 0.05, dx, 0.7, dz + (dz > 0 ? 0.2 : -0.2)); for (const [lx, lz] of [[-0.2, -0.2], [0.2, -0.2], [-0.2, 0.2], [0.2, 0.2]]) addBox(g, mFrame, 0.03, 0.42, 0.03, dx + lx, 0.21, dz + lz); } groups.site.add(g); tag(g); };
+  const fire = (x, z, ry) => { const g = new THREE.Group(); g.position.set(x, 0.17, z); g.rotation.y = ry; addBox(g, pbr('marbled', 0.5, { color: 0xd0cbc3, roughness: 0.35 }), 1.4, 0.4, 0.6, 0, 0.2, 0); const fl = addBox(g, mat(0xffb060, { emissive: 0xff8a2a, emissiveIntensity: 1.2 }), 0.9, 0.08, 0.2, 0, 0.42, 0); fl.castShadow = false;
+    for (const sx of [-1, 1]) { addBox(g, mCanvas, 0.8, 0.12, 0.8, sx * 1.5, 0.4, 0); addBox(g, mCanvas, 0.8, 0.45, 0.14, sx * 1.5, 0.65, -0.33); addBox(g, mFrame, 0.82, 0.3, 0.82, sx * 1.5, 0.18, 0); } groups.site.add(g); tag(g); };
+  M.deck.forEach(([x0, y0, x1, y1], i) => { const cx = (px(x0) + px(x1)) / 2, cz = (pz(y0) + pz(y1)) / 2, w = px(x1) - px(x0), d = pz(y1) - pz(y0); if (Math.min(w, d) < 3.2) return; const long = w > d; const ry = long ? Math.PI / 2 : 0;
+    if (i === 0) { for (let k = -1; k <= 1; k++) lounger(cx + (long ? k * 1.1 : 0), cz + (long ? 0 : k * 1.1), ry); }
+    else if (i === 1) dining(cx, cz, ry); else if (i === 2) fire(cx, cz, ry); });
   setStage(0.92, 0.98, 'pop'); const mBoule = mBox;
   (M.spheres || []).forEach(([x, y, r]) => { const b = new THREE.Mesh(new THREE.SphereGeometry(r, 36, 24), mBoule); b.position.set(px(x), r, pz(y)); b.castShadow = b.receiveShadow = true; groups.site.add(b); tag(b); });
   // arbres : palmiers stylisés (tronc + couronne), buissons (sphères)
@@ -339,7 +350,7 @@ export function mount(el, opts = {}) {
     if (skyPaint) skyPaint(k); else scene.background.copy(DAY.bg).lerp(NIGHT.bg, k); ground.material.color.copy(DAY.ground).lerp(NIGHT.ground, k); plot.material.color.copy(DAY.ground).lerp(NIGHT.ground, k).offsetHSL(0, 0, 0.015);
     hemi.intensity = THREE.MathUtils.lerp(DAY.hemi, NIGHT.hemi, k); hemi.color.copy(DAY.hemiSky).lerp(NIGHT.hemiSky, k);
     sun.intensity = THREE.MathUtils.lerp(DAY.sun, NIGHT.sun, k); sun.color.copy(DAY.sunCol).lerp(NIGHT.sunCol, k); sun.position.lerpVectors(DAY.sunPos, NIGHT.sunPos, k);
-    mGlass.emissiveIntensity = THREE.MathUtils.lerp(DAY.glow, NIGHT.glow, k); mGlass.opacity = THREE.MathUtils.lerp(0.45, 0.7, k);
+    mGlass.emissiveIntensity = THREE.MathUtils.lerp(DAY.glow, NIGHT.glow, k); mGlass.opacity = THREE.MathUtils.lerp(glassBase.opacity, 0.72, k); mGlass.color.copy(glassBase.color).lerp(new THREE.Color(0x3a4a52), k);
     mWater.emissiveIntensity = THREE.MathUtils.lerp(DAY.water, NIGHT.water, k);
     Object.values(facMats).forEach((m) => { m.emissive.setRGB(0, 0, 0).lerp(new THREE.Color(0xb08a55), k); });
     lamps.children.forEach((l) => { l.intensity = THREE.MathUtils.lerp(DAY.lamp, NIGHT.lamp, k); });
@@ -369,7 +380,10 @@ export function mount(el, opts = {}) {
       else if (st.mode === 'rise') { o.position.y = st.y - 1.2 + 1.2 * e; o.visible = p > 0; } });
   };
   // Vues
+  const glassBase = { opacity: 0.74, color: new THREE.Color(0x2c3a41) }; // vue Volumes : verre sombre et réfléchissant comme sur les photos
+  const setGlass = (v) => { if (v === 'all') { glassBase.opacity = 0.74; glassBase.color.set(0x2c3a41); } else { glassBase.opacity = 0.35; glassBase.color.set(0xc9dde2); } applyNight(night); };
   const setView = (v) => {
+    setGlass(v);
     if (glbRoot) { animateTo([27, 17, 29].map((x) => x * kA()), [0, 2.5, 0]); return; }
     groups.etage.visible = v !== 'rdc'; groups.roof.visible = v === 'all';
     el.querySelectorAll('[data-view]').forEach((b) => b.setAttribute('aria-pressed', b.dataset.view === v));
@@ -379,7 +393,7 @@ export function mount(el, opts = {}) {
   };
   let anim = null;
   if (opts.still) {
-    const R = 46 * (M.cam || 1) * (opts.dist || 1), a = opts.angle || 0.65, v = opts.view || 'all';
+    const R = 46 * (M.cam || 1) * (opts.dist || 1), a = opts.angle || 0.65, v = opts.view || 'all'; glassBase.opacity = v === 'all' ? 0.74 : 0.35; if (v !== 'all') glassBase.color.set(0xc9dde2);
     groups.etage.visible = v !== 'rdc'; groups.roof.visible = v === 'all';
     const el_ = opts.elev || (v === 'all' ? 0.42 : 0.95); camera.position.set(Math.cos(a) * R * Math.cos(el_), R * Math.sin(el_), Math.sin(a) * R * Math.cos(el_)); controls.target.set(0, v === 'all' ? 2 : 1, 0); controls.enableDamping = false;
   }
@@ -429,6 +443,7 @@ export function mount(el, opts = {}) {
     const now = performance.now(), dt = Math.min(0.1, (now - (loop.t || now)) / 1000); loop.t = now;
     if (night !== nightTarget) { night += Math.sign(nightTarget - night) * dt / 1.2; if (Math.abs(night - nightTarget) < 0.03) night = nightTarget; applyNight(night); }
     if (renderer.xr.isPresenting) walk(dt); else controls.update();
+    rippleTex.offset.x += dt * 0.012; rippleTex.offset.y -= dt * 0.008; // eau qui bouge
     renderer.render(scene, camera);
   };
   renderer.setAnimationLoop(loop);
