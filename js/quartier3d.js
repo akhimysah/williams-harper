@@ -1231,6 +1231,32 @@ const G_HAIR = new THREE.SphereGeometry(0.17, 16, 10, 0, Math.PI * 2, 0, Math.PI
 const G_LEG = new THREE.CapsuleGeometry(0.085, 0.73, 3, 8), G_ARM = new THREE.CapsuleGeometry(0.06, 0.5, 3, 8);
 const G_EYE = new THREE.SphereGeometry(0.022, 6, 4), EYE_MAT = new THREE.MeshBasicMaterial({ color: '#1a1410' });
 const G_SHOE = new THREE.BoxGeometry(0.13, 0.08, 0.26).translate(0, -0.02, 0.05), G_HAND = new THREE.SphereGeometry(0.055, 8, 6), G_NECK = new THREE.CylinderGeometry(0.06, 0.07, 0.12, 8);
+// ---- vrais personnages : résidents générés en photo puis reconstruits en 3D articulée et animée (Higgsfield image→3D, rig Meshy),
+// allégés (models/persos/*.glb). Le bonhomme stylisé reste dessous en secours tant que le modèle n'est pas chargé.
+const CHAR_KEYS = ['femme-lin', 'homme-lin', 'femme-sport', 'homme-polo', 'senior', 'femme-chemise', 'enfant', 'homme-noir'];
+const CHAR_H = { enfant: 1.28, 'femme-lin': 1.68, 'femme-sport': 1.7, 'femme-chemise': 1.65, senior: 1.75, hero: 1.8 };
+const CHAR_CLIPS = { hero: { run: 'hero-run', idle: 'hero-idle', sit: 'hero-sit' } }; // clips supplémentaires du héros (fichiers à part, même squelette)
+const charCache = {}, charLoader = new GLTFLoader();
+function parallelTraverse(a, b, cb) { cb(a, b); for (let i = 0; i < a.children.length; i++) parallelTraverse(a.children[i], b.children[i], cb); }
+function cloneSkinned(source) { // équivalent de SkeletonUtils.clone : chaque clone garde son propre squelette
+  const clone = source.clone(true), srcOf = new Map(), cloneOf = new Map(); parallelTraverse(source, clone, (a, b) => { srcOf.set(b, a); cloneOf.set(a, b); });
+  clone.traverse(n => { if (!n.isSkinnedMesh) return; const sm = srcOf.get(n); n.skeleton = sm.skeleton.clone(); n.bindMatrix.copy(sm.bindMatrix); n.skeleton.bones = sm.skeleton.bones.map(b => cloneOf.get(b)); n.bind(n.skeleton, n.bindMatrix); });
+  return clone; }
+const loadGLB = url => new Promise(res => charLoader.load(url, g => res(g), undefined, () => res(null)));
+function charEntry(key) {
+  return charCache[key] || (charCache[key] = (async () => {
+    const g = await loadGLB('models/persos/' + key + '.glb'); if (!g) return null;
+    const clips = { walk: g.animations[0] }; for (const [k, f] of Object.entries(CHAR_CLIPS[key] || {})) { const e = await loadGLB('models/persos/' + f + '.glb'); if (e && e.animations[0]) clips[k] = e.animations[0]; }
+    g.scene.updateMatrixWorld(true); const b = new THREE.Box3().setFromObject(g.scene), h = b.max.y - b.min.y, k = (CHAR_H[key] || 1.8) / h;
+    g.scene.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = false; o.frustumCulled = false; if (o.material) o.material.envMapIntensity = 0.6; } });
+    return { scene: g.scene, clips, k, y0: -b.min.y * k };
+  })()); }
+function attachChar(p, key) {
+  charEntry(key).then(e => { if (!e) return; const c = cloneSkinned(e.scene); c.scale.setScalar(e.k); c.position.y = e.y0;
+    p.body.children.forEach(ch => { ch.visible = false; }); p.body.add(c);
+    const mixer = new THREE.AnimationMixer(c), actions = {}; for (const [k, clip] of Object.entries(e.clips)) { const a = mixer.clipAction(clip); a.play(); a.setEffectiveWeight(0); actions[k] = a; }
+    p.glb = { mixer, actions }; });
+}
 function makePerson(o) {
   const root = new THREE.Group(), body = new THREE.Group(); root.add(body);
   const sk = lam(o.skin), sh = o.unique ? new THREE.MeshLambertMaterial({ color: o.shirt }) : lam(o.shirt), pa = lam(o.pants), ha = lam(o.hair), so = lam(o.shoes || '#f3f1ec');
@@ -1248,9 +1274,22 @@ function makePerson(o) {
   body.add(legL, legR, armL, armR);
   root.traverse(m => { if (m.isMesh) m.castShadow = true; });
   scene.add(root);
-  return { root, body, legL, legR, armL, armR, sh };
+  const person = { root, body, legL, legR, armL, armR, sh };
+  if (o.char) attachChar(person, o.char);
+  return person;
 }
 function animatePerson(p, phase, amp, st = {}) {
+  if (p.glb) { // personnage réel : on choisit le clip et on cale son temps sur la phase de marche (pieds synchrones avec le déplacement)
+    const A = p.glb.actions, want = st.sit && A.sit ? 'sit' : (amp > 0.62 && A.run) ? 'run' : amp > 0.05 ? 'walk' : A.idle ? 'idle' : 'walk';
+    for (const k in A) A[k].setEffectiveWeight(k === want ? 1 : 0);
+    const a = A[want], d = a.getClip().duration; const cyc = (((phase / (Math.PI * 2)) % 1) + 1) % 1;
+    a.time = want === 'walk' || want === 'run' ? (amp > 0.05 ? cyc * d : 0) : (performance.now() / 1000) % d;
+    p.glb.mixer.update(0);
+    p.body.position.y = 0; p.body.rotation.x = 0; p.body.rotation.z = 0;
+    if (st.swim) { p.body.rotation.x = -1.2; p.body.position.y = -0.5; }
+    if (st.down) { p.body.rotation.x = -Math.PI / 2 * st.down; p.body.position.y = 0.25 * st.down; }
+    return;
+  }
   const sw = Math.sin(phase) * amp;
   p.legL.rotation.x = sw; p.legR.rotation.x = -sw; p.armL.rotation.x = -sw * 0.9; p.armR.rotation.x = sw * 0.9;
   p.armL.rotation.z = 0.08; p.armR.rotation.z = -0.08;
@@ -1283,12 +1322,12 @@ const pedPaths = [];
 for (const c of parkCurves) pedPaths.push(curvePath(c));
 for (let i = 0; i < 44; i++) {
   const path = pedPaths[i % pedPaths.length];
-  const p = makePerson({ skin: pick(SKIN), hair: pick(HAIR), shirt: pick(SHIRT), pants: pick(PANTS), long: rnd() < 0.4 });
+  const p = makePerson({ skin: pick(SKIN), hair: pick(HAIR), shirt: pick(SHIRT), pants: pick(PANTS), long: rnd() < 0.4, char: CHAR_KEYS[i % CHAR_KEYS.length] });
   peds.push({ p, path, s: rnd() * path.len, dir: rnd() < 0.5 ? 1 : -1, v: 1.1 + rnd() * 0.5, phase: rnd() * 6, off: 0, offT: 0, y: 0, vy: 0, down: 0, x: 0, z: 0, h: 0, wait: 0 });
 }
 
 /* ================= hero ================= */
-const hero = makePerson({ skin: '#c99b7a', hair: '#2a1d16', shirt: '#b08d57', pants: '#2d2b29', unique: true });
+const hero = makePerson({ skin: '#c99b7a', hair: '#2a1d16', shirt: '#b08d57', pants: '#2d2b29', unique: true, char: 'hero' });
 const P = { x: PX(165, 273)[0], z: PX(165, 273)[1], y: 0, vy: 0, heading: Math.PI, phase: 0, speed: 0, down: 0, car: null, swim: false };
 { const q = new URLSearchParams(location.search); if (q.has('x') && q.has('z')) { P.x = +q.get('x'); P.z = +q.get('z'); P.heading = +(q.get('h') || 0) + Math.PI; } } // retour d'une visite de villa : dos à la porte
 let yaw = -1.57, pitch = 0.3, camDist = 6.5, lastMouse = -10;
@@ -1951,7 +1990,7 @@ function updateDrive(c, dt) {
   if (c.kind === 4 && !c.model) { // procedural cabriolet: the driver stays visible (the Sketchfab model has its soft top up)
     hero.root.visible = true;
     hero.root.position.set(c.x + c.fz * 0.36 - c.fx * 0.22, -0.02, c.z - c.fx * 0.36 - c.fz * 0.22); hero.root.position.y = c.model ? -0.4 : 0.1; hero.root.rotation.y = c.h;
-    animatePerson(hero, 0, 0); hero.legL.rotation.x = hero.legR.rotation.x = -1.45; hero.armL.rotation.x = hero.armR.rotation.x = -1.15;
+    animatePerson(hero, 0, 0, { sit: true }); hero.legL.rotation.x = hero.legR.rotation.x = -1.45; hero.armL.rotation.x = hero.armR.rotation.x = -1.15;
     hero.armL.rotation.z = -0.25; hero.armR.rotation.z = 0.25; hero.body.position.y = 0;
   }
   c.tailM.material = brk && c.along > 0.5 ? MAT.brake : MAT.tail;
