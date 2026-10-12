@@ -10,6 +10,8 @@
   <url><loc>https://www.williams-harper.com/catalogue.html</loc><priority>0.6</priority></url>
   <url><loc>https://www.williams-harper.com/maquette-3d.html</loc><priority>0.7</priority></url>
   <url><loc>https://www.williams-harper.com/domaine.html</loc><priority>0.7</priority></url>
+  <url><loc>https://www.williams-harper.com/famille.html</loc><priority>0.7</priority></url>
+  <url><loc>https://www.williams-harper.com/en/famille.html</loc></url>
   <url><loc>https://www.williams-harper.com/localisation.html</loc><priority>0.6</priority></url>
   <url><loc>https://www.williams-harper.com/en/index.html</loc></url>
   <url><loc>https://www.williams-harper.com/en/villa-chloe.html</loc></url>
@@ -26,6 +28,7 @@
   <url><loc>https://akhimysah.github.io/williams-harper/nl/villa-margaux.html</loc></url>
   <url><loc>https://akhimysah.github.io/williams-harper/nl/villa-chloe.html</loc></url>
   <url><loc>https://akhimysah.github.io/williams-harper/nl/domaine.html</loc></url>
+  <url><loc>https://akhimysah.github.io/williams-harper/nl/famille.html</loc></url>
   <url><loc>https://akhimysah.github.io/williams-harper/nl/maquette-3d.html</loc></url>
   <url><loc>https://akhimysah.github.io/williams-harper/ar/confidentialite.html</loc></url>
   <url><loc>https://akhimysah.github.io/williams-harper/ar/comparer.html</loc></url>
@@ -45,5 +48,6 @@
   <url><loc>https://akhimysah.github.io/williams-harper/ar/villa-margaux.html</loc></url>
   <url><loc>https://akhimysah.github.io/williams-harper/ar/villa-chloe.html</loc></url>
   <url><loc>https://akhimysah.github.io/williams-harper/ar/domaine.html</loc></url>
+  <url><loc>https://akhimysah.github.io/williams-harper/ar/famille.html</loc></url>
   <url><loc>https://akhimysah.github.io/williams-harper/ar/maquette-3d.html</loc></url>
 </urlset>
