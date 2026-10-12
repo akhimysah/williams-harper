@@ -760,6 +760,7 @@ for (let y = 180; y < 1250; y += 55) palm(...PX(1268, y), 6 + rnd() * 2);
 for (let y = 330; y < 1050; y += 60) { palm(...PX(455, y), 6 + rnd() * 2); palm(...PX(655, y), 6 + rnd() * 2); }
 
 const parkCurves = [];
+const SEAT = { def: [-0.32, 0.09], enfant: [-0.2, 0.27] }; // calage du clip assis sur l'assise des bancs : [profondeur, hauteur] (l'enfant, plus petit, a les pieds dans le vide)
 function ribbon(key, pts, w, y = 0.06) {
   const curve = new THREE.CatmullRomCurve3(pts.map(([x, z]) => V(x, 0, z)));
   parkCurves.push(curve);
@@ -795,7 +796,11 @@ const plaza = (cx, cz, r, n) => {
   put('wood', new THREE.CylinderGeometry(1.8, 1.8, 0.45, 20), mat4(cx, 0.22, cz)); solid(cx - 1.5, cx + 1.5, cz - 1.5, cz + 1.5, 0.45);
   tree(cx, cz, 1.3);
 };
+const benches = []; // places assises des bancs : x/z milieu de la place, s/c orientation du banc, h orientation du passant assis, ax/az point d'approche devant le banc
 const bench = (x, z, r) => {
+  r += Math.PI; // dossier côté pelouse : on s'assoit face à l'allée
+  const c = Math.cos(r), s = Math.sin(r);
+  for (const lx of [-0.5, 0.5]) benches.push({ x: x + c * lx, z: z - s * lx, s, c, ax: x + c * lx - s * 0.75, az: z - s * lx - c * 0.75, h: r + Math.PI, who: null });
   put('wood', new THREE.BoxGeometry(2.2, 0.12, 0.6).translate(0, 0.5, 0), mat4(x, 0, z, 0, r));
   put('wood', new THREE.BoxGeometry(2.2, 0.5, 0.1).translate(0, 0.8, 0.28), mat4(x, 0, z, 0, r));
 };
@@ -1236,7 +1241,7 @@ const G_SHOE = new THREE.BoxGeometry(0.13, 0.08, 0.26).translate(0, -0.02, 0.05)
 const CHAR_KEYS = ['femme-lin', 'homme-lin', 'femme-sport', 'homme-polo', 'senior', 'femme-chemise', 'enfant', 'homme-noir'];
 const CHAR_H = { enfant: 1.28, 'femme-lin': 1.68, 'femme-sport': 1.7, 'femme-chemise': 1.65, senior: 1.75, hero: 1.8 };
 const CHAR_CLIPS = { hero: { run: 'hero-run', idle: 'hero-idle', sit: 'hero-sit' } }; // clips supplémentaires (fichiers à part, même squelette)
-for (const k of CHAR_KEYS) CHAR_CLIPS[k] = { idle: k + '-idle' }; // repos des passants quand ils s'arrêtent
+for (const k of CHAR_KEYS) CHAR_CLIPS[k] = { idle: k + '-idle', sit: k + '-sit' }; // repos des passants quand ils s'arrêtent, assis sur les bancs du parc
 const charCache = {}, charLoader = new GLTFLoader();
 function parallelTraverse(a, b, cb) { cb(a, b); for (let i = 0; i < a.children.length; i++) parallelTraverse(a.children[i], b.children[i], cb); }
 function cloneSkinned(source) { // équivalent de SkeletonUtils.clone : chaque clone garde son propre squelette
@@ -1275,14 +1280,14 @@ function makePerson(o) {
   body.add(legL, legR, armL, armR);
   root.traverse(m => { if (m.isMesh) m.castShadow = true; });
   scene.add(root);
-  const person = { root, body, legL, legR, armL, armR, sh };
+  const person = { root, body, legL, legR, armL, armR, sh, char: o.char };
   if (o.char) attachChar(person, o.char);
   return person;
 }
 function animatePerson(p, phase, amp, st = {}) {
   if (p.glb) { // personnage réel : on choisit le clip et on cale son temps sur la phase de marche (pieds synchrones avec le déplacement)
     const A = p.glb.actions, want = st.sit && A.sit ? 'sit' : (amp > 0.62 && A.run) ? 'run' : amp > 0.05 ? 'walk' : A.idle ? 'idle' : 'walk';
-    const now = performance.now(), dt = Math.min(0.1, (now - p.glb.last) / 1000), W = p.glb.w, f = st.sit ? 1 : Math.min(1, dt * 6); p.glb.last = now;
+    const now = performance.now(), dt = Math.min(0.1, (now - p.glb.last) / 1000), W = p.glb.w, f = st.snap ? 1 : Math.min(1, dt * 6); p.glb.last = now;
     const cyc = (((phase / (Math.PI * 2)) % 1) + 1) % 1, t = now / 1000 + p.glb.t0;
     for (const k in A) { // fondu de ~0,3 s entre marche, course et repos ; chaque repos décalé pour que les passants ne bougent pas en chœur
       W[k] = (W[k] || 0) + ((k === want ? 1 : 0) - (W[k] || 0)) * f; A[k].setEffectiveWeight(W[k]);
@@ -1326,7 +1331,7 @@ for (const c of parkCurves) pedPaths.push(curvePath(c));
 for (let i = 0; i < 44; i++) {
   const path = pedPaths[i % pedPaths.length];
   const p = makePerson({ skin: pick(SKIN), hair: pick(HAIR), shirt: pick(SHIRT), pants: pick(PANTS), long: rnd() < 0.4, char: CHAR_KEYS[i % CHAR_KEYS.length] });
-  peds.push({ p, path, s: rnd() * path.len, dir: rnd() < 0.5 ? 1 : -1, v: 1.1 + rnd() * 0.5, phase: rnd() * 6, off: 0, offT: 0, y: 0, vy: 0, down: 0, x: 0, z: 0, h: 0, wait: 0 });
+  peds.push({ p, path, s: rnd() * path.len, dir: rnd() < 0.5 ? 1 : -1, v: 1.1 + rnd() * 0.5, phase: rnd() * 6, off: 0, offT: 0, y: 0, vy: 0, down: 0, x: 0, z: 0, h: 0, wait: 0, sit: null, sitCd: rnd() * 20 });
 }
 
 /* ================= hero ================= */
@@ -1993,7 +1998,7 @@ function updateDrive(c, dt) {
   if (c.kind === 4 && !c.model) { // procedural cabriolet: the driver stays visible (the Sketchfab model has its soft top up)
     hero.root.visible = true;
     hero.root.position.set(c.x + c.fz * 0.36 - c.fx * 0.22, -0.02, c.z - c.fx * 0.36 - c.fz * 0.22); hero.root.position.y = c.model ? -0.4 : 0.1; hero.root.rotation.y = c.h;
-    animatePerson(hero, 0, 0, { sit: true }); hero.legL.rotation.x = hero.legR.rotation.x = -1.45; hero.armL.rotation.x = hero.armR.rotation.x = -1.15;
+    animatePerson(hero, 0, 0, { sit: true, snap: true }); hero.legL.rotation.x = hero.legR.rotation.x = -1.45; hero.armL.rotation.x = hero.armR.rotation.x = -1.15;
     hero.armL.rotation.z = -0.25; hero.armR.rotation.z = 0.25; hero.body.position.y = 0;
   }
   c.tailM.material = brk && c.along > 0.5 ? MAT.brake : MAT.tail;
@@ -2085,6 +2090,8 @@ function updateTraffic(dt, t) {
 function updatePeds(dt) {
   const pc = P.car, sp = pc ? pc.speed() : 0;
   for (const p of peds) {
+    if (p.sitCd > 0) p.sitCd -= dt;
+    if (p.sit && sitOnBench(p, dt)) continue;
     const [x, z, tx, tz] = p.path.at(p.s);
     let block = false;
     // stop for the hero on foot right ahead
@@ -2097,6 +2104,9 @@ function updatePeds(dt) {
     }
     if (pc && hd < 1.6 && sp > 4 && p.down <= 0) { p.down = 2.4; p.vy = 3; say(pick(['Aïe…', 'Mon dos !', 'Ça va, ça va…']), p.p.root); }
     if (p.wait > 0) { p.wait -= dt; block = true; }
+    else if ((!pc || hd > 20) && p.sitCd <= 0 && p.down <= 0 && p.offT <= 0 && p.p.glb?.actions.sit) for (const b of benches) { // un banc libre tout près du chemin : on s'y assoit un moment
+      if (!b.who && Math.abs(b.x - p.x) < 5 && Math.abs(b.z - p.z) < 5 && rnd() < dt * 0.15) { b.who = p; p.sit = { b, mode: 'go', rx: p.x, rz: p.z, t: 0 }; break; }
+    }
     else if (p.down <= 0 && p.offT <= 0 && rnd() < dt / 22) p.wait = 3 + rnd() * 6; // petite pause de temps en temps : on souffle, on regarde autour
     if (!block && p.down <= 0) {
       p.s += p.dir * p.v * dt;
@@ -2118,6 +2128,25 @@ function updatePeds(dt) {
     animatePerson(p.p, p.phase, moving ? 0.5 : 0, { air: p.y > 0.2, down: downT, wave: !moving && !downT && p.wait > 0 && hd < 6 });
     p.p.root.position.set(p.x, p.y + 0.1, p.z); p.p.root.rotation.y = p.h;
   }
+}
+
+function sitOnBench(p, dt) { // aller au banc, s'asseoir 15 à 40 s, revenir sur le chemin ; renvoie false pour reprendre la marche normale
+  const S = p.sit, b = S.b;
+  const [sz, sy] = SEAT[p.p.char] || SEAT.def;
+  if (S.mode === 'sit') {
+    S.t -= dt; p.x += (b.x + b.s * sz - p.x) * Math.min(1, dt * 5); p.z += (b.z + b.c * sz - p.z) * Math.min(1, dt * 5); p.h += wrapA(b.h - p.h) * Math.min(1, dt * 6);
+    if (S.t <= 0) S.mode = 'back';
+  } else {
+    const tx = S.mode === 'go' ? b.ax : S.rx, tz = S.mode === 'go' ? b.az : S.rz, dx = tx - p.x, dz = tz - p.z, d = Math.hypot(dx, dz);
+    if (d < 0.1) { if (S.mode === 'go') { S.mode = 'sit'; S.t = 15 + rnd() * 25; } else { b.who = null; p.sit = null; p.sitCd = 40 + rnd() * 40; return false; } }
+    else { const st = Math.min(d, p.v * 0.75 * dt); p.x += dx / d * st; p.z += dz / d * st; p.h += wrapA(Math.atan2(dx, dz) - p.h) * Math.min(1, dt * 8); p.phase += dt * p.v * 0.75 * 2.1; }
+  }
+  const far = Math.abs(p.x - P.x) > 90 || Math.abs(p.z - P.z) > 90; p.p.root.visible = !far;
+  if (far) return true;
+  const seated = S.mode === 'sit';
+  animatePerson(p.p, p.phase, seated ? 0 : 0.5, { sit: seated });
+  p.p.root.position.set(p.x, 0.1 + sy * (p.p.glb.w.sit || 0), p.z); p.p.root.rotation.y = p.h; // monte sur l'assise au rythme du fondu vers le clip assis
+  return true;
 }
 
 /* ================= zones ================= */
@@ -2367,4 +2396,4 @@ applySketch();
 renderer.setAnimationLoop(frame);
 go.disabled = false; go.textContent = 'Jouer';
 
-window.WHQ = { P, doors, lots, act, peds }; // accès de débogage (tests)
+window.WHQ = { P, doors, lots, act, peds, benches }; // accès de débogage (tests)
