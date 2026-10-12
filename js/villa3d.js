@@ -177,6 +177,7 @@ export function mount(el, opts = {}) {
     return [u, y / b.h];
   };
   const groups = { rdc: new THREE.Group(), etage: new THREE.Group(), roof: new THREE.Group(), site: new THREE.Group() };
+  const mCurtain = pbr('fabric', 3, { color: 0xeee8dc, roughness: 1, transparent: true, opacity: 0.9, side: THREE.DoubleSide }); const curtains = []; // voilages derrière les baies, vue Volumes seulement
   // Film de construction : étape courante appliquée aux objets créés ensuite ([début, fin] en fraction du film, mode)
   let stage = null; const staged = []; const setStage = (a, b, mode) => { stage = a === null ? null : { a, b, mode }; };
   const tag = (o) => { if (stage) { o.userData.stage = { ...stage, y: o.position.y, s: o.scale.clone() }; staged.push(o); } return o; };
@@ -230,6 +231,8 @@ export function mount(el, opts = {}) {
         else {
           seg(0, gl[0], mWall, yb, yt, true); seg(gl[1], 1, mWall, yb, yt, true);
           seg(gl[0], gl[1], mGlass, yb + 0.05, yt - 0.25, false); seg(gl[0], gl[1], mWall, yt - 0.25, yt, true); // linteau
+          { const len = L * (gl[1] - gl[0]); const c = new THREE.Mesh(new THREE.PlaneGeometry(len * 0.98, yt - yb - 0.35, Math.max(2, Math.round(len * 3)), 1), mCurtain); const pos = c.geometry.attributes.position; for (let k = 0; k < pos.count; k++) pos.setZ(k, Math.sin(pos.getX(k) * 9) * 0.05); c.geometry.computeVertexNormals();
+            c.position.set(ax + (bx - ax) * (gl[0] + gl[1]) / 2 + nx * (t + 0.35), (yb + yt) / 2 - 0.1, az + (bz - az) * (gl[0] + gl[1]) / 2 + nz * (t + 0.35)); c.rotation.y = -ang; c.receiveShadow = true; g.add(c); curtains.push(c); tag(c); }
           frames(gl); if (gl[0] > 0.12 && gl[0] * L > 1.2) slats(Math.max(0.02, gl[0] - Math.min(0.3, 1.8 / L)), gl[0] - 0.01); if (gl[1] < 0.88 && (1 - gl[1]) * L > 1.2) slats(gl[1] + 0.01, Math.min(0.98, gl[1] + Math.min(0.3, 1.8 / L)));
         }
         if (poly.door && poly.door[0] === i) {
@@ -338,6 +341,15 @@ export function mount(el, opts = {}) {
       const b = new THREE.Mesh(new THREE.IcosahedronGeometry(1.1, 3), mTree); b.position.set(X, 0.7, Z); b.scale.set(1, 0.65, 0.9); b.rotation.y = (X * 3.1) % 6.28; b.castShadow = b.receiveShadow = true; groups.site.add(b); tag(b); }
   });
 
+  // Arbres d'ornement (GLB CC0 de models/props) le long des limites de parcelle, hors emprise de la villa, du bassin et des terrasses
+  { const hp = [...M.rdc, ...M.etage].flatMap((p) => p.pts); const hb = { x0: Math.min(...hp.map((p) => px(p[0]))) - 2.5, x1: Math.max(...hp.map((p) => px(p[0]))) + 2.5, z0: Math.min(...hp.map((p) => pz(p[1]))) - 2.5, z1: Math.max(...hp.map((p) => pz(p[1]))) + 2.5 };
+    const pb = { x0: Math.min(...M.pool.map((p) => px(p[0]))) - 2, x1: Math.max(...M.pool.map((p) => px(p[0]))) + 2, z0: Math.min(...M.pool.map((p) => pz(p[1]))) - 2, z1: Math.max(...M.pool.map((p) => pz(p[1]))) + 2 };
+    const inside = (b, x, z) => x > b.x0 && x < b.x1 && z > b.z0 && z < b.z1; const [q0, q1] = M.plot; const P = { x0: px(q0[0]) + 1.5, x1: px(q1[0]) - 1.5, z0: pz(q0[1]) + 1.5, z1: pz(q1[1]) - 1.5 };
+    let r = 7; const rnd = () => { r = (r * 9301 + 49297) % 233280; return r / 233280; }; const spots = [];
+    for (let i = 0; i < 90 && spots.length < 9; i++) { const side = i % 4; const x = side < 2 ? (side ? P.x1 : P.x0) + (rnd() - 0.5) * 2 : P.x0 + rnd() * (P.x1 - P.x0); const z = side >= 2 ? (side === 3 ? P.z1 : P.z0) + (rnd() - 0.5) * 2 : P.z0 + rnd() * (P.z1 - P.z0);
+      if (inside(hb, x, z) || inside(pb, x, z) || M.trees.some(([tx, ty]) => Math.hypot(px(tx) - x, pz(ty) - z) < 3) || spots.some(([sx, sz]) => Math.hypot(sx - x, sz - z) < 5)) continue; spots.push([x, z, rnd()]); }
+    if (spots.length) new GLTFLoader().load(new URL('models/props/island_tree_02.glb', base).href, (gl) => { const proto = gl.scene; const bb = new THREE.Box3().setFromObject(proto); proto.position.y -= bb.min.y; proto.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; if (o.material && o.material.map) o.material.map.anisotropy = 8; } });
+      spots.forEach(([x, z, k]) => { const t = proto.clone(); const sc = 1.3 + k * 0.7; t.scale.setScalar(sc); t.rotation.y = k * 6.28; t.position.set(x, 0, z); groups.site.add(t); }); }, undefined, () => {}); }
   // Nuit / jour : ciel crépusculaire, soleil bas et chaud, baies allumées, lampes sous les terrasses.
   const lamps = new THREE.Group(); scene.add(lamps);
   const lampAt = (x, z, y) => { const l = new THREE.PointLight(0xffc98a, 0, 14, 2); l.position.set(x, y, z); lamps.add(l); };
@@ -383,7 +395,7 @@ export function mount(el, opts = {}) {
   const glassBase = { opacity: 0.74, color: new THREE.Color(0x2c3a41) }; // vue Volumes : verre sombre et réfléchissant comme sur les photos
   const setGlass = (v) => { if (v === 'all') { glassBase.opacity = 0.74; glassBase.color.set(0x2c3a41); } else { glassBase.opacity = 0.35; glassBase.color.set(0xc9dde2); } applyNight(night); };
   const setView = (v) => {
-    setGlass(v);
+    setGlass(v); curtains.forEach((c) => { c.visible = v === 'all'; });
     if (glbRoot) { animateTo([27, 17, 29].map((x) => x * kA()), [0, 2.5, 0]); return; }
     groups.etage.visible = v !== 'rdc'; groups.roof.visible = v === 'all';
     el.querySelectorAll('[data-view]').forEach((b) => b.setAttribute('aria-pressed', b.dataset.view === v));
@@ -393,7 +405,7 @@ export function mount(el, opts = {}) {
   };
   let anim = null;
   if (opts.still) {
-    const R = 46 * (M.cam || 1) * (opts.dist || 1), a = opts.angle || 0.65, v = opts.view || 'all'; glassBase.opacity = v === 'all' ? 0.74 : 0.35; if (v !== 'all') glassBase.color.set(0xc9dde2);
+    const R = 46 * (M.cam || 1) * (opts.dist || 1), a = opts.angle || 0.65, v = opts.view || 'all'; glassBase.opacity = v === 'all' ? 0.74 : 0.35; if (v !== 'all') glassBase.color.set(0xc9dde2); curtains.forEach((c) => { c.visible = v === 'all'; });
     groups.etage.visible = v !== 'rdc'; groups.roof.visible = v === 'all';
     const el_ = opts.elev || (v === 'all' ? 0.42 : 0.95); camera.position.set(Math.cos(a) * R * Math.cos(el_), R * Math.sin(el_), Math.sin(a) * R * Math.cos(el_)); controls.target.set(0, v === 'all' ? 2 : 1, 0); controls.enableDamping = false;
   }
