@@ -117,7 +117,7 @@ scene.add(stars);
 
 /* ================= materials ================= */
 const C = {
-  grass: '#ffffff', asphalt: '#55585e', line: '#efece3', side: '#d6d0c2', pave: '#cfc6b4', sand: '#dacba9',
+  grass: '#ffffff', asphalt: '#8f8b85', line: '#efece3', side: '#d6d0c2', pave: '#cfc6b4', sand: '#dacba9',
   wall: '#f3f1ec', wall2: '#e7e2d8', slab: '#d4d0c8', slab2: '#b7b2a9', wood: '#9a6b45', deck: '#a77a52',
   groof: '#6f8f4a', coping: '#e8e3d8', fence: '#8a7f72', trunk: '#6b4f37', leaf: '#6f9150', leaf2: '#88a65d',
   ptrunk: '#8c7558', palm: '#5e8a3e', pine: '#3f6340', table: '#f0ece4', parasol: '#ebdfc6', parasol2: '#c4643f',
@@ -187,9 +187,10 @@ function pbr(key, name, metres, o = {}) {
   if (o.emissive) { m.emissive = new THREE.Color(o.emissive); m.emissiveMap = tex(name + '_c', true); m.emissiveIntensity = o.emissiveIntensity ?? 0.4; }
   MAT[key] = m; TEX_SCALE[key] = 1 / metres; return m;
 }
+MAT.asphalt = new THREE.MeshLambertMaterial({ map: tex('pavers_c', true) }); TEX_SCALE.asphalt = 1; // pavés en H aussi en rendu normal (le rendu photo y ajoute relief et rugosité)
 if (REALISM) {
 pbr('grass', 'grass', 3); pbr('groof', 'grass', 2, { color: '#c9d9a8' });
-pbr('asphalt', 'asphalt', 4, { color: '#9a9a9c' });
+pbr('asphalt', 'pavers', 1, { color: '#b8b4ad' }); // routes et parkings en pavés autobloquants en H (texture : site-src/gen_paves.py)
 pbr('side', 'concrete', 2, { color: '#d3cdc1' }); pbr('curb', 'concrete', 1, { color: '#d8d2c6' });
 pbr('pave', 'stone', 2, { color: '#e8e2d6' }); pbr('stoneT', 'stone', 1.5, { color: '#dcd8d0' }); pbr('floorIn', 'stone', 2, { color: '#f0ebe2', emissive: '#8a7a62', emissiveIntensity: 0.35 });
 pbr('sand', 'gravel', 1.5, { color: '#e9dcc2' });
