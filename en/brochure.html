@@ -36,11 +36,14 @@
         <a href="maquette-3d.html"><b>3D model</b><span>Volumes, floors, night</span></a>
         <a href="comparer.html"><b>Comparison</b><span>Two villas, one slider</span></a>
         <a href="brochure.html"><b>Brochures</b><span>Browse online</span></a>
+        <a href="matieres.html"><b>The materials</b><span>Stone, marble, wood, brass</span></a>
       </div></div></div>
       <div class="ni"><a href="domaine.html" aria-haspopup="true">The estate</a><div class="sub"><div class="sub-in">
         <a href="domaine.html"><b>The Red Stone Estate</b><span>Eight hectares, 41 villas</span></a>
         <a href="index.html#vie"><b>Life on the estate</b><span>Holiday days</span></a>
         <a href="famille.html"><b>As a family</b><span>Children, schools, daily life</span></a>
+        <a href="annee.html"><b>A year at Red Stone</b><span>The climate, month by month</span></a>
+        <a href="qui-construit.html"><b>Who builds</b><span>Developer, architects, guarantees</span></a>
         <a href="index.html#services"><b>A day on the estate</b><span>Café, gym, padel, mall</span></a>
         <a href="localisation.html"><b>Location</b><span>Marrakech, 15 min from the airport</span></a>
         <a href="investir.html"><b>Invest</b><span>Legal framework, tax, yield</span></a>
@@ -49,12 +52,16 @@
       <div class="ni"><a href="galerie.html" aria-haspopup="true">Gallery</a><div class="sub"><div class="sub-in">
         <a href="galerie.html"><b>Gallery</b><span>Exteriors and gardens</span></a>
         <a href="catalogue.html"><b>Interiors</b><span>The Line Design catalogue</span></a>
+        <a href="nuit.html"><b>Red Stone by night</b><span>The villas lit up</span></a>
         <a href="index.html#film"><b>The film</b><span>Inhabit the silence</span></a>
       </div></div></div>
       <div class="ni"><a href="index.html#contact" aria-haspopup="true">Contact</a><div class="sub"><div class="sub-in">
         <a href="index.html#contact"><b>Book a visit</b><span>On site or by video call</span></a>
         <a href="index.html#questions"><b>Frequently asked questions</b><span>Buying, handover, management</span></a>
         <a href="presse.html"><b>Press</b><span>Press release, visuals, logos</span></a>
+        <a href="acheter.html"><b>Buying in Morocco</b><span>The process, step by step</span></a>
+        <a href="louer.html"><b>Letting your villa</b><span>Rental management</span></a>
+        <a href="destinations.html"><b>Marrakech compared</b><span>Marbella, Côte d'Azur, Dubai</span></a>
         <a href="../pdf/brochure-chloe-wh.pdf" download><b>Chloé brochure</b><span>PDF</span></a>
         <a href="../pdf/brochure-celine-wh.pdf" download><b>Céline brochure</b><span>PDF</span></a>
         <a href="../pdf/brochure-margaux-wh.pdf" download><b>Margaux brochure</b><span>PDF</span></a>
@@ -89,7 +96,7 @@ document.querySelectorAll('.fb-tabs button').forEach(b=>b.addEventListener('clic
 <footer>
   <div class="wrap">
     <a class="brand" href="index.html"><img src="../img/logo-dark.png" alt="Williams &amp; Harper" width="110" height="38"></a>
-    <nav aria-label="Pied de page"><a href="index.html#villas">The villas</a><a href="domaine.html">The estate</a><a href="famille.html">As a family</a><a href="maquette-3d.html">3D model</a><a href="../quartier-3d.html">3D walk</a><a href="galerie.html">Gallery</a><a href="catalogue.html">Interiors</a><a href="localisation.html">Location</a><a href="investir.html">Invest</a><a href="journal.html">Journal</a><a href="presse.html">Press</a><a href="index.html#contact">Contact</a><a href="mentions-legales.html">Legal notice</a><a href="confidentialite.html">Privacy</a></nav>
+    <nav aria-label="Pied de page"><a href="index.html#villas">The villas</a><a href="domaine.html">The estate</a><a href="famille.html">As a family</a><a href="acheter.html">Buy</a><a href="louer.html">Let</a><a href="nuit.html">At night</a><a href="matieres.html">Materials</a><a href="qui-construit.html">Who builds</a><a href="maquette-3d.html">3D model</a><a href="../quartier-3d.html">3D walk</a><a href="galerie.html">Gallery</a><a href="catalogue.html">Interiors</a><a href="localisation.html">Location</a><a href="investir.html">Invest</a><a href="journal.html">Journal</a><a href="presse.html">Press</a><a href="index.html#contact">Contact</a><a href="mentions-legales.html">Legal notice</a><a href="confidentialite.html">Privacy</a></nav>
     <div>© 2026 Williams &amp; Harper</div>
   </div>
 </footer>
@@ -102,7 +109,7 @@ const hdr=document.querySelector('header'),burger=document.getElementById('burge
 burger.addEventListener('click',()=>{const o=hdr.classList.toggle('open');burger.setAttribute('aria-expanded',o)});document.querySelectorAll('.ni').forEach(n=>{const a=n.querySelector(':scope>a');a.addEventListener('click',e=>{if(matchMedia('(hover:none)').matches&&!hdr.classList.contains('open')&&!n.classList.contains('is-open')){e.preventDefault();document.querySelectorAll('.ni.is-open').forEach(o=>o.classList.remove('is-open'));n.classList.add('is-open');}});n.addEventListener('focusin',()=>n.classList.add('is-open'));n.addEventListener('focusout',e=>{if(!n.contains(e.relatedTarget))n.classList.remove('is-open');});});document.addEventListener('click',e=>{if(!e.target.closest('.ni'))document.querySelectorAll('.ni.is-open').forEach(o=>o.classList.remove('is-open'));});
 document.querySelectorAll('.nav a').forEach(a=>a.addEventListener('click',()=>hdr.classList.remove('open')));
 let lastY=0;const onScroll=()=>{hdr.classList.toggle('solid',scrollY>40||!document.querySelector('.full'));hdr.classList.toggle('hide',scrollY>lastY&&scrollY>400&&!hdr.classList.contains('open'));lastY=scrollY};addEventListener('scroll',onScroll,{passive:true});onScroll();
-const lbImgs=[...document.querySelectorAll('.gal img,.mosaic img,.plans img,.tri img,.cat img')],lb=document.getElementById('lb'),lbi=document.getElementById('lb-img'),lbc=document.getElementById('lb-cap');let cur=0,lastFocus=null;
+const lbImgs=[...document.querySelectorAll('.gal img,.mosaic img,.plans img,.tri img,.cat img,.matgrid img')],lb=document.getElementById('lb'),lbi=document.getElementById('lb-img'),lbc=document.getElementById('lb-cap');let cur=0,lastFocus=null;
 function show(i){cur=(i+lbImgs.length)%lbImgs.length;lbi.src=lbImgs[cur].currentSrc||lbImgs[cur].src;lbi.alt=lbImgs[cur].alt;lbc.textContent=(cur+1)+' / '+lbImgs.length+'  ·  '+lbImgs[cur].alt;lb.hidden=false;document.body.style.overflow='hidden';lastFocus=document.activeElement;document.getElementById('lb-x').focus()}
 function hide(){lb.hidden=true;document.body.style.overflow='';if(lastFocus)lastFocus.focus()}
 lbImgs.forEach((im,i)=>im.addEventListener('click',()=>show(i)));

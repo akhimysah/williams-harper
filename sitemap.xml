@@ -11,7 +11,21 @@
   <url><loc>https://www.williams-harper.com/maquette-3d.html</loc><priority>0.7</priority></url>
   <url><loc>https://www.williams-harper.com/domaine.html</loc><priority>0.7</priority></url>
   <url><loc>https://www.williams-harper.com/famille.html</loc><priority>0.7</priority></url>
+  <url><loc>https://www.williams-harper.com/acheter.html</loc><priority>0.7</priority></url>
+  <url><loc>https://www.williams-harper.com/destinations.html</loc><priority>0.7</priority></url>
+  <url><loc>https://www.williams-harper.com/nuit.html</loc><priority>0.7</priority></url>
+  <url><loc>https://www.williams-harper.com/matieres.html</loc><priority>0.7</priority></url>
+  <url><loc>https://www.williams-harper.com/annee.html</loc><priority>0.7</priority></url>
+  <url><loc>https://www.williams-harper.com/louer.html</loc><priority>0.7</priority></url>
+  <url><loc>https://www.williams-harper.com/qui-construit.html</loc><priority>0.7</priority></url>
   <url><loc>https://www.williams-harper.com/en/famille.html</loc></url>
+  <url><loc>https://www.williams-harper.com/en/acheter.html</loc></url>
+  <url><loc>https://www.williams-harper.com/en/destinations.html</loc></url>
+  <url><loc>https://www.williams-harper.com/en/nuit.html</loc></url>
+  <url><loc>https://www.williams-harper.com/en/matieres.html</loc></url>
+  <url><loc>https://www.williams-harper.com/en/annee.html</loc></url>
+  <url><loc>https://www.williams-harper.com/en/louer.html</loc></url>
+  <url><loc>https://www.williams-harper.com/en/qui-construit.html</loc></url>
   <url><loc>https://www.williams-harper.com/localisation.html</loc><priority>0.6</priority></url>
   <url><loc>https://www.williams-harper.com/en/index.html</loc></url>
   <url><loc>https://www.williams-harper.com/en/villa-chloe.html</loc></url>
@@ -29,6 +43,13 @@
   <url><loc>https://akhimysah.github.io/williams-harper/nl/villa-chloe.html</loc></url>
   <url><loc>https://akhimysah.github.io/williams-harper/nl/domaine.html</loc></url>
   <url><loc>https://akhimysah.github.io/williams-harper/nl/famille.html</loc></url>
+  <url><loc>https://akhimysah.github.io/williams-harper/nl/acheter.html</loc></url>
+  <url><loc>https://akhimysah.github.io/williams-harper/nl/destinations.html</loc></url>
+  <url><loc>https://akhimysah.github.io/williams-harper/nl/nuit.html</loc></url>
+  <url><loc>https://akhimysah.github.io/williams-harper/nl/matieres.html</loc></url>
+  <url><loc>https://akhimysah.github.io/williams-harper/nl/annee.html</loc></url>
+  <url><loc>https://akhimysah.github.io/williams-harper/nl/louer.html</loc></url>
+  <url><loc>https://akhimysah.github.io/williams-harper/nl/qui-construit.html</loc></url>
   <url><loc>https://akhimysah.github.io/williams-harper/nl/maquette-3d.html</loc></url>
   <url><loc>https://akhimysah.github.io/williams-harper/ar/confidentialite.html</loc></url>
   <url><loc>https://akhimysah.github.io/williams-harper/ar/comparer.html</loc></url>
@@ -49,5 +70,12 @@
   <url><loc>https://akhimysah.github.io/williams-harper/ar/villa-chloe.html</loc></url>
   <url><loc>https://akhimysah.github.io/williams-harper/ar/domaine.html</loc></url>
   <url><loc>https://akhimysah.github.io/williams-harper/ar/famille.html</loc></url>
+  <url><loc>https://akhimysah.github.io/williams-harper/ar/acheter.html</loc></url>
+  <url><loc>https://akhimysah.github.io/williams-harper/ar/destinations.html</loc></url>
+  <url><loc>https://akhimysah.github.io/williams-harper/ar/nuit.html</loc></url>
+  <url><loc>https://akhimysah.github.io/williams-harper/ar/matieres.html</loc></url>
+  <url><loc>https://akhimysah.github.io/williams-harper/ar/annee.html</loc></url>
+  <url><loc>https://akhimysah.github.io/williams-harper/ar/louer.html</loc></url>
+  <url><loc>https://akhimysah.github.io/williams-harper/ar/qui-construit.html</loc></url>
   <url><loc>https://akhimysah.github.io/williams-harper/ar/maquette-3d.html</loc></url>
 </urlset>
