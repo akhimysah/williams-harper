@@ -972,7 +972,7 @@ function carGeos(hex, kind) {
   const key = hex + kind;
   if (carGeoCache[key]) return carGeoCache[key];
   if (kind === 5) { const g = carGeos(hex, 1); return (carGeoCache[key] = { ...g, hero: true }); } // G63 placeholder until the model loads
-  if (kind >= 6) return (carGeoCache[key] = { ...carGeos(hex, { 6: 1, 7: 3, 8: 4 }[kind]) }); // Cullinan, Urus, SVJ : silhouette proche au loin, avant le chargement du modèle
+  if (kind >= 6) return (carGeoCache[key] = { ...carGeos(hex, { 6: 1, 7: 3, 8: 4, 9: 4, 10: 4 }[kind]) }); // Cullinan, Urus, SVJ : silhouette proche au loin, avant le chargement du modèle
   if (kind >= 3) return (carGeoCache[key] = (kind === 3 ? buildRS6 : build911)(hex));
   const K = CAR_KINDS[kind], L = K.L, wr = K.wr;
   const parts = [], lights = [], wheelsStatic = [];
@@ -1133,7 +1133,7 @@ function build911(hex) {
   return finishHero(P, lights, wheelGeo, wp, L, '#c8a02a');
 }
 MAT.carGloss = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.22, metalness: 0.45 });
-const CAR_NAMES = { 3: 'Audi RS6-R ABT', 4: 'Porsche 911 Cabriolet', 5: 'Mercedes-AMG G63', 6: 'Rolls-Royce Cullinan', 7: 'Lamborghini Urus', 8: 'Lamborghini Aventador SVJ' };
+const CAR_NAMES = { 3: 'Audi RS6-R ABT', 4: 'Porsche 911 Cabriolet', 5: 'Mercedes-AMG G63', 6: 'Rolls-Royce Cullinan', 7: 'Lamborghini Urus', 8: 'Lamborghini Aventador SVJ', 9: 'Ferrari SF90 Stradale', 10: 'Bentley Continental GT' };
 const paintCache = {};
 function paintMat(base, hex) {
   const k = base.name + hex;
@@ -1178,7 +1178,7 @@ function compactNode(root, body, paint) {
   }
 }
 const CAR_MODELS = { 3: { url: 'models/audi-rs6.glb', paint: ['BKit2_Paint_Geo_lodASG1'] }, 4: { url: 'models/porsche911.glb', paint: ['body'] }, 5: { url: 'models/g63.glb', paint: ['bodypaint'] },
-  6: { url: 'models/cullinan.glb', paint: [] }, 7: { url: 'models/urus.glb', paint: [] }, 8: { url: 'models/svj.glb', paint: [] } }; // 6-8 : générées (photo → Higgsfield image→3D, site-src/blender/prep_voiture.py), teinte d'origine
+  6: { url: 'models/cullinan.glb', paint: [] }, 7: { url: 'models/urus.glb', paint: [] }, 8: { url: 'models/svj.glb', paint: [] }, 9: { url: 'models/ferrari.glb', paint: [] }, 10: { url: 'models/bentley.glb', paint: [] } }; // 6-8 : générées (photo → Higgsfield image→3D, site-src/blender/prep_voiture.py), teinte d'origine
 const cars = [];
 class Car {
   constructor(x, z, h, hex, kind = 0) {
@@ -1225,7 +1225,10 @@ class Car {
   circles() { const o = this.half - 0.85, fx = this.fx, fz = this.fz; return [[this.x + fx * o, this.z + fz * o], [this.x, this.z], [this.x - fx * o, this.z - fz * o]]; }
   speed() { return Math.hypot(this.vx, this.vz); }
 }
-const REAL_KINDS = [3, 4, 5, 6, 7, 8], REAL_COLORS = { 3: ['#8a8d8f', '#1f1f1f', '#2f4a6e', '#d9d6cf'], 4: ['#a51c24', '#d9d6cf', '#c9a227', '#1f1f1f', '#4a5a6e'], 5: ['#141414', '#e9e7e2', '#4b5244', '#2c2f38'], 6: ['#efede8'], 7: ['#f2c200'], 8: ['#62c22e'] };
+const REAL_KINDS = [3, 4, 5, 6, 7, 8, 9, 10], REAL_COLORS = { 9: ['#c8161d'], 10: ['#1b2550'], 3: ['#8a8d8f', '#1f1f1f', '#2f4a6e', '#d9d6cf'], 4: ['#a51c24', '#d9d6cf', '#c9a227', '#1f1f1f', '#4a5a6e'], 5: ['#141414', '#e9e7e2', '#4b5244', '#2c2f38'], 6: ['#efede8'], 7: ['#f2c200'], 8: ['#62c22e'] };
+const SHOWCASE = [[...PX(458.5, 901.6), Math.PI / 2, 9], [...PX(458.5, 916), Math.PI / 2, 10]]; // Ferrari et Bentley garées côte à côte sur le parking de l'espace commun
+for (let i = parkedSpots.length - 1; i >= 0; i--) if (SHOWCASE.some(([x, z]) => Math.hypot(parkedSpots[i][0] - x, parkedSpots[i][1] - z) < 2.5)) parkedSpots.splice(i, 1);
+for (const [x, z, h, k] of SHOWCASE) new Car(x, z, h, REAL_COLORS[k][0], k).parked = true;
 for (const [x, z, h] of parkedSpots) { const k = pick(REAL_KINDS); new Car(x, z, h, pick(REAL_COLORS[k]), k).parked = true; }
 for (const [px, hex, k] of [[797, '#a51c24', 4], [810.3, '#8a8d8f', 3], [823.6, '#d9d6cf', 4], [836.9, '#141414', 5], [850.2, '#62c22e', 8], [863.5, '#f2c200', 7], [876.8, '#efede8', 6]]) { // race cars, at the parking next to the course marker, a driver waiting at the wheel
   const c = new Car(...PX(px, 1025), 0, hex, k); c.parked = true; c.race = true; }
@@ -1430,7 +1433,7 @@ for (let i = 0; i < 44; i++) {
 
 /* ================= conducteurs ================= */
 // Une personne assise au volant de chaque voiture qui roule ou qui est garée (calage par modèle, jambes vers les pédales ; mains au volant en roulant, posées et regard qui flâne à l'arrêt), et le joueur quand il conduit.
-const DRIVE = { 3: [0.2, 0.38, -0.03, -1.0], 4: [0.15, 0.25, -0.18, -1.5], 5: [0.2, 0.2, 0.4, -1.1], 6: [0.22, 0.15, 0.27, -1.0], 7: [0.2, 0.3, 0.1, -1.1], 8: [0.18, 0.3, -0.28, -1.9, -0.25], def: [0.3, 0.2, 0.05, -1.0] }; // [vers la gauche, vers l'avant, hauteur, genoux, cuisses]
+const DRIVE = { 3: [0.2, 0.38, -0.03, -1.0], 4: [0.15, 0.25, -0.18, -1.5], 5: [0.2, 0.2, 0.4, -1.1], 6: [0.22, 0.15, 0.27, -1.0], 7: [0.2, 0.3, 0.1, -1.1], 8: [0.18, 0.3, -0.28, -1.9, -0.25], 9: [0.18, 0.3, -0.22, -1.8, -0.2], 10: [0.2, 0.3, -0.05, -1.2], def: [0.3, 0.2, 0.05, -1.0] }; // [vers la gauche, vers l'avant, hauteur, genoux, cuisses]
 const DRIVER_KEYS = CHAR_KEYS.filter(k => k !== 'enfant'), ejected = [];
 cars.forEach((c, i) => { if (c.ai || c.parked) c.driver = makePerson({ skin: pick(SKIN), hair: pick(HAIR), shirt: pick(SHIRT), pants: pick(PANTS), char: DRIVER_KEYS[(i * 3) % DRIVER_KEYS.length] }); });
 function seatDriver(p, c) {
@@ -2182,7 +2185,7 @@ function updateDrive(c, dt) {
   const hand = press('Space');
   const fx = c.fx, fz = c.fz;
   let along = c.vx * fx + c.vz * fz;
-  const sport = c.kind >= 2, maxF = c.kind === 8 ? 60 : c.kind === 7 ? 53 : c.kind === 6 ? 45 : c.kind === 4 ? 52 : c.kind === 3 ? 50 : c.kind === 5 ? 44 : sport ? 46 : 36, acc = c.kind === 8 ? 18 : c.kind === 7 ? 15.5 : c.kind === 6 ? 11 : c.kind === 4 ? 15 : c.kind === 3 ? 14 : sport ? 13 : 9.5; // la SVJ est la plus rapide
+  const sport = c.kind >= 2, maxF = c.kind === 9 ? 59 : c.kind === 10 ? 52 : c.kind === 8 ? 60 : c.kind === 7 ? 53 : c.kind === 6 ? 45 : c.kind === 4 ? 52 : c.kind === 3 ? 50 : c.kind === 5 ? 44 : sport ? 46 : 36, acc = c.kind === 9 ? 18 : c.kind === 10 ? 14 : c.kind === 8 ? 18 : c.kind === 7 ? 15.5 : c.kind === 6 ? 11 : c.kind === 4 ? 15 : c.kind === 3 ? 14 : sport ? 13 : 9.5; // la SVJ est la plus rapide
   if (thr) along += acc * (1 - Math.max(0, along) / maxF) * dt * (along < -0.5 ? 2.2 : 1);
   if (brk) along -= (along > 0.5 ? 22 : 7) * dt;
   along = Math.max(along, -10);
