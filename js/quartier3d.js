@@ -121,7 +121,7 @@ const C = {
   wall: '#f3f1ec', wall2: '#e7e2d8', slab: '#d4d0c8', slab2: '#b7b2a9', wood: '#9a6b45', deck: '#a77a52',
   groof: '#6f8f4a', coping: '#e8e3d8', fence: '#8a7f72', trunk: '#6b4f37', leaf: '#6f9150', leaf2: '#88a65d',
   ptrunk: '#8c7558', palm: '#5e8a3e', pine: '#3f6340', table: '#f0ece4', parasol: '#ebdfc6', parasol2: '#c4643f',
-  lamp: '#33363a', curb: '#bdb6a8'
+  lamp: '#33363a', curb: '#bdb6a8', rubber: '#b8775a', rubber2: '#a7b28f', sandbox: '#e8d9b2'
 };
 const MAT = {};
 for (const [k, c] of Object.entries(C)) MAT[k] = new THREE.MeshLambertMaterial({ color: c });
@@ -171,6 +171,7 @@ for (const [k, c] of [['signA', '#b08d57'], ['signB', '#2f4a6e'], ['signC', '#c4
 MAT.sofa = new THREE.MeshLambertMaterial({ color: '#efe9de' });
 MAT.rock = new THREE.MeshLambertMaterial({ color: '#6f6d6a', flatShading: true });
 MAT.court = new THREE.MeshStandardMaterial({ color: '#2f6fb3', roughness: 0.9 });
+MAT.slide = new THREE.MeshStandardMaterial({ color: '#dcd8cf', roughness: 0.25, metalness: 0.55 });
 /* ---- photo textures (ambientCG, CC0): PBR materials tiled in world space ---- */
 const texLoader = new THREE.TextureLoader();
 const TEX = {};
@@ -241,7 +242,7 @@ MAT.car = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.42, 
 MAT.head = new THREE.MeshBasicMaterial({ color: '#d8d4c8' });
 MAT.tail = new THREE.MeshBasicMaterial({ color: '#5a1010' });
 MAT.brake = new THREE.MeshBasicMaterial({ color: '#ff2a1a' });
-const NO_SHADOW = new Set(['court', 'led', 'flame', 'rail', 'waterC', 'stoneT', 'glassC', 'floorIn', 'asphalt', 'line', 'side', 'pave', 'sand', 'water', 'grass', 'bulb', 'curb', 'tlxr', 'tlxa', 'tlxg', 'tlzr', 'tlza', 'tlzg']);
+const NO_SHADOW = new Set(['rubber', 'rubber2', 'sandbox', 'court', 'led', 'flame', 'rail', 'waterC', 'stoneT', 'glassC', 'floorIn', 'asphalt', 'line', 'side', 'pave', 'sand', 'water', 'grass', 'bulb', 'curb', 'tlxr', 'tlxa', 'tlxg', 'tlzr', 'tlza', 'tlzg']);
 const matCache = {};
 const lam = hex => (matCache[hex] ||= new THREE.MeshLambertMaterial({ color: hex }));
 
@@ -775,7 +776,7 @@ function ribbon(key, pts, w, y = 0.06) {
   put(key, g);
 }
 // the green strip between the two central blocks: path, small fountain square, padel court
-ribbon('sand', [[...PX(620, 330)], [...PX(612, 400)], [...PX(628, 470)], [...PX(614, 560)], [...PX(626, 640)], [...PX(614, 720)], [...PX(620, 750)]], 2.4);
+ribbon('sand', [[...PX(620, 330)], [...PX(612, 400)], [...PX(628, 470)], [...PX(614, 560)], [...PX(626, 630)], [...PX(620, 653)]], 2.4); // finit à l'entrée de l'aire de jeux
 const ponds = [];
 const pond = (x, z, rx, rz) => {
   put('coping', new THREE.CircleGeometry(1, 48).rotateX(-Math.PI / 2), mat4(x, 0.07, z, 0, 0, 0, rx + 1, 1, rz + 1));
@@ -806,14 +807,63 @@ const bench = (x, z, r) => {
   put('wood', new THREE.BoxGeometry(2.2, 0.5, 0.1).translate(0, 0.8, 0.28), mat4(x, 0, z, 0, r));
 };
 plaza(...PX(620, 490), 5.5, 4);
-for (const [x, y, r] of [[604, 452, 1.57], [638, 600, -1.57], [602, 690, 1.57]]) bench(...PX(x, y), r); // le premier sur la pelouse, entre le parking et la placette
-for (let i = 0; i < 26; i++) { const x = 594 + rnd() * 52, y = 330 + rnd() * 520; if (Math.abs(x - 620) < 4 || (y > 440 && y < 540) || y > 750 || y < 435) continue; rnd() < 0.5 ? palm(...PX(x, y), 5 + rnd() * 3) : tree(...PX(x, y), 0.6 + rnd() * 0.4); }
+for (const [x, y, r] of [[604, 452, 1.57], [638, 600, -1.57], [603, 645, 0]]) bench(...PX(x, y), r); // le premier sur la pelouse entre le parking et la placette, le dernier face à l'aire de jeux
+for (let i = 0; i < 26; i++) { const x = 594 + rnd() * 52, y = 330 + rnd() * 520; if (Math.abs(x - 620) < 4 || (y > 440 && y < 540) || y > 640 || y < 435) continue; rnd() < 0.5 ? palm(...PX(x, y), 5 + rnd() * 3) : tree(...PX(x, y), 0.6 + rnd() * 0.4); }
 // padel court: blue surface, glass walls, white lines
 { const [x0, z0, x1, z1] = COURT; box('court', x0, x1, 0, 0.06, z0, z1); box('line', x0 + 0.1, x1 - 0.1, 0.06, 0.08, (z0 + z1) / 2 - 0.05, (z0 + z1) / 2 + 0.05);
   box('line', x0 + 0.1, x0 + 0.2, 0.06, 0.08, z0 + 0.1, z1 - 0.1); box('line', x1 - 0.2, x1 - 0.1, 0.06, 0.08, z0 + 0.1, z1 - 0.1);
   box('rail', x0 - 0.1, x0, 0, 3, z0, z1); box('rail', x1, x1 + 0.1, 0, 3, z0, z1); box('rail', x0, x1, 0, 3, z0 - 0.1, z0); box('rail', x0, x1, 0, 3, z1, z1 + 0.1);
   solid(x0 - 0.2, x0, z0, z1, 3); solid(x1, x1 + 0.2, z0, z1, 3); solid(x0, x1, z0 - 0.2, z0, 3); solid(x0, x1, z1, z1 + 0.2, 3);
   box('metal', x0 + 0.05, x1 - 0.05, 0.9, 0.95, (z0 + z1) / 2 - 0.02, (z0 + z1) / 2 + 0.02); }
+// aire de jeux entre la placette et le padel (le parc pour enfants du plan) : sol souple, balançoires, toboggan, bascule, tourniquet, bac à sable
+const PLAYG_PX = [594, 652, 646, 750], PLAYG = rectPX(PLAYG_PX), PG = (() => { const [cx, cz] = PX(620, 701); return { cx, cz, at: (u, v) => [cx + u, cz + v] }; })(); // u vers l'est, v vers le sud
+const playG = new THREE.Group(); scene.add(playG); // pièces mobiles de l'aire de jeux
+function rod(key, a, b, r, seg = 8) { // cylindre entre deux points (u, y, v) de l'aire de jeux
+  const A = V(PG.cx + a[0], a[1], PG.cz + a[2]), B = V(PG.cx + b[0], b[1], PG.cz + b[2]), d = B.clone().sub(A), g = new THREE.CylinderGeometry(r, r, d.length(), seg);
+  g.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(V(0, 1, 0), d.clone().normalize())); g.translate((A.x + B.x) / 2, (A.y + B.y) / 2, (A.z + B.z) / 2); put(key, g);
+}
+const pbox = (key, u0, u1, y0, y1, v0, v1) => box(key, PG.cx + u0, PG.cx + u1, y0, y1, PG.cz + v0, PG.cz + v1);
+const pmesh = (geo, mat, parent) => { const m = new THREE.Mesh(geo, mat); m.castShadow = true; parent.add(m); return m; };
+{ const [x0, z0, x1, z1] = PLAYG; box('rubber2', x0, x1, 0, 0.07, z0, z1);
+  for (const [u, v, r] of [[0, -6.5, 3.6], [-3.2, 0.8, 2.6], [-2.6, 6.2, 2.2]]) put('rubber', new THREE.CircleGeometry(r, 40).rotateX(-Math.PI / 2), mat4(PG.cx + u, 0.075, PG.cz + v));
+  const hu = (x1 - x0) / 2, hv = (z1 - z0) / 2; // bordure en bois, ouverte au nord face à l'allée
+  pbox('wood', -hu, -1.3, 0, 0.18, -hv, -hv + 0.12); pbox('wood', 1.3, hu, 0, 0.18, -hv, -hv + 0.12); pbox('wood', -hu, hu, 0, 0.18, hv - 0.12, hv); pbox('wood', -hu, -hu + 0.12, 0, 0.18, -hv, hv); pbox('wood', hu - 0.12, hu, 0, 0.18, -hv, hv);
+  // balançoires : deux portiques en A et une poutre
+  for (const u of [-3, 3]) { rod('wood', [u, 0, -7.4], [u, 2.5, -6.5], 0.07); rod('wood', [u, 0, -5.6], [u, 2.5, -6.5], 0.07); solid(PG.cx + u - 0.2, PG.cx + u + 0.2, PG.cz - 7.5, PG.cz - 5.5, 2.5); }
+  rod('metal', [-3.1, 2.5, -6.5], [3.1, 2.5, -6.5], 0.06);
+  // toboggan : tour avec toit, échelle au nord, glissière vers le sud
+  for (const [du, dv] of [[-0.6, -0.6], [0.6, -0.6], [-0.6, 0.6], [0.6, 0.6]]) rod('wood', [-3.2 + du, 0, -1 + dv], [-3.2 + du, 2.5, -1 + dv], 0.06);
+  pbox('deck', -3.85, -2.55, 1.36, 1.44, -1.65, -0.35); pbox('wood', -3.85, -3.75, 1.44, 2.0, -1.65, -0.35); pbox('wood', -2.65, -2.55, 1.44, 2.0, -1.65, -0.35);
+  put('parasol2', new THREE.ConeGeometry(1.15, 0.7, 4).rotateY(Math.PI / 4), mat4(PG.cx - 3.2, 2.85, PG.cz - 1));
+  for (const du of [-0.28, 0.28]) rod('wood', [-3.2 + du, 0, -2.45], [-3.2 + du, 1.5, -1.65], 0.045);
+  for (let i = 1; i <= 4; i++) { const t = i / 5; rod('wood', [-3.48, 1.5 * t, -2.45 + 0.8 * t], [-2.92, 1.5 * t, -2.45 + 0.8 * t], 0.03); }
+  { const a = V(PG.cx - 3.2, 1.4, PG.cz - 0.35), b = V(PG.cx - 3.2, 0.3, PG.cz + 2.6), d = b.clone().sub(a), L = d.length(), ang = Math.atan2(-d.y, d.z);
+    for (const [w, h, off, key] of [[0.56, 0.05, 0, 'slide'], [0.05, 0.22, 0.28, 'slide'], [0.05, 0.22, -0.28, 'slide']]) put(key, new THREE.BoxGeometry(w, h, L).translate(off, h / 2, 0).rotateX(ang), mat4((a.x + b.x) / 2, (a.y + b.y) / 2, (a.z + b.z) / 2));
+    pbox('slide', -3.48, -2.92, 0.27, 0.32, 2.6, 3.0); }
+  solid(PG.cx - 3.85, PG.cx - 2.55, PG.cz - 1.65, PG.cz - 0.35, 2.5);
+  // bascule : socle (la planche est mobile)
+  pbox('metal', 2.8, 3.2, 0, 0.6, 0.85, 1.15); solid(PG.cx + 2.75, PG.cx + 3.25, PG.cz - 0.6, PG.cz + 2.6, 0.7);
+  // tourniquet : socle (le plateau tourne)
+  put('metal', new THREE.CylinderGeometry(0.4, 0.5, 0.22, 16), mat4(PG.cx - 2.6, 0.11, PG.cz + 6.2)); solid(PG.cx - 3.9, PG.cx - 1.3, PG.cz + 4.9, PG.cz + 7.5, 0.6);
+  // bac à sable
+  pbox('wood', 1.7, 4.3, 0, 0.3, 5.2, 5.35); pbox('wood', 1.7, 4.3, 0, 0.3, 7.65, 7.8); pbox('wood', 1.7, 1.85, 0, 0.3, 5.2, 7.8); pbox('wood', 4.15, 4.3, 0, 0.3, 5.2, 7.8); pbox('sandbox', 1.85, 4.15, 0, 0.2, 5.35, 7.65);
+}
+const swings = [-1.3, 1.3].map(u => { // balançoires : groupe pivotant sur la poutre
+  const g = new THREE.Group(); g.position.set(PG.cx + u, 2.45, PG.cz - 6.5); playG.add(g);
+  for (const du of [-0.22, 0.22]) pmesh(new THREE.BoxGeometry(0.02, 1.95, 0.02).translate(du, -0.975, 0), MAT.metal, g);
+  pmesh(new THREE.BoxGeometry(0.5, 0.05, 0.22).translate(0, -1.95, 0), MAT.metal, g);
+  return { g, u, kid: null, amp: 0, t: Math.random() * 6 };
+});
+const seesaw = (() => { const g = new THREE.Group(); g.position.set(PG.cx + 3, 0.65, PG.cz + 1); playG.add(g);
+  pmesh(new THREE.BoxGeometry(0.3, 0.06, 3.4), MAT.woodS, g); for (const z of [-1.2, 1.2]) { pmesh(new THREE.BoxGeometry(0.34, 0.04, 0.04).translate(0, 0.32, z), MAT.metal, g); pmesh(new THREE.BoxGeometry(0.03, 0.3, 0.03).translate(0, 0.17, z), MAT.metal, g); }
+  for (const z of [-1.5, 1.5]) pmesh(new THREE.BoxGeometry(0.32, 0.03, 0.3).translate(0, 0.045, z), MAT.parasol2, g);
+  return { g, kids: [null, null], phi: 0, t: 0 }; })();
+const merry = (() => { const g = new THREE.Group(); g.position.set(PG.cx - 2.6, 0.25, PG.cz + 6.2); playG.add(g);
+  pmesh(new THREE.CylinderGeometry(1.3, 1.3, 0.08, 32).translate(0, 0, 0), MAT.woodS, g); pmesh(new THREE.CylinderGeometry(0.05, 0.05, 0.75, 8).translate(0, 0.4, 0), MAT.metal, g);
+  const seats = [0, 1, 2].map(i => { const a = i * Math.PI * 2 / 3; pmesh(new THREE.BoxGeometry(0.34, 0.28, 0.3).translate(0, 0.18, 0.85).rotateY(a), MAT.parasol2, g);
+    pmesh(new THREE.BoxGeometry(0.03, 0.03, 0.85).translate(0, 0.77, 0.42).rotateY(a + 0.6), MAT.metal, g); return { a, kid: null }; });
+  return { g, seats, w: 0 }; })();
+
 // the shared space south of the strip: lawn, the sinuous pond, a café terrace, benches
 { const [x0, z0, x1, z1] = PLAZA; box('pave', x0, x1, 0, 0.05, z0, z0 + 2); }
 pond(...PX(540, 955), 14, 7);
@@ -1244,9 +1294,11 @@ const G_SHOE = new THREE.BoxGeometry(0.13, 0.08, 0.26).translate(0, -0.02, 0.05)
 // ---- vrais personnages : résidents générés en photo puis reconstruits en 3D articulée et animée (Higgsfield image→3D, rig Meshy),
 // allégés (models/persos/*.glb). Le bonhomme stylisé reste dessous en secours tant que le modèle n'est pas chargé.
 const CHAR_KEYS = ['femme-lin', 'homme-lin', 'femme-sport', 'homme-polo', 'senior', 'femme-chemise', 'enfant', 'homme-noir'];
-const CHAR_H = { enfant: 1.28, 'femme-lin': 1.68, 'femme-sport': 1.7, 'femme-chemise': 1.65, senior: 1.75, hero: 1.8 };
+const CHAR_H = { 'garcon-polo': 1.3, 'garcon-marin': 1.16, 'fille-jaune': 1.22, enfant: 1.28, 'femme-lin': 1.68, 'femme-sport': 1.7, 'femme-chemise': 1.65, senior: 1.75, hero: 1.8 };
 const CHAR_CLIPS = { hero: { run: 'hero-run', idle: 'hero-idle', sit: 'hero-sit' } }; // clips supplémentaires (fichiers à part, même squelette)
 for (const k of CHAR_KEYS) CHAR_CLIPS[k] = { idle: k + '-idle', sit: k + '-sit' }; // repos des passants quand ils s'arrêtent, assis sur les bancs du parc
+const KID_KEYS = ['enfant', 'garcon-polo', 'garcon-marin', 'fille-jaune'];
+for (const k of KID_KEYS) CHAR_CLIPS[k] = { idle: k + '-idle', sit: k + '-sit', run: k + '-run' }; // les enfants de l'aire de jeux courent
 const charCache = {}, charLoader = new GLTFLoader();
 function parallelTraverse(a, b, cb) { cb(a, b); for (let i = 0; i < a.children.length; i++) parallelTraverse(a.children[i], b.children[i], cb); }
 function cloneSkinned(source) { // équivalent de SkeletonUtils.clone : chaque clone garde son propre squelette
@@ -1337,6 +1389,94 @@ for (let i = 0; i < 44; i++) {
   const path = pedPaths[i % pedPaths.length];
   const p = makePerson({ skin: pick(SKIN), hair: pick(HAIR), shirt: pick(SHIRT), pants: pick(PANTS), long: rnd() < 0.4, char: CHAR_KEYS[i % CHAR_KEYS.length] });
   peds.push({ p, path, s: rnd() * path.len, dir: rnd() < 0.5 ? 1 : -1, v: 1.1 + rnd() * 0.5, phase: rnd() * 6, off: 0, offT: 0, y: 0, vy: 0, down: 0, x: 0, z: 0, h: 0, wait: 0, sit: null, sitCd: rnd() * 20, greet: null, greetCd: rnd() * 5, heroCd: 0 });
+}
+
+/* ================= enfants de l'aire de jeux ================= */
+// Chaque enfant enchaîne les jeux : balançoire, toboggan, bascule, tourniquet, chat (course-poursuite) ; il traverse l'aire par l'allée centrale (u = 0) pour ne pas buter dans les jeux.
+const KID_SEAT = [0.2, 0.19]; // calage du clip assis des enfants : avancée et hauteur sous le dessus de l'assise
+const kids = ['enfant', 'garcon-polo', 'garcon-marin', 'fille-jaune', 'garcon-polo', 'fille-jaune'].map((char, i) => {
+  const p = makePerson({ skin: '#c99b7a', hair: '#3a2a1e', shirt: '#ffffff', pants: '#cccccc', char }); p.root.rotation.order = 'YXZ';
+  const u = -1 + (i % 3), v = -3 + i * 1.6;
+  return { p, u, v, h: 0, phase: rnd() * 6, act: null, st: '', t: 1 + i * 0.7, route: [], speed: 0, seated: false, shout: 0 };
+});
+const kv = new THREE.Vector3(), kq = new THREE.Quaternion(), kq2 = new THREE.Quaternion(), ke = new THREE.Euler(0, 0, 0, 'YXZ');
+function kidMount(k, group, lp, yaw, pitch = 0) { // place l'enfant dans le repère d'un jeu mobile (siège de balançoire, planche, plateau)
+  group.updateMatrixWorld(); kv.copy(lp).applyMatrix4(group.matrixWorld); k.p.root.position.copy(kv);
+  group.getWorldQuaternion(kq); kq2.setFromEuler(ke.set(pitch, yaw, 0)); k.p.root.quaternion.copy(kq).multiply(kq2);
+  k.u = kv.x - PG.cx; k.v = kv.z - PG.cz;
+}
+function kidGo(k, u, v) { // trajet par l'allée centrale
+  k.route = Math.abs(k.u) > 1.2 || Math.abs(u) > 1.2 ? [[0, k.v], [0, v], [u, v]] : [[u, v]];
+}
+function kidStep(k, dt, sp) { // avance vers le prochain point du trajet ; renvoie true à l'arrivée
+  const [tu, tv] = k.route[0] || [k.u, k.v], du = tu - k.u, dv = tv - k.v, d = Math.hypot(du, dv);
+  if (d < 0.12) { k.route.shift(); return !k.route.length; }
+  const st = Math.min(d, sp * dt); k.u += du / d * st; k.v += dv / d * st; k.h += wrapA(Math.atan2(du, dv) - k.h) * Math.min(1, dt * 10); k.speed = sp; return false;
+}
+const KID_CRIS = { swing: ['Plus haut !', 'Wouhou !', 'Pousse-moi !'], slide: ['Attention, j\'arrive !', 'Encore !', 'Wouhou !'], seesaw: ['Hop !', 'À toi !'], merry: ['Plus vite !', 'Ça tourne !'], chase: ['Chat !', 'Attrape-moi !', 'Tu m\'auras pas !'] };
+function kidShout(k, kind) { if (k.shout <= 0 && nearHero({ x: PG.cx + k.u, z: PG.cz + k.v }) && rnd() < 0.5) { say(pick(KID_CRIS[kind]), k.p.root, 1.5); k.shout = 6 + rnd() * 6; } }
+function kidChoose(k) { // prochain jeu parmi ceux qui ont une place libre
+  const opts = [];
+  for (const s of swings) if (!s.kid) opts.push(['swing', s]);
+  if (!kids.some(o => o.act === 'slide')) opts.push(['slide', null]);
+  const ss = seesaw.kids.indexOf(null); if (ss >= 0) opts.push(['seesaw', ss], ['seesaw', ss]);
+  const ms = merry.seats.find(x => !x.kid); if (ms) opts.push(['merry', ms]);
+  if (kids.filter(o => o.act === 'chase').length < 2) opts.push(['chase', null]);
+  const [act, obj] = pick(opts); k.act = act; k.obj = obj; k.st = 'go'; k.t = 0;
+  if (act === 'swing') { obj.kid = k; kidGo(k, obj.u, -5.2); }
+  else if (act === 'slide') { k.laps = 2 + Math.floor(rnd() * 3); kidGo(k, -3.2, -2.75); }
+  else if (act === 'seesaw') { seesaw.kids[obj] = k; kidGo(k, 3.6, 1 + (obj ? 1.5 : -1.5)); }
+  else if (act === 'merry') { obj.kid = k; k.route = []; }
+  else { k.t = 12 + rnd() * 12; k.route = []; }
+}
+function kidLeave(k) { // fin du jeu : retour au sol, pause, nouveau jeu
+  if (k.act === 'swing') k.obj.kid = null; if (k.act === 'seesaw') seesaw.kids[k.obj] = null; if (k.act === 'merry') k.obj.kid = null;
+  k.act = null; k.st = ''; k.seated = false; k.p.root.quaternion.identity(); k.t = 1 + rnd() * 3; k.h = Math.atan2(-k.u, -k.v) || 0;
+}
+const SLIDE_A = [-3.2, 1.48, -1.0], SLIDE_TOP = [-3.2, 1.4, -0.35], SLIDE_END = [-3.2, 0.3, 2.6], SLIDE_ANG = Math.atan2(1.1, 2.95);
+function updateKids(dt) {
+  const far = Math.abs(PG.cx - P.x) > 90 || Math.abs(PG.cz - P.z) > 90;
+  // jeux mobiles
+  for (const s of swings) { s.amp += ((s.kid && s.kid.st === 'on' ? 0.62 : 0) - s.amp) * Math.min(1, dt * 0.6); s.t += dt; s.g.rotation.x = s.amp * Math.sin(s.t * 2.24); }
+  const both = seesaw.kids.every(k => k && k.st === 'on'), one = seesaw.kids.find(k => k && k.st === 'on');
+  seesaw.t += dt; const phiT = both ? 0.18 * Math.sin(seesaw.t * 1.9) : one ? (one === seesaw.kids[0] ? 0.18 : -0.18) : 0; seesaw.phi += (phiT - seesaw.phi) * Math.min(1, dt * (both ? 8 : 3)); seesaw.g.rotation.x = seesaw.phi;
+  const boarding = merry.seats.some(x => x.kid && x.kid.st !== 'on'), riders = merry.seats.filter(x => x.kid && x.kid.st === 'on').length;
+  merry.w += ((boarding ? 0 : riders ? 1.3 : 0.15 * Math.sign(merry.w)) - merry.w) * Math.min(1, dt * 0.8); merry.g.rotation.y += merry.w * dt;
+  for (const k of kids) {
+    k.p.root.visible = !far; if (far) continue;
+    k.shout -= dt; k.speed = 0; k.seated = false; let pitch = 0, y = 0.1, mounted = false;
+    if (!k.act) { k.t -= dt; if (k.t <= 0) kidChoose(k); }
+    else if (k.act === 'swing') { const s = k.obj;
+      if (k.st === 'go') { if (kidStep(k, dt, 2.6)) { k.st = 'on'; k.t = 15 + rnd() * 15; } }
+      else { k.seated = true; mounted = true; kidMount(k, s.g, kv.set(0, -1.925 - KID_SEAT[1], KID_SEAT[0]), 0); k.t -= dt; if (s.amp > 0.4) kidShout(k, 'swing');
+        if (k.t <= 0) { k.st = 'off'; } if (k.st === 'off' && s.amp < 0.12) { k.p.root.quaternion.identity(); k.u = s.u; k.v = -5.3; kidLeave(k); } } }
+    else if (k.act === 'slide') {
+      if (k.st === 'go') { if (kidStep(k, dt, 2.6)) { k.st = 'climb'; k.t = 0; k.h = 0; } }
+      else if (k.st === 'climb') { k.t += dt / 1.3; const t = Math.min(1, k.t); k.u = -3.2; k.v = -2.75 + 1.4 * t; y = 0.1 + 1.38 * t; k.speed = 1.1; k.h = 0; if (t >= 1) { k.st = 'top'; k.t = 0.5; } }
+      else if (k.st === 'top') { y = 1.48; k.v = -1.0; k.t -= dt; if (k.t <= 0) { k.st = 'down'; k.t = 0; kidShout(k, 'slide'); } }
+      else if (k.st === 'down') { k.t += dt / 1.1; const t = Math.min(1, k.t * k.t * 0.4 + k.t * 0.6), su = SLIDE_TOP[2] + (SLIDE_END[2] - SLIDE_TOP[2]) * t, sy = SLIDE_TOP[1] + (SLIDE_END[1] - SLIDE_TOP[1]) * t;
+        k.seated = true; pitch = SLIDE_ANG; k.u = -3.2; k.v = su + KID_SEAT[0]; y = sy + 0.05 - KID_SEAT[1]; if (k.t >= 1) { k.st = 'land'; k.t = 0.35; } }
+      else if (k.st === 'land') { k.seated = true; y = 0.3 + 0.05 - KID_SEAT[1]; k.v = 2.8; k.t -= dt; if (k.t <= 0) { if (--k.laps > 0) { k.st = 'go'; k.route = [[-2.2, 3.2], [-2.2, -2.75], [-3.2, -2.75]]; } else kidLeave(k); } } }
+    else if (k.act === 'seesaw') { const end = k.obj ? 1 : -1;
+      if (k.st === 'go') { if (kidStep(k, dt, 2.6)) { k.st = 'on'; k.t = 14 + rnd() * 14; k.wait = 8; } }
+      else { k.seated = true; mounted = true; kidMount(k, seesaw.g, kv.set(0, 0.06 - KID_SEAT[1], end * (1.5 - KID_SEAT[0])), end > 0 ? Math.PI : 0); k.t -= dt;
+        if (both) kidShout(k, 'seesaw'); else if ((k.wait -= dt) <= 0) k.t = 0;
+        if (k.t <= 0) { k.p.root.quaternion.identity(); k.u = 3.6; k.v = 1 + end * 1.5; kidLeave(k); } } }
+    else if (k.act === 'merry') { const m = k.obj, a = m.a + merry.g.rotation.y, su = -2.6 + Math.sin(a) * 1.85, sv = 6.2 + Math.cos(a) * 1.85;
+      if (k.st === 'go') { if (!k.route.length || Math.hypot(k.route[k.route.length - 1][0] - su, k.route[k.route.length - 1][1] - sv) > 0.4) kidGo(k, su, sv); if (kidStep(k, dt, 2.4)) { k.st = 'on'; k.t = 12 + rnd() * 14; } }
+      else { k.seated = true; mounted = true; kidMount(k, merry.g, kv.set(Math.sin(m.a) * (0.85 + KID_SEAT[0]), 0.32 - KID_SEAT[1], Math.cos(m.a) * (0.85 + KID_SEAT[0])), m.a); k.t -= dt; if (merry.w > 1) kidShout(k, 'merry');
+        if (k.t <= 0) { k.p.root.quaternion.identity(); k.u = su; k.v = sv; kidLeave(k); } } }
+    else if (k.act === 'chase') { // course-poursuite : le chat suit l'autre, qui file vers des coins libres
+      const other = kids.find(o => o !== k && o.act === 'chase');
+      if ((k.freeze = (k.freeze || 0) - dt) > 0) { k.speed = 0; } // le nouveau chat compte jusqu'à trois, l'autre prend de l'avance
+      else if (k.it && other) { k.route = [[other.u, other.v]]; kidStep(k, dt, 3.1); if (Math.hypot(other.u - k.u, other.v - k.v) < 0.7) { k.it = false; other.it = true; other.freeze = 1.6; other.route = []; k.route = []; kidShout(k, 'chase'); } }
+      else { if (!k.route.length) kidGo(k, ...pick([[0, -3.5], [0, 3.8], [1.2, -1.8], [-0.8, 9.2], [1.2, 9.4], [-1, -9.2], [4.4, -2.5], [4.6, 4.2], [0.5, 1.2]])); kidStep(k, dt, other ? 2.7 : 2.2); }
+      if (other && !kids.some(o => o.act === 'chase' && o.it)) k.it = true;
+      k.t -= dt; if (k.t <= 0) { k.it = false; kidLeave(k); } }
+    if (!mounted) { k.p.root.position.set(PG.cx + k.u, y, PG.cz + k.v); k.p.root.quaternion.setFromEuler(ke.set(pitch, k.h, 0)); }
+    k.phase += dt * k.speed * (k.speed > 1.8 ? 3.2 : 2.6);
+    animatePerson(k.p, k.phase, k.seated ? 0 : k.speed > 1.8 ? 0.8 : k.speed > 0.05 ? 0.5 : 0, { sit: k.seated });
+  }
 }
 
 /* ================= hero ================= */
@@ -1624,6 +1764,7 @@ const mapImg = document.createElement('canvas'); mapImg.width = MW * MPX; mapImg
   for (const rd of ROADS) { c.lineWidth = rd.w; c.beginPath(); c.moveTo(rd.p0[0], rd.p0[1]); c.lineTo(rd.p1[0], rd.p1[1]); c.stroke(); }
   c.fillStyle = '#6a6c70'; for (const r of [P1, P2, P3]) c.fillRect(r[0], r[1], r[2] - r[0], r[3] - r[1]);
   c.fillStyle = '#2f6fb3'; c.fillRect(COURT[0], COURT[1], COURT[2] - COURT[0], COURT[3] - COURT[1]);
+  c.fillStyle = '#b8775a'; c.fillRect(PLAYG[0], PLAYG[1], PLAYG[2] - PLAYG[0], PLAYG[3] - PLAYG[1]);
   for (const l of lots) { c.fillStyle = '#4e5b47'; poly(l.poly); c.fill(); c.fillStyle = '#d9d4c7'; poly(l.house); c.fill(); c.fillStyle = '#5ec8df'; poly(l.poolR); c.fill(); }
   c.fillStyle = '#4aa3c2'; for (const [x, z, rx, rz] of ponds) { c.beginPath(); c.ellipse(x, z, rx, rz, 0, 0, 7); c.fill(); }
   c.strokeStyle = '#c9b98f'; c.lineWidth = 2.6; for (const cv of parkCurves) { c.beginPath(); cv.getPoints(60).forEach((p, i) => i ? c.lineTo(p.x, p.z) : c.moveTo(p.x, p.z)); c.stroke(); }
@@ -2218,6 +2359,7 @@ function zoneOf(x, z) {
   for (const l of lots) if (x > l.x0 && x < l.x1 && z > l.z0 && z < l.z1 && inQuad(l.poly, x, z)) return [`Lot n° ${l.n}`, `Villa ${l.name}`];
   const rd = nearestRoad(x, z); if (rd.d < rd.r.w / 2 + 0.5) return ['Domaine Red Stone', rd.r.name];
   if (inRect(COURT, x, z)) return ['Coulée verte', 'Terrain de padel'];
+  if (inRect(PLAYG, x, z)) return ['Coulée verte', 'Aire de jeux'];
   if (inRect(PARK, x, z)) return ['Domaine Red Stone', 'Coulée verte'];
   if (inRect(PLAZA, x, z)) return ['Domaine Red Stone', 'Espace commun'];
   if ([P1, P2, P3].some(r => inRect(r, x, z))) return ['Domaine Red Stone', 'Parking'];
@@ -2246,7 +2388,7 @@ function frame() {
   if (started) { if (P.car) updateDrive(P.car, dt); else { updateFoot(dt); audio.update(false, 0, 0, night > 0.5, dt); audio.horn(false); } }
   updateTraffic(dt, simT);
   for (const c of cars) if (c.model) c.setLod(c === P.car || (c.x - camera.position.x) ** 2 + (c.z - camera.position.z) ** 2 < (hq ? 16900 : 6400));
-  updatePeds(dt);
+  updatePeds(dt); updateKids(dt);
 
   // collectibles
   for (const k of keys3d) {
@@ -2460,4 +2602,4 @@ applySketch();
 renderer.setAnimationLoop(frame);
 go.disabled = false; go.textContent = 'Jouer';
 
-window.WHQ = { P, doors, lots, act, peds, benches }; // accès de débogage (tests)
+window.WHQ = { P, doors, lots, act, peds, benches, kids, PG, swings, seesaw, merry, cam: (y, p, d) => { yaw = y; pitch = p; camDist = d; lastMouse = performance.now() / 1000; } }; // accès de débogage (tests)
