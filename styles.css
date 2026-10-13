@@ -848,8 +848,8 @@ html[dir=rtl] .wa{left:auto;right:clamp(16px,2.4vw,34px)}html[dir=rtl] .totop{ri
 .clim div{display:flex;flex-direction:column;justify-content:flex-end;align-items:center;height:100%;gap:.6rem;font-size:.6rem;letter-spacing:.2em;text-transform:uppercase;color:var(--muted)}
 .clim i{display:block;width:100%;background:var(--champagne);height:var(--h);font-style:normal;position:relative}
 .clim i::before{content:attr(data-v);position:absolute;top:-1.6rem;left:0;right:0;text-align:center;font-family:var(--display);font-size:1.05rem;letter-spacing:0;color:var(--ink);text-transform:none}
-.night{background:var(--ink);color:var(--bg)}
-.night .label{color:#e6d9bd}.night .head p,.night .muted{color:#cfc6b8}.night .gal figcaption{color:#cfc6b8;font-size:.6rem;letter-spacing:.3em;text-transform:uppercase;margin-top:.9rem}
+.nightsec{background:var(--ink);color:var(--bg)}
+.nightsec .label{color:#e6d9bd}.nightsec .head p,.nightsec .muted{color:#cfc6b8}.nightsec .gal figcaption{color:#cfc6b8;font-size:.6rem;letter-spacing:.3em;text-transform:uppercase;margin-top:.9rem}
 .matgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:clamp(1rem,2.5vw,2.5rem);margin-top:clamp(2rem,4vw,3rem)}
 .matgrid figure{margin:0}.matgrid img{width:100%;aspect-ratio:4/3;object-fit:cover;cursor:zoom-in}
 .matgrid figcaption{margin-top:.9rem}.matgrid b{display:block;font-family:var(--display);font-weight:300;font-size:1.35rem}.matgrid span{display:block;color:var(--muted);font-size:.88rem;margin-top:.3rem}
