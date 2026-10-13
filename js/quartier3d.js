@@ -1225,10 +1225,8 @@ class Car {
 }
 const REAL_KINDS = [3, 4, 5], REAL_COLORS = { 3: ['#8a8d8f', '#1f1f1f', '#2f4a6e', '#d9d6cf'], 4: ['#a51c24', '#d9d6cf', '#c9a227', '#1f1f1f', '#4a5a6e'], 5: ['#141414', '#e9e7e2', '#4b5244', '#2c2f38'] };
 for (const [x, z, h] of parkedSpots) { const k = pick(REAL_KINDS); new Car(x, z, h, pick(REAL_COLORS[k]), k).parked = true; }
-new Car(...PX(800, 1025), 0, '#a51c24', 4); // race car, at the parking next to the course marker
-new Car(...PX(814.4, 1025), 0, '#8a8d8f', 3);
-new Car(...PX(828.8, 1025), 0, '#d9d6cf', 4);
-new Car(...PX(843.2, 1025), 0, '#141414', 5);
+for (const [px, hex, k] of [[800, '#a51c24', 4], [814.4, '#8a8d8f', 3], [828.8, '#d9d6cf', 4], [843.2, '#141414', 5]]) { // race cars, at the parking next to the course marker, a driver waiting at the wheel
+  const c = new Car(...PX(px, 1025), 0, hex, k); c.parked = true; c.race = true; }
 
 // traffic AI
 function laneFor(dx, dz, roadCoord) { return roadCoord + (dx ? dx * 2.5 * 1 : -dz * 2.5); }
@@ -2047,7 +2045,7 @@ function toggleCar() {
   const c = nearCar;
   if (c.driver || c.ai) { const d = c.driver, moving = !!c.ai; c.driver = null; c.ai = null;
     if (d) { d.root.visible = true; d.root.position.set(c.x + c.fz * 1.6, 0.1, c.z - c.fx * 1.6); d.root.rotation.set(0, Math.atan2(-c.fz, c.fx), 0); ejected.push({ p: d, t: 7 }); } // le conducteur descend, reste planté là un moment
-    say(pick(moving ? ['Hé ! Ma voiture !', 'Mais… !', 'Prenez-la, je vais à pied…', 'Faites attention à elle !'] : ['Hé ! J\'étais dedans !', 'Mais je suis garé, là !', 'Bon… je vais marcher.', 'Ramenez-la au moins !']), d ? d.root : c, 2.3); }
+    say(pick(moving ? ['Hé ! Ma voiture !', 'Mais… !', 'Prenez-la, je vais à pied…', 'Faites attention à elle !'] : (c.race ? ['Hé ! C\'est ma voiture de course !', 'Pas de rayure, hein !', 'Battez mon temps, alors !'] : ['Hé ! J\'étais dedans !', 'Mais je suis garé, là !', 'Bon… je vais marcher.', 'Ramenez-la au moins !'])), d ? d.root : c, 2.3); }
   c.setDyn(true); P.car = c; hero.root.visible = false; c.along = c.vx * c.fx + c.vz * c.fz;
   audio.sfx('door');
   yaw = c.h + Math.PI; lastMouse = -10;
