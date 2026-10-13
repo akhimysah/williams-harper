@@ -223,6 +223,7 @@ pbr('fence', 'concrete', 1.5, { color: '#5e574f' });
   TEX_SCALE.leaf = 1 / 0.8; TEX_SCALE.leaf2 = 1 / 0.8; TEX_SCALE.pine = 1 / 0.7; TEX_SCALE.palm = 1 / 1.0;
 }
 }
+MAT.ttrunk = MAT.trunk; MAT.tleaf = MAT.leaf; MAT.tleaf2 = MAT.leaf2; if (TEX_SCALE.trunk) TEX_SCALE.ttrunk = TEX_SCALE.trunk; if (TEX_SCALE.leaf) { TEX_SCALE.tleaf = TEX_SCALE.leaf; TEX_SCALE.tleaf2 = TEX_SCALE.leaf2; }
 // world-space tiling: project each face onto its dominant axis so textures tile by metres across every box
 function worldUV(geo, sc) {
   const pos = geo.attributes.position, nor = geo.attributes.normal; if (!nor) return;
@@ -291,17 +292,19 @@ function mat4(x, y, z, rx = 0, ry = 0, rz = 0, sx = 1, sy = 1, sz = 1) {
   return new THREE.Matrix4().compose(V(x, y, z), new THREE.Quaternion().setFromEuler(new THREE.Euler(rx, ry, rz, 'YXZ')), V(sx, sy, sz));
 }
 
-const PLACE = { tree: [], pine: [], shrub: [] }; // where the real scanned models go once loaded
-function tree(x, z, s = 1) {
-  PLACE.tree.push([x, z, s, rnd() * 6.28]);
-  put('trunk', new THREE.CylinderGeometry(0.12 * s, 0.18 * s, 2.6 * s, 6), mat4(x, 1.3 * s, z));
-  const k = rnd() < 0.5 ? 'leaf' : 'leaf2';
+const PLACE = { tree: [], pine: [], shrub: [], olivier: [], oranger: [], dattier: [], washingtonia: [] }; // where the real models go once loaded
+// arbres et palmiers de Marrakech reconstruits en 3D (photo → Higgsfield image→3D, models/arbres/*.glb) ; les formes simples ci-dessous restent en secours
+function tree(x, z, s = 1, kind = rnd() < 0.55 ? 'olivier' : 'oranger') {
+  PLACE[kind].push([x, z, s * (0.9 + rnd() * 0.25), rnd() * 6.28]);
+  put('ttrunk', new THREE.CylinderGeometry(0.12 * s, 0.18 * s, 2.6 * s, 6), mat4(x, 1.3 * s, z));
+  const k = rnd() < 0.5 ? 'tleaf' : 'tleaf2';
   put(k, new THREE.IcosahedronGeometry(1.7 * s, 3), mat4(x, 3.5 * s, z, 0, rnd() * 6, 0, 1, 0.85, 1));
   put(k, new THREE.IcosahedronGeometry(1.15 * s, 3), mat4(x + 0.8 * s, 2.9 * s, z + 0.4 * s, 0, rnd() * 6));
   put(k, new THREE.IcosahedronGeometry(1.0 * s, 3), mat4(x - 0.7 * s, 3.1 * s, z - 0.5 * s, 0, rnd() * 6));
   solid(x - 0.3, x + 0.3, z - 0.3, z + 0.3, 4);
 }
-function palm(x, z, h = 6) {
+function palm(x, z, h = 6, kind = 'dattier') {
+  PLACE[kind].push([x, z, h / 6 * (0.95 + rnd() * 0.1), rnd() * 6.28]);
   const lean = (rnd() - 0.5) * 0.12;
   put('ptrunk', new THREE.CylinderGeometry(0.14, 0.24, h, 7), mat4(x, h / 2, z, lean, 0, lean));
   const top = V(x + Math.sin(lean) * h / 2, h, z - Math.sin(lean) * h / 2);
@@ -479,6 +482,10 @@ function villaLot(vname, lx, lz, ry, sc, record) {
   const lotM = mat4(lx, 0, lz, 0, ry, 0, 1, 1, 1), local = new THREE.Matrix4().compose(V(tu, 0, tv), new THREE.Quaternion().setFromEuler(new THREE.Euler(0, th, 0)), V(k, k, k));
   const Mw = lotM.clone().multiply(local); VILLA_INST[key].push(Mw);
   const W = (x, z) => V(x, 0, z).applyMatrix4(Mw), WQ = ([x0, z0, x1, z1]) => [W(x0, z0), W(x1, z0), W(x1, z1), W(x0, z1)].map(p => [p.x, p.z]);
+  { // les palmiers du jardin de la villa deviennent de vrais palmiers dattiers (les palmes plates du modèle de villa sont masquées)
+    const M = MODELS[key], px = x => (x - M.plan / 2) / M.scale, inRdc = (x, y) => M.rdc.some(pl => { let c = false; const Q = pl.pts; for (let i = 0, j = Q.length - 1; i < Q.length; j = i++) { const [xi, yi] = Q[i], [xj, yj] = Q[j]; if ((yi > y) !== (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) c = !c; } return c; });
+    for (const [x, y, h] of M.trees) if (h > 0 && !inRdc(x, y)) { const p = W(px(x), px(y)); PLACE.dattier.push([p.x, p.z, h * k * 1.25 / 7.4, (x * 7.1 + y) % 6.28]); }
+  }
   for (const h of F.houses) { const cc = W((h[0] + h[2]) / 2, (h[1] + h[3]) / 2); solidR(cc.x, cc.z, (h[2] - h[0]) / 2 * k, (h[3] - h[1]) / 2 * k, ry + th, 7.5); }
   for (const r of F.poolRects) { pools.push(WQ(r)); const cc = W((r[0] + r[2]) / 2, (r[1] + r[3]) / 2); solidR(cc.x, cc.z, (r[2] - r[0]) / 2 * k + 0.25, (r[3] - r[1]) / 2 * k + 0.25, ry + th, 0.3, 'pool'); }
   const d = W(F.door.x + F.door.ox * 0.8, F.door.z + F.door.oz * 0.8), H0 = F.houses[0], R0 = F.poolRects[0];
@@ -490,7 +497,7 @@ function loadVillaGLBs() {
   const loader = new GLTFLoader();
   for (const key of Object.keys(VILLA_INST)) { const list = VILLA_INST[key]; if (!list.length) continue;
     loader.load('models/villas/' + key + '.glb', g => { g.scene.updateMatrixWorld(true);
-      g.scene.traverse(o => { if (!o.isMesh) return; const im = new THREE.InstancedMesh(o.geometry, o.material, list.length), tmp = new THREE.Matrix4();
+      g.scene.traverse(o => { if (!o.isMesh || o.material?.alphaTest > 0) return; const im = new THREE.InstancedMesh(o.geometry, o.material, list.length), tmp = new THREE.Matrix4();
         list.forEach((m, i) => im.setMatrixAt(i, tmp.multiplyMatrices(m, o.matrixWorld)));
         const mt = o.material; if (mt && mt.transparent && !mt.map && !mt.normalMap && (mt.opacity ?? 1) > 0.4 && !villaGlass.includes(mt)) villaGlass.push(mt);
         im.instanceMatrix.needsUpdate = true; im.computeBoundingSphere(); im.castShadow = true; im.receiveShadow = true; im.userData = { noInk: true, noSketch: true, villa: key }; scene.add(im); });
@@ -541,7 +548,7 @@ function lotAt(lx, lz, ry, vname, sc = 1) {
   lb('water', -7, 1, -1.2, 0.18, 20, 24.5);
   pools.push(quad(-7, 1, 20, 24.5)); ls(-7.5, 1.5, 19.5, 25, 0.3, 'pool');
   for (const u of [2.4, 3.6]) { lb('table', u, u + 0.75, 0, 0.35, 20.5, 22.5); }
-  const t = W(-9.3, 3.2); tree(t.x, t.z, 0.8 + rnd() * 0.4);
+  const t = W(-9.3, 3.2); tree(t.x, t.z, 0.8 + rnd() * 0.4, 'olivier');
   const p = W(8.6, 24.5); rnd() < 0.6 ? palm(p.x, p.z, 5 + rnd() * 2.5) : tree(p.x, p.z, 0.9);
   if (rnd() < 0.5) { const c = W(7, 3.2); parkedSpots.push([c.x, c.z, ry + (rnd() < 0.5 ? 0 : Math.PI)]); }
   const d = W(2.15, 4.6);
@@ -757,8 +764,8 @@ lotAt(...PX(1030, 990), 0.615, 'Céline', 1.3);
 lotAt(...PX(930, 1075), 0.35, 'Céline', 1.3);
 if (USE_VILLA_GLB) loadVillaGLBs();
 // palms along the big roads' verges and the eastern servitude strip
-for (let x = 140; x < 1240; x += 55) palm(...PX(x, 160), 7 + rnd() * 2);
-for (let y = 180; y < 1250; y += 55) palm(...PX(1268, y), 6 + rnd() * 2);
+for (let x = 140; x < 1240; x += 55) palm(...PX(x, 160), 7 + rnd() * 2, 'washingtonia'); // grandes avenues : palmiers washingtonia, comme à Marrakech
+for (let y = 180; y < 1250; y += 55) palm(...PX(1268, y), 6 + rnd() * 2, 'washingtonia');
 for (let y = 330; y < 1050; y += 60) { palm(...PX(455, y), 6 + rnd() * 2); palm(...PX(655, y), 6 + rnd() * 2); }
 
 const parkCurves = [];
@@ -796,7 +803,7 @@ const plaza = (cx, cz, r, n) => {
     solid(x - 0.6, x + 0.6, z - 0.6, z + 0.6, 0.8);
   }
   put('wood', new THREE.CylinderGeometry(1.8, 1.8, 0.45, 20), mat4(cx, 0.22, cz)); solid(cx - 1.5, cx + 1.5, cz - 1.5, cz + 1.5, 0.45);
-  tree(cx, cz, 1.3);
+  tree(cx, cz, 1.3, 'olivier');
 };
 const benches = []; // places assises des bancs : x/z milieu de la place, s/c orientation du banc, h orientation du passant assis, ax/az point d'approche devant le banc
 const bench = (x, z, r) => {
@@ -900,14 +907,14 @@ guardHouse(118, 268, 0); guardHouse(393, 1042, Math.PI / 2);
 for (let i = 0; i < 300; i++) {
   const x = WORLD.x0 + rnd() * (WORLD.x1 - WORLD.x0), z = WORLD.z0 + rnd() * (WORLD.z1 - WORLD.z0);
   if (inPoly(SITE_POLY, x, z) || nearRoad(x, z, 9)) continue;
-  rnd() < 0.8 ? pine(x, z, 8 + rnd() * 7) : palm(x, z, 6 + rnd() * 3);
+  rnd() < 0.55 ? palm(x, z, 6 + rnd() * 3) : tree(x, z, 1 + rnd() * 0.4, 'olivier'); // autour du domaine : palmeraie et oliveraie, comme aux portes de Marrakech
 }
 for (let i = 0; i < 60; i++) {
   const [x, z] = PX(85 + rnd() * 1240, 150 + rnd() * 1190);
   if (!inPoly(SITE_POLY, x, z) || nearRoad(x, z, 4)) continue;
   if (lots.some(l => x > l.x0 - 2 && x < l.x1 + 2 && z > l.z0 - 2 && z < l.z1 + 2)) continue;
   if ([PARK, PLAZA, P1, P2, P3, COURT].some(r => inRect(r, x, z))) continue;
-  rnd() < 0.4 ? pine(x, z, 7 + rnd() * 5) : tree(x, z, 0.9 + rnd() * 0.5);
+  rnd() < 0.35 ? palm(x, z, 6 + rnd() * 2.5) : tree(x, z, 0.9 + rnd() * 0.5);
 }
 
 const worldMeshes = [];
@@ -1264,11 +1271,39 @@ function instanceProp(gltf, places, heightM, hideKeys) {
 if (REALISM) {
   const loader = new GLTFLoader();
   const half = (arr, i) => arr.filter((_, k) => k % 2 === i);
-  loader.load(PROPS.tree[0], g => instanceProp(g, half(PLACE.tree, 0).map(p => [p[0], p[1], p[2] * 1.0, p[3]]), 7.5, ['leaf', 'leaf2', 'trunk']), undefined, () => {});
-  loader.load(PROPS.tree[1], g => instanceProp(g, half(PLACE.tree, 1), 7.0, ['leaf', 'leaf2']), undefined, () => {});
   loader.load(PROPS.pine[0], g => instanceProp(g, PLACE.pine, 11, ['pine', 'trunk']), undefined, () => {});
   loader.load(PROPS.shrub[0], g => instanceProp(g, half(PLACE.shrub, 0), 0.9, []), undefined, () => {});
   loader.load(PROPS.shrub[1], g => instanceProp(g, half(PLACE.shrub, 1), 0.8, []), undefined, () => {});
+}
+// arbres et palmiers 3D, en instances : modèle détaillé autour du joueur, version légère au-delà (les formes simples sont masquées une fois tout chargé)
+const TREES = { olivier: { h: 6.2 }, oranger: { h: 4.6 }, dattier: { h: 7.4 }, washingtonia: { h: 8.6 } }, TREE_NEAR = isTouch ? 35 : 65; // rayon (m) des arbres détaillés autour du joueur
+{
+  const loader = new GLTFLoader(), load = u => new Promise(res => loader.load(u, res, undefined, () => res(null)));
+  const hideKeys = { olivier: ['ttrunk', 'tleaf', 'tleaf2'], oranger: ['ttrunk', 'tleaf', 'tleaf2'], dattier: ['palm', 'ptrunk'], washingtonia: ['palm', 'ptrunk'] };
+  const prep = (g, n) => { const root = g.scene; root.updateMatrixWorld(true); const meshes = []; root.traverse(o => { if (o.isMesh) meshes.push(o); });
+    return meshes.map(m => { const mat = m.material; mat.side = THREE.DoubleSide; mat.envMapIntensity = 0.6; const im = new THREE.InstancedMesh(m.geometry, mat, n); im.count = 0; im.frustumCulled = false; im.userData.noInk = true; scene.add(im); propMeshes.push(im); return { im, local: m.matrixWorld.clone() }; }); };
+  Promise.all(Object.keys(TREES).map(async kind => {
+    const places = PLACE[kind]; if (!places.length) return;
+    const [hi, lo] = await Promise.all([load('models/arbres/' + kind + '.glb'), load('models/arbres/' + kind + '-lod.glb')]); if (!hi) return;
+    const bb = new THREE.Box3().setFromObject(hi.scene), hgt = bb.max.y - bb.min.y || 1, base = bb.min.y;
+    const T = places.map(([x, z, sc, rot]) => { const k = TREES[kind].h * sc / hgt; return new THREE.Matrix4().compose(V(x, -base * k, z), new THREE.Quaternion().setFromAxisAngle(V(0, 1, 0), rot), V(k, k, k)); });
+    const H = prep(hi, places.length), L = lo ? prep(lo, places.length) : H;
+    for (const p of H) { p.im.castShadow = true; p.im.receiveShadow = true; } for (const p of L) if (L !== H) { p.im.castShadow = false; p.im.receiveShadow = true; }
+    Object.assign(TREES[kind], { places, T, H, L, ready: true });
+  })).then(() => { const done = new Set(Object.keys(TREES).filter(k => TREES[k].ready || !PLACE[k].length).flatMap(k => hideKeys[k]));
+    for (const m of worldMeshes) if (done.has(m.userData.key)) m.visible = false; treeLOD(true); });
+}
+const treeM = new THREE.Matrix4(); let treeT = 0, treeX = 1e9, treeZ = 1e9;
+function treeLOD(force) { // répartit chaque arbre entre la version détaillée (proche) et la version légère (loin), quand le joueur a bougé
+  const px = P.car ? P.car.x : P.x, pz = P.car ? P.car.z : P.z;
+  if (!force && (px - treeX) ** 2 + (pz - treeZ) ** 2 < 36) return; treeX = px; treeZ = pz;
+  for (const t of Object.values(TREES)) { if (!t.ready) continue;
+    let nh = 0, nl = 0;
+    t.places.forEach(([x, z], i) => { const near = (x - px) ** 2 + (z - pz) ** 2 < TREE_NEAR * TREE_NEAR, set = near || t.L === t.H ? t.H : t.L, j = near || t.L === t.H ? nh++ : nl++;
+      for (const p of set) { treeM.multiplyMatrices(t.T[i], p.local); p.im.setMatrixAt(j, treeM); } });
+    for (const p of t.H) { p.im.count = t.L === t.H ? nh + nl : nh; p.im.instanceMatrix.needsUpdate = true; }
+    if (t.L !== t.H) for (const p of t.L) { p.im.count = nl; p.im.instanceMatrix.needsUpdate = true; }
+  }
 }
 {
   const loader = new GLTFLoader();
@@ -2389,7 +2424,7 @@ function frame() {
   if (started) { if (P.car) updateDrive(P.car, dt); else { updateFoot(dt); audio.update(false, 0, 0, night > 0.5, dt); audio.horn(false); } }
   updateTraffic(dt, simT);
   for (const c of cars) if (c.model) c.setLod(c === P.car || (c.x - camera.position.x) ** 2 + (c.z - camera.position.z) ** 2 < (hq ? 16900 : 6400));
-  updatePeds(dt); updateKids(dt);
+  updatePeds(dt); updateKids(dt); treeLOD();
 
   // collectibles
   for (const k of keys3d) {
@@ -2603,4 +2638,4 @@ applySketch();
 renderer.setAnimationLoop(frame);
 go.disabled = false; go.textContent = 'Jouer';
 
-window.WHQ = { P, doors, lots, act, peds, benches, kids, PG, swings, seesaw, merry, cam: (y, p, d) => { yaw = y; pitch = p; camDist = d; lastMouse = performance.now() / 1000; } }; // accès de débogage (tests)
+window.WHQ = { P, doors, lots, act, peds, benches, kids, PG, swings, seesaw, merry, propMeshes, PLACE, cam: (y, p, d) => { yaw = y; pitch = p; camDist = d; lastMouse = performance.now() / 1000; } }; // accès de débogage (tests)
