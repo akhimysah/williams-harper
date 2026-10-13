@@ -473,15 +473,17 @@ function villaFrame(key) { // géométrie utile d'un plan : conversion px → m,
   return { door, plot, houses, poolRects };
 }
 const VFRAME = {}; for (const k of ['chloe', 'celine', 'margaux']) VFRAME[k] = villaFrame(k);
+// Villas posées en miroir : la porte reste côté rue mais la piscine passe de l'autre côté de la maison, comme sur le plan de masse (?sansmiroir pour l'ancien sens)
+const VILLA_MIRROR = !new URLSearchParams(location.search).has('sansmiroir'), MX = VILLA_MIRROR ? -1 : 1;
 function villaLot(vname, lx, lz, ry, sc, record) {
-  const key = VKEY[vname], F = VFRAME[key], th = Math.PI - Math.atan2(F.door.ox, F.door.oz), c = Math.cos(th), sn = Math.sin(th);
+  const key = VKEY[vname], F = VFRAME[key], th = Math.PI - Math.atan2(MX * F.door.ox, F.door.oz), c = Math.cos(th), sn = Math.sin(th);
   const rot = (x, z) => [x * c + z * sn, -x * sn + z * c]; // rotation.y de th
-  const corners = [[F.plot[0], F.plot[1]], [F.plot[2], F.plot[1]], [F.plot[2], F.plot[3]], [F.plot[0], F.plot[3]]].map(([x, z]) => rot(x, z));
+  const corners = [[F.plot[0], F.plot[1]], [F.plot[2], F.plot[1]], [F.plot[2], F.plot[3]], [F.plot[0], F.plot[3]]].map(([x, z]) => rot(MX * x, z));
   const u0 = Math.min(...corners.map(p => p[0])), u1 = Math.max(...corners.map(p => p[0])), v0 = Math.min(...corners.map(p => p[1])), v1 = Math.max(...corners.map(p => p[1]));
   const k = Math.min(LW * sc / (u1 - u0), LD * sc / (v1 - v0)) * 0.98, tu = -(u0 + u1) / 2 * k, tv = -v0 * k + 0.15;
   const lotM = mat4(lx, 0, lz, 0, ry, 0, 1, 1, 1), local = new THREE.Matrix4().compose(V(tu, 0, tv), new THREE.Quaternion().setFromEuler(new THREE.Euler(0, th, 0)), V(k, k, k));
   const Mw = lotM.clone().multiply(local); VILLA_INST[key].push(Mw);
-  const W = (x, z) => V(x, 0, z).applyMatrix4(Mw), WQ = ([x0, z0, x1, z1]) => [W(x0, z0), W(x1, z0), W(x1, z1), W(x0, z1)].map(p => [p.x, p.z]);
+  const W = (x, z) => V(MX * x, 0, z).applyMatrix4(Mw), WQ = ([x0, z0, x1, z1]) => [W(x0, z0), W(x1, z0), W(x1, z1), W(x0, z1)].map(p => [p.x, p.z]);
   { // les palmiers du jardin de la villa deviennent de vrais palmiers dattiers (les palmes plates du modèle de villa sont masquées)
     const M = MODELS[key], px = x => (x - M.plan / 2) / M.scale, inRdc = (x, y) => M.rdc.some(pl => { let c = false; const Q = pl.pts; for (let i = 0, j = Q.length - 1; i < Q.length; j = i++) { const [xi, yi] = Q[i], [xj, yj] = Q[j]; if ((yi > y) !== (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) c = !c; } return c; });
     for (const [x, y, h] of M.trees) if (h > 0 && !inRdc(x, y)) { const p = W(px(x), px(y)); PLACE.dattier.push([p.x, p.z, h * k * 1.25 / 7.4, (x * 7.1 + y) % 6.28]); }
@@ -493,12 +495,25 @@ function villaLot(vname, lx, lz, ry, sc, record) {
   const pc = W((R0[0] + R0[2]) / 2, (R0[1] + R0[3]) / 2), hc = W((H0[0] + H0[2]) / 2, (H0[1] + H0[3]) / 2);
   record({ door, green: false, roof: hc, pool: pc, house: WQ(H0), poolR: WQ(R0), celine: vname === 'Céline', margaux: vname === 'Margaux' });
 }
+function mirrorGeo(geo, mw) { // copie en flottants passée dans le repère de la villa, retournée en x, triangles réordonnés (faces toujours vers l'extérieur)
+  const g = new THREE.BufferGeometry();
+  for (const [name, a] of Object.entries(geo.attributes)) { if (name === 'tangent') continue;
+    const n = a.count, sz = a.itemSize, arr = new Float32Array(n * sz), get = [i => a.getX(i), i => a.getY(i), i => a.getZ(i), i => a.getW(i)];
+    for (let i = 0; i < n; i++) for (let k = 0; k < sz; k++) arr[i * sz + k] = get[k](i);
+    g.setAttribute(name, new THREE.BufferAttribute(arr, sz)); }
+  if (geo.index) g.setIndex(Array.from(geo.index.array)); else g.setIndex([...Array(geo.attributes.position.count).keys()]);
+  g.applyMatrix4(new THREE.Matrix4().makeScale(-1, 1, 1).multiply(mw));
+  const ix = g.index; for (let i = 0; i + 2 < ix.count; i += 3) { const t = ix.getX(i + 1); ix.setX(i + 1, ix.getX(i + 2)); ix.setX(i + 2, t); }
+  for (const gr of geo.groups) g.addGroup(gr.start, gr.count, gr.materialIndex);
+  return g;
+}
 function loadVillaGLBs() {
   const loader = new GLTFLoader();
   for (const key of Object.keys(VILLA_INST)) { const list = VILLA_INST[key]; if (!list.length) continue;
     loader.load('models/villas/' + key + '.glb', g => { g.scene.updateMatrixWorld(true);
-      g.scene.traverse(o => { if (!o.isMesh || o.material?.alphaTest > 0) return; const im = new THREE.InstancedMesh(o.geometry, o.material, list.length), tmp = new THREE.Matrix4();
-        list.forEach((m, i) => im.setMatrixAt(i, tmp.multiplyMatrices(m, o.matrixWorld)));
+      g.scene.traverse(o => { if (!o.isMesh || o.material?.alphaTest > 0) return; const geo = VILLA_MIRROR ? mirrorGeo(o.geometry, o.matrixWorld) : o.geometry;
+        const im = new THREE.InstancedMesh(geo, o.material, list.length), tmp = new THREE.Matrix4();
+        list.forEach((m, i) => im.setMatrixAt(i, VILLA_MIRROR ? m : tmp.multiplyMatrices(m, o.matrixWorld)));
         const mt = o.material; if (mt && mt.transparent && !mt.map && !mt.normalMap && (mt.opacity ?? 1) > 0.4 && !villaGlass.includes(mt)) villaGlass.push(mt);
         im.instanceMatrix.needsUpdate = true; im.computeBoundingSphere(); im.castShadow = true; im.receiveShadow = true; im.userData = { noInk: true, noSketch: true, villa: key }; scene.add(im); });
     }, undefined, e => console.warn('villa', key, e)); }
@@ -756,8 +771,7 @@ for (let k = 0; k < 5; k++) lotPX(447, 373.5 + k * 107, 'W', 'Chloé', 1.0);
 // east block: two columns of six
 for (let k = 0; k < 6; k++) { lotPX(703, 371.5 + k * 103.3, 'W', 'Chloé', 0.965); lotPX(1017, 371.5 + k * 103.3, 'E', 'Chloé', 0.965); }
 // the large eastern lots along the Voie N°3
-for (let k = 0; k < 4; k++) lotPX(1062, 240 + k * 160, 'W', 'Margaux', 1.5);
-lotPX(1062, 870, 'W', 'Chloé', 1.0);
+for (let k = 0; k < 7; k++) lotPX(1062, 228 + k * 101, 'W', 'Margaux', 0.92); // la colonne est : sept villas comme sur le plan de masse
 // the southern row and the two lots on the bend, served by the Voie N°5
 for (let k = 0; k < 4; k++) lotPX(397 + k * 134, 1083, 'N', 'Céline', 1.25);
 lotAt(...PX(1030, 990), 0.615, 'Céline', 1.3);
