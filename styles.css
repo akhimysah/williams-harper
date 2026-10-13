@@ -946,3 +946,28 @@ html.night .st .sw{color:#3a352d}
 .ribbon span{display:inline-block;transform:skewX(var(--skew,0deg));transition:transform .25s}
 @media (prefers-reduced-motion:reduce){.portail,.mask{height:auto}.pt-sticky,.mk-sticky{position:relative}.pt-arch{clip-path:none}.pt-words{display:none}.pt-cap,.mk-cap{opacity:1;transform:none}.mk-layer{display:none}.mc{position:relative;top:0;transform:none;margin-bottom:2rem}}
 @media print{.portail,.mask,.ex-float{display:none !important}.mc{position:static;transform:none}}
+/* ---- Correctifs mobile (2026-10-13) ---- */
+.burger span{transition:transform .3s}
+@media (max-width:860px){
+  /* menu : la liste défile dans l'écran, la page reste figée derrière */
+  header.open .nav{max-height:calc(100svh - 96px - env(safe-area-inset-top,0px));overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;padding-bottom:4rem}
+  body:has(header.open){overflow:hidden}
+  header.open .burger span:first-child{transform:translateY(7.5px) rotate(45deg)}
+  header.open .burger span:last-child{transform:translateY(-7.5px) rotate(-45deg)}
+  /* WhatsApp : dans le coin ; masqué sur les pages villa, la barre fixe a déjà son bouton */
+  .wa{bottom:16px}
+  body:has(.stickybar) .wa{display:none}
+  .full:not(.hero-v2) .copy{padding-bottom:5.5rem}
+  /* bandeaux photo (« Le domaine », localisation…) : la hauteur suit le contenu */
+  .band{height:auto;min-height:min(85vh,820px)}
+  .band .wrap{padding-top:8rem}
+  .band .figures{gap:1.4rem 2rem}
+  /* film : image entière en portrait au lieu d'un recadrage qui coupe le titre */
+  .film-lock .player video{object-fit:contain}
+  /* simulateur : résultats sur une ligne */
+  .sim-out{gap:.8rem}.sim-out b{font-size:1.6rem;white-space:nowrap}
+  /* tableau comparatif : la colonne des critères reste visible pendant le défilement latéral */
+  .tbl th:first-child,.tbl td:first-child{position:sticky;left:0;background:var(--bg);z-index:1}
+}
+/* points des plans : zone de toucher élargie, sans changer le dessin */
+.hot::before{content:"";position:absolute;inset:-14px;border-radius:50%}
