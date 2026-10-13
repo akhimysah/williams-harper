@@ -1490,8 +1490,8 @@ const G_SHOE = new THREE.BoxGeometry(0.13, 0.08, 0.26).translate(0, -0.02, 0.05)
 // ---- vrais personnages : résidents générés en photo puis reconstruits en 3D articulée et animée (Higgsfield image→3D, rig Meshy),
 // allégés (models/persos/*.glb). Le bonhomme stylisé reste dessous en secours tant que le modèle n'est pas chargé.
 const CHAR_KEYS = ['femme-lin', 'homme-lin', 'femme-sport', 'homme-polo', 'senior', 'femme-chemise', 'enfant', 'homme-noir'];
-const CHAR_H = { 'garcon-polo': 1.3, 'garcon-marin': 1.16, 'fille-jaune': 1.22, enfant: 1.28, 'femme-lin': 1.68, 'femme-sport': 1.7, 'femme-chemise': 1.65, senior: 1.75, hero: 1.8 };
-const CHAR_CLIPS = { hero: { run: 'hero-run', idle: 'hero-idle', sit: 'hero-sit' } }; // clips supplémentaires (fichiers à part, même squelette)
+const CHAR_H = { 'garcon-polo': 1.3, 'garcon-marin': 1.16, 'fille-jaune': 1.22, enfant: 1.28, 'femme-lin': 1.68, 'femme-sport': 1.7, 'femme-chemise': 1.65, senior: 1.75, hero: 1.8, joueur: 1.8 };
+const CHAR_CLIPS = { hero: { run: 'hero-run', idle: 'hero-idle', sit: 'hero-sit' }, joueur: { run: 'joueur-run', idle: 'joueur-idle', sit: 'joueur-sit' } }; // clips supplémentaires (fichiers à part, même squelette)
 for (const k of CHAR_KEYS) CHAR_CLIPS[k] = { idle: k + '-idle', sit: k + '-sit' }; // repos des passants quand ils s'arrêtent, assis sur les bancs du parc
 const KID_KEYS = ['enfant', 'garcon-polo', 'garcon-marin', 'fille-jaune'];
 for (const k of KID_KEYS) CHAR_CLIPS[k] = { idle: k + '-idle', sit: k + '-sit', run: k + '-run' }; // les enfants de l'aire de jeux courent
@@ -1698,7 +1698,7 @@ function updateKids(dt) {
 }
 
 /* ================= hero ================= */
-const hero = makePerson({ skin: '#c99b7a', hair: '#2a1d16', shirt: '#b08d57', pants: '#2d2b29', unique: true, char: 'hero' });
+const hero = makePerson({ skin: '#c99b7a', hair: '#2a1d16', shirt: '#9a9188', pants: '#1f2a44', unique: true, char: 'joueur' }); // le joueur : personnage fait d'après la photo de l'utilisateur (persos/joueur.png)
 const P = { x: PX(165, 273)[0], z: PX(165, 273)[1], y: 0, vy: 0, heading: Math.PI, phase: 0, speed: 0, down: 0, car: null, swim: false };
 { const q = new URLSearchParams(location.search); if (q.has('x') && q.has('z')) { P.x = +q.get('x'); P.z = +q.get('z'); P.heading = +(q.get('h') || 0) + Math.PI; } } // retour d'une visite de villa : dos à la porte
 let yaw = -1.57, pitch = 0.3, camDist = 6.5, lastMouse = -10;
