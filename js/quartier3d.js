@@ -800,7 +800,8 @@ const benches = []; // places assises des bancs : x/z milieu de la place, s/c or
 const bench = (x, z, r) => {
   r += Math.PI; // dossier côté pelouse : on s'assoit face à l'allée
   const c = Math.cos(r), s = Math.sin(r);
-  for (const lx of [-0.5, 0.5]) benches.push({ x: x + c * lx, z: z - s * lx, s, c, ax: x + c * lx - s * 0.75, az: z - s * lx - c * 0.75, h: r + Math.PI, who: null });
+  const conv = { lines: null, i: 0, t: 1, talk: null, st: 0 }, pair = [-0.5, 0.5].map(lx => ({ x: x + c * lx, z: z - s * lx, s, c, ax: x + c * lx - s * 0.75, az: z - s * lx - c * 0.75, h: r + Math.PI, who: null, conv }));
+  pair[0].mate = pair[1]; pair[1].mate = pair[0]; pair[0].lead = true; benches.push(...pair);
   put('wood', new THREE.BoxGeometry(2.2, 0.12, 0.6).translate(0, 0.5, 0), mat4(x, 0, z, 0, r));
   put('wood', new THREE.BoxGeometry(2.2, 0.5, 0.1).translate(0, 0.8, 0.28), mat4(x, 0, z, 0, r));
 };
@@ -1265,7 +1266,7 @@ function attachChar(p, key) {
   charEntry(key).then(e => { if (!e) return; const c = cloneSkinned(e.scene); c.scale.setScalar(e.k); c.position.y = e.y0;
     p.body.children.forEach(ch => { ch.visible = false; }); p.body.add(c);
     const mixer = new THREE.AnimationMixer(c), actions = {}; for (const [k, clip] of Object.entries(e.clips)) { const a = mixer.clipAction(clip); a.play(); a.setEffectiveWeight(0); actions[k] = a; }
-    p.glb = { mixer, actions, w: { walk: 1 }, t0: Math.random() * 20, last: performance.now() }; });
+    p.glb = { mixer, actions, w: { walk: 1 }, t0: Math.random() * 20, last: performance.now(), head: c.getObjectByName('Head'), arm: c.getObjectByName('RightForeArm') }; });
 }
 function makePerson(o) {
   const root = new THREE.Group(), body = new THREE.Group(); root.add(body);
@@ -1429,9 +1430,9 @@ function subtitle(html, sec = 5) { $('sub').innerHTML = html; $('sub').classList
 let hintT = 0, hintKey = '';
 function hint(text, sec = 5, key = text) { if (hintKey === key && hintT > 0.3) { hintT = Math.max(hintT, sec); return; } hintKey = key; $('hint').innerHTML = text; $('hint').classList.add('on'); hintT = sec; }
 const bubbles = [];
-function say(text, obj, yOff = 2.3) {
+function say(text, obj, yOff = 2.3, t = 2.2) {
   const el = document.createElement('div'); el.className = 'bubble'; el.textContent = text; $('bubbles').appendChild(el);
-  bubbles.push({ el, obj, yOff, t: 2.2 });
+  bubbles.push({ el, obj, yOff, t });
 }
 
 /* ================= audio (synthesised) ================= */
@@ -2109,7 +2110,7 @@ function updatePeds(dt) {
     if (pc && hd < 1.6 && sp > 4 && p.down <= 0) { p.down = 2.4; p.vy = 3; say(pick(['Aïe…', 'Mon dos !', 'Ça va, ça va…']), p.p.root); }
     if (p.wait > 0) { p.wait -= dt; block = true; }
     else if ((!pc || hd > 20) && p.sitCd <= 0 && p.down <= 0 && p.offT <= 0 && p.p.glb?.actions.sit) for (const b of benches) { // un banc libre tout près du chemin : on s'y assoit un moment
-      if (!b.who && Math.abs(b.x - p.x) < 5 && Math.abs(b.z - p.z) < 5 && rnd() < dt * 0.15) { b.who = p; p.sit = { b, mode: 'go', rx: p.x, rz: p.z, t: 0 }; break; }
+      if (!b.who && Math.abs(b.x - p.x) < 5 && Math.abs(b.z - p.z) < 5 && rnd() < dt * (b.mate.who?.sit?.mode === 'sit' ? 0.6 : 0.15)) { b.who = p; p.sit = { b, mode: 'go', rx: p.x, rz: p.z, t: 0 }; break; }
     }
     else if (p.down <= 0 && p.offT <= 0 && rnd() < dt / 22) p.wait = 3 + rnd() * 6; // petite pause de temps en temps : on souffle, on regarde autour
     if (!block && p.down <= 0) {
@@ -2139,7 +2140,7 @@ function sitOnBench(p, dt) { // aller au banc, s'asseoir 15 à 40 s, revenir sur
   const [sz, sy] = SEAT[p.p.char] || SEAT.def;
   if (S.mode === 'sit') {
     S.t -= dt; p.x += (b.x + b.s * sz - p.x) * Math.min(1, dt * 5); p.z += (b.z + b.c * sz - p.z) * Math.min(1, dt * 5); p.h += wrapA(b.h - p.h) * Math.min(1, dt * 6);
-    if (S.t <= 0) S.mode = 'back';
+    if (S.t <= 0) { if (chatting(b) && nearHero(p)) say(pick(AU_REVOIR), p.p.root, 1.75); S.mode = 'back'; }
   } else {
     const tx = S.mode === 'go' ? b.ax : S.rx, tz = S.mode === 'go' ? b.az : S.rz, dx = tx - p.x, dz = tz - p.z, d = Math.hypot(dx, dz);
     if (d < 0.1) { if (S.mode === 'go') { S.mode = 'sit'; S.t = 15 + rnd() * 25; } else { b.who = null; p.sit = null; p.sitCd = 40 + rnd() * 40; return false; } }
@@ -2149,9 +2150,41 @@ function sitOnBench(p, dt) { // aller au banc, s'asseoir 15 à 40 s, revenir sur
   if (far) return true;
   const seated = S.mode === 'sit';
   animatePerson(p.p, p.phase, seated ? 0 : 0.5, { sit: seated });
-  p.p.root.position.set(p.x, 0.1 + sy * (p.p.glb.w.sit || 0), p.z); p.p.root.rotation.y = p.h; // monte sur l'assise au rythme du fondu vers le clip assis
+  let turn = 0;
+  if (seated && chatting(b)) { // discussion entre voisins de banc : buste et tête tournés vers l'autre, hochements, la main qui accompagne la parole
+    const C = b.conv, side = Math.sign(wrapA(Math.atan2(b.mate.x - b.x, b.mate.z - b.z) - b.h)), t = performance.now() / 1000 + p.p.glb.t0, talking = C.talk === p && C.st > 0;
+    turn = side * 0.32;
+    const g = p.p.glb; if (g.head) { g.head.rotateY(side * 0.5); g.head.rotateX(talking ? Math.sin(t * 7) * 0.07 : Math.max(0, Math.sin(t * 2.3)) * 0.06); }
+    if (g.arm && talking) g.arm.rotateX(-0.35 - Math.sin(t * 3.1) * 0.25);
+    if (b.lead) { // le premier siège mène la conversation : répliques à tour de rôle
+      C.st -= dt; C.t -= dt;
+      if (C.t <= 0) {
+        if (!C.lines) { C.lines = pick(DIALOGUES); C.i = 0; for (const q of [b, b.mate]) q.who.sit.t = Math.max(q.who.sit.t, C.lines.length * 3.4 + 2); }
+        const who = (C.i % 2 ? b.mate : b).who; C.talk = who; C.st = 3; if (nearHero(who)) say(C.lines[C.i], who.p.root, 1.75, 3);
+        if (++C.i >= C.lines.length) { C.lines = null; C.t = 6 + rnd() * 6; } else C.t = 3.4;
+      }
+    }
+  } else if (b.lead && !chatting(b)) { b.conv.lines = null; b.conv.t = 1.5 + rnd() * 2; }
+  p.p.root.position.set(p.x, 0.1 + sy * (p.p.glb.w.sit || 0), p.z); p.p.root.rotation.y = p.h + turn * (p.p.glb.w.sit || 0); // monte sur l'assise au rythme du fondu vers le clip assis
   return true;
 }
+const chatting = b => b.who?.sit?.mode === 'sit' && b.mate.who?.sit?.mode === 'sit';
+const nearHero = p => Math.hypot(p.x - P.x, p.z - P.z) < 16 && !P.car; // bulles seulement quand on passe à côté
+const AU_REVOIR = ['Bonne journée !', 'À demain !', 'À plus tard !', 'Je file, à bientôt !', 'Bonne soirée !'];
+const DIALOGUES = [
+  ['Belle journée, non ?', "Magnifique. On voit l'Atlas d'ici.", 'On ne s\'en lasse pas.'],
+  ['Vous êtes dans quelle villa ?', "La Céline, au bout de l'allée.", 'Nous, la Chloé. Voisins alors !'],
+  ['Les enfants adorent le parc.', 'Les miens ne veulent plus rentrer !'],
+  ['Un padel demain matin ?', 'Avec plaisir, vers 9 h ?', 'Parfait, je réserve.'],
+  ['Le thé à la menthe du café…', 'Le meilleur de Marrakech !'],
+  ['Vous avez visité la Margaux ?', 'Superbe, avec sa bibliothèque.', 'Et ce salon double hauteur !'],
+  ["C'est calme ici le soir.", "C'est pour ça qu'on a choisi Red Stone."],
+  ['On va au souk ce week-end ?', 'Plutôt la piscine, non ?', 'Bon… la piscine !'],
+  ["Il fait bon à l'ombre.", 'Les palmiers font tout le travail.'],
+  ['Vous venez souvent ici ?', 'Tous les matins, avec mon café.'],
+  ['La conciergerie a tout organisé.', "Ils sont vraiment aux petits soins."],
+  ['Dîner sur la terrasse ce soir ?', 'Volontiers, on apporte le dessert.'],
+];
 
 /* ================= zones ================= */
 function zoneOf(x, z) {
