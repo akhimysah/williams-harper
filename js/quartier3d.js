@@ -1266,7 +1266,7 @@ function attachChar(p, key) {
   charEntry(key).then(e => { if (!e) return; const c = cloneSkinned(e.scene); c.scale.setScalar(e.k); c.position.y = e.y0;
     p.body.children.forEach(ch => { ch.visible = false; }); p.body.add(c);
     const mixer = new THREE.AnimationMixer(c), actions = {}; for (const [k, clip] of Object.entries(e.clips)) { const a = mixer.clipAction(clip); a.play(); a.setEffectiveWeight(0); actions[k] = a; }
-    p.glb = { mixer, actions, w: { walk: 1 }, t0: Math.random() * 20, last: performance.now(), head: c.getObjectByName('Head'), arm: c.getObjectByName('RightForeArm') }; });
+    p.glb = { mixer, actions, w: { walk: 1 }, t0: Math.random() * 20, last: performance.now(), head: c.getObjectByName('Head'), arm: c.getObjectByName('RightForeArm'), uarm: c.getObjectByName('RightArm') }; });
 }
 function makePerson(o) {
   const root = new THREE.Group(), body = new THREE.Group(); root.add(body);
@@ -1336,7 +1336,7 @@ for (const c of parkCurves) pedPaths.push(curvePath(c));
 for (let i = 0; i < 44; i++) {
   const path = pedPaths[i % pedPaths.length];
   const p = makePerson({ skin: pick(SKIN), hair: pick(HAIR), shirt: pick(SHIRT), pants: pick(PANTS), long: rnd() < 0.4, char: CHAR_KEYS[i % CHAR_KEYS.length] });
-  peds.push({ p, path, s: rnd() * path.len, dir: rnd() < 0.5 ? 1 : -1, v: 1.1 + rnd() * 0.5, phase: rnd() * 6, off: 0, offT: 0, y: 0, vy: 0, down: 0, x: 0, z: 0, h: 0, wait: 0, sit: null, sitCd: rnd() * 20 });
+  peds.push({ p, path, s: rnd() * path.len, dir: rnd() < 0.5 ? 1 : -1, v: 1.1 + rnd() * 0.5, phase: rnd() * 6, off: 0, offT: 0, y: 0, vy: 0, down: 0, x: 0, z: 0, h: 0, wait: 0, sit: null, sitCd: rnd() * 20, greet: null, greetCd: rnd() * 5, heroCd: 0 });
 }
 
 /* ================= hero ================= */
@@ -2094,6 +2094,17 @@ function updateTraffic(dt, t) {
 }
 function updatePeds(dt) {
   const pc = P.car, sp = pc ? pc.speed() : 0;
+  for (let i = 0; i < peds.length; i++) { // salut quand deux passants se croisent face à face (et envers le joueur à pied)
+    const a = peds[i]; if (a.heroCd > 0) a.heroCd -= dt;
+    if (a.greetCd > 0) { a.greetCd -= dt; continue; }
+    if (!canGreet(a)) continue;
+    if (!pc && a.heroCd <= 0 && facing(a, P, 3.5)) { a.heroCd = 30 + rnd() * 30; a.greetCd = 6; if (rnd() < 0.75) startGreet(a, P, 0, true); continue; }
+    for (let j = i + 1; j < peds.length; j++) {
+      const b = peds[j]; if (b.greetCd > 0 || !canGreet(b) || !facing(a, b, 3) || !facing(b, a, 3)) continue;
+      a.greetCd = b.greetCd = 12 + rnd() * 12; if (rnd() < 0.7) { startGreet(a, b, 0, true); startGreet(b, a, 0.45, rnd() < 0.8); }
+      break;
+    }
+  }
   for (const p of peds) {
     if (p.sitCd > 0) p.sitCd -= dt;
     if (p.sit && sitOnBench(p, dt)) continue;
@@ -2131,6 +2142,7 @@ function updatePeds(dt) {
     if (far) continue;
     const downT = p.down > 0 ? clamp(Math.min(p.down, 2.4 - p.down) * 4, 0, 1) : 0;
     animatePerson(p.p, p.phase, moving ? 0.5 : 0, { air: p.y > 0.2, down: downT, wave: !moving && !downT && p.wait > 0 && hd < 6 });
+    if (p.greet) { const g = p.greet; g.t -= dt; if (g.t <= 0 || downT) p.greet = null; else if (p.p.glb) greetPose(p, g, dt); }
     p.p.root.position.set(p.x, p.y + 0.1, p.z); p.p.root.rotation.y = p.h;
   }
 }
@@ -2168,6 +2180,21 @@ function sitOnBench(p, dt) { // aller au banc, s'asseoir 15 à 40 s, revenir sur
   p.p.root.position.set(p.x, 0.1 + sy * (p.p.glb.w.sit || 0), p.z); p.p.root.rotation.y = p.h + turn * (p.p.glb.w.sit || 0); // monte sur l'assise au rythme du fondu vers le clip assis
   return true;
 }
+const canGreet = p => !p.sit && !p.greet && p.wait <= 0 && p.down <= 0 && p.offT <= 0 && p.p.root.visible && p.p.glb;
+function facing(a, o, R) { // o est devant a, à moins de R m
+  const dx = o.x - a.x, dz = o.z - a.z, d2 = dx * dx + dz * dz; if (d2 > R * R || d2 < 0.2) return false;
+  return Math.sin(a.h) * dx + Math.cos(a.h) * dz > 0.5 * Math.sqrt(d2);
+}
+function startGreet(p, o, delay, talk) { p.greet = { o, d: delay, t: 1.9 + delay, T: 1.9 + delay, wave: rnd() < 0.6, talk }; if (!delay) greetSay(p); }
+function greetSay(p) { if (p.greet.talk && nearHero(p)) say(pick(p.p.char === 'enfant' ? ['Coucou !', 'Bonjour !'] : SALUTS), p.p.root); }
+function greetPose(p, g, dt) { // tête tournée vers l'autre, main levée qui s'agite ou petit signe de tête
+  if (g.d > 0) { if ((g.d -= dt) <= 0) greetSay(p); return; }
+  const age = g.T - g.t - (g.T - 1.9), e = Math.max(0, Math.min(1, age * 4, g.t * 3)), G = p.p.glb;
+  const rel = Math.max(-1.1, Math.min(1.1, wrapA(Math.atan2(g.o.x - p.x, g.o.z - p.z) - p.h)));
+  if (G.head) { G.head.rotateY(rel * 0.75 * e); if (!g.wave) G.head.rotateX(Math.max(0, Math.sin(age * 5)) * 0.18 * e); }
+  if (g.wave && G.uarm && G.arm) { G.uarm.rotateZ(-1.25 * e); G.arm.rotateZ((-1.4 + Math.sin(age * 13) * 0.35) * e); }
+}
+const SALUTS = ['Bonjour !', 'Salut !', 'Bonne journée !', 'Bonjour, ça va ?', 'Hello !', 'Belle journée !'];
 const chatting = b => b.who?.sit?.mode === 'sit' && b.mate.who?.sit?.mode === 'sit';
 const nearHero = p => Math.hypot(p.x - P.x, p.z - P.z) < 16 && !P.car; // bulles seulement quand on passe à côté
 const AU_REVOIR = ['Bonne journée !', 'À demain !', 'À plus tard !', 'Je file, à bientôt !', 'Bonne soirée !'];
