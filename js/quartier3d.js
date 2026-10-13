@@ -1224,7 +1224,7 @@ class Car {
   speed() { return Math.hypot(this.vx, this.vz); }
 }
 const REAL_KINDS = [3, 4, 5], REAL_COLORS = { 3: ['#8a8d8f', '#1f1f1f', '#2f4a6e', '#d9d6cf'], 4: ['#a51c24', '#d9d6cf', '#c9a227', '#1f1f1f', '#4a5a6e'], 5: ['#141414', '#e9e7e2', '#4b5244', '#2c2f38'] };
-for (const [x, z, h] of parkedSpots) { const k = pick(REAL_KINDS); new Car(x, z, h, pick(REAL_COLORS[k]), k); }
+for (const [x, z, h] of parkedSpots) { const k = pick(REAL_KINDS); new Car(x, z, h, pick(REAL_COLORS[k]), k).parked = true; }
 new Car(...PX(800, 1025), 0, '#a51c24', 4); // race car, at the parking next to the course marker
 new Car(...PX(814.4, 1025), 0, '#8a8d8f', 3);
 new Car(...PX(828.8, 1025), 0, '#d9d6cf', 4);
@@ -1429,10 +1429,10 @@ for (let i = 0; i < 44; i++) {
 }
 
 /* ================= conducteurs ================= */
-// Une personne assise au volant de chaque voiture qui roule (calage par modèle, mains au volant, jambes vers les pédales), et le joueur quand il conduit.
+// Une personne assise au volant de chaque voiture qui roule ou qui est garée (calage par modèle, jambes vers les pédales ; mains au volant en roulant, posées et regard qui flâne à l'arrêt), et le joueur quand il conduit.
 const DRIVE = { 3: [0.2, 0.38, -0.03, -1.0], 4: [0.15, 0.25, -0.18, -1.5], 5: [0.2, 0.2, 0.4, -1.1], def: [0.3, 0.2, 0.05, -1.0] }; // [vers la gauche, vers l'avant, hauteur, genoux]
 const DRIVER_KEYS = CHAR_KEYS.filter(k => k !== 'enfant'), ejected = [];
-cars.forEach((c, i) => { if (c.ai) c.driver = makePerson({ skin: pick(SKIN), hair: pick(HAIR), shirt: pick(SHIRT), pants: pick(PANTS), char: DRIVER_KEYS[(i * 3) % DRIVER_KEYS.length] }); });
+cars.forEach((c, i) => { if (c.ai || c.parked) c.driver = makePerson({ skin: pick(SKIN), hair: pick(HAIR), shirt: pick(SHIRT), pants: pick(PANTS), char: DRIVER_KEYS[(i * 3) % DRIVER_KEYS.length] }); });
 function seatDriver(p, c) {
   const [l, f, y, kx] = c.model ? (DRIVE[c.kind] || DRIVE.def) : DRIVE.def, fx = c.fx, fz = c.fz;
   p.root.position.set(c.x + fz * l + fx * f, y, c.z - fx * l + fz * f); p.root.rotation.set(0, c.h, 0);
@@ -1440,7 +1440,9 @@ function seatDriver(p, c) {
   const g = p.glb;
   if (g && g.model) { // bras levés vers le volant (qui suivent un peu la direction), jambes allongées vers les pédales
     const B = g.drive || (g.drive = ['Left', 'Right'].map(sd => [sd === 'Right' ? -1 : 1, g.model.getObjectByName(sd + 'Arm'), g.model.getObjectByName(sd + 'Leg')]));
-    for (const [sg, arm, leg] of B) { if (arm) { arm.rotateX(0.9); arm.rotateZ(sg * 0.25 + (c.steer || 0) * 0.3); } if (leg) leg.rotateX(kx); }
+    const parked = !c.ai && c !== P.car;
+    for (const [sg, arm, leg] of B) { if (arm && !parked) { arm.rotateX(0.9); arm.rotateZ(sg * 0.25 + (c.steer || 0) * 0.3); } if (leg) leg.rotateX(kx); }
+    if (parked && g.head) g.head.rotateY(Math.sin(performance.now() / 2600 + g.t0) * 0.55); // garé : on attend, on regarde autour
   } else { p.legL.rotation.x = p.legR.rotation.x = -1.45; p.armL.rotation.x = p.armR.rotation.x = -1.15; }
 }
 function updateDrivers(dt) {
@@ -2043,9 +2045,9 @@ function toggleCar() {
   if (!nearCar) return;
   wantJump = false;
   const c = nearCar;
-  if (c.ai) { const d = c.driver; c.driver = null; c.ai = null;
+  if (c.driver || c.ai) { const d = c.driver, moving = !!c.ai; c.driver = null; c.ai = null;
     if (d) { d.root.visible = true; d.root.position.set(c.x + c.fz * 1.6, 0.1, c.z - c.fx * 1.6); d.root.rotation.set(0, Math.atan2(-c.fz, c.fx), 0); ejected.push({ p: d, t: 7 }); } // le conducteur descend, reste planté là un moment
-    say(pick(['Hé ! Ma voiture !', 'Mais… !', 'Prenez-la, je vais à pied…', 'Faites attention à elle !']), d ? d.root : c, 2.3); }
+    say(pick(moving ? ['Hé ! Ma voiture !', 'Mais… !', 'Prenez-la, je vais à pied…', 'Faites attention à elle !'] : ['Hé ! J\'étais dedans !', 'Mais je suis garé, là !', 'Bon… je vais marcher.', 'Ramenez-la au moins !']), d ? d.root : c, 2.3); }
   c.setDyn(true); P.car = c; hero.root.visible = false; c.along = c.vx * c.fx + c.vz * c.fz;
   audio.sfx('door');
   yaw = c.h + Math.PI; lastMouse = -10;
