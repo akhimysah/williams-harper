@@ -477,7 +477,27 @@ function villaFrame(key) { // géométrie utile d'un plan : conversion px → m,
 const VFRAME = {}; for (const k of ['chloe', 'celine', 'margaux']) VFRAME[k] = villaFrame(k);
 // Villas posées en miroir : la porte reste côté rue mais la piscine passe de l'autre côté de la maison, comme sur le plan de masse (?sansmiroir pour l'ancien sens)
 const VILLA_MIRROR = !new URLSearchParams(location.search).has('sansmiroir'), MX = VILLA_MIRROR ? -1 : 1;
+// Villas reconstruites d'après leurs photos (photo du site → vue isolée → Higgsfield image→3D, site-src/blender/prep_villa_photo.py) :
+// rectangles relevés dans le modèle, en mètres (façade d'entrée vers -z, piscine vers +z). ?anciennes_villas pour les villas construites d'après les plans.
+const PHOTO_VILLAS = new URLSearchParams(location.search).has('anciennes_villas') ? {} : {
+  chloe: { house: [-13.47, -12.44, 12.57, 9.71], pool: [-13.55, 9.71, 8.33, 17.7], all: [-17.48, -16.74, 15.14, 17.79] },
+  celine: { house: [-14.36, -10.33, 13.04, 14.42], pool: [-13.43, 14.42, 15.47, 18.83], all: [-16.32, -14.16, 16.5, 19.43] },
+  margaux: { house: [-14.13, -12.44, 14.12, 13.76], pool: [-11.46, 18.63, 11.55, 26.17], all: [-19, -17.09, 17.46, 27.07] }, // avant : vue de l'entrée ; arrière : vue de la piscine (site-src/blender/assemble_villa.py)
+};
+function photoVillaLot(key, vname, lx, lz, ry, sc, sd, record) {
+  const I = PHOTO_VILLAS[key], [ax0, az0, ax1, az1] = I.all, W0 = LW * sc, D0 = LD * sd;
+  const k = Math.min(W0 * 0.94 / (ax1 - ax0), D0 * 0.9 / (az1 - az0)), tu = -(ax0 + ax1) / 2 * k, tv = D0 * 0.05 - az0 * k;
+  const Mw = mat4(lx, 0, lz, 0, ry).multiply(new THREE.Matrix4().compose(V(tu, 0, tv), new THREE.Quaternion(), V(k, k, k))); VILLA_INST[key].push(Mw);
+  const W = (x, z) => V(x, 0, z).applyMatrix4(Mw), WQ = ([x0, z0, x1, z1]) => [W(x0, z0), W(x1, z0), W(x1, z1), W(x0, z1)].map(p => [p.x, p.z]);
+  const H = I.house, Pr = I.pool, hc = W((H[0] + H[2]) / 2, (H[1] + H[3]) / 2), pc = W((Pr[0] + Pr[2]) / 2, (Pr[1] + Pr[3]) / 2);
+  solidR(hc.x, hc.z, (H[2] - H[0]) / 2 * k, (H[3] - H[1]) / 2 * k, ry, 7.5);
+  pools.push(WQ(Pr)); solidR(pc.x, pc.z, (Pr[2] - Pr[0]) / 2 * k, (Pr[3] - Pr[1]) / 2 * k, ry, 0.3, 'pool');
+  for (const [u, v] of [[ax0 - 1.5, az0 + 2], [ax1 + 1.5, az0 + 2], [ax0 - 1.5, az1 - 2], [ax1 + 1.5, az1 - 2]]) { const p = W(u, v); PLACE.dattier.push([p.x, p.z, 0.95 + ((u * 7 + v) % 0.3), (u + v) % 6.28]); } // palmiers aux coins du jardin
+  const d = W((H[0] + H[2]) / 2, H[1] - 1.2);
+  record({ door: { x: d.x, z: d.z, name: vname, url: VILLAS[vname], n: lots.length + 1 }, green: false, roof: hc, pool: pc, house: WQ(H), poolR: WQ(Pr), celine: vname === 'Céline', margaux: vname === 'Margaux' });
+}
 function villaLot(vname, lx, lz, ry, sc, record, sd = sc) {
+  if (PHOTO_VILLAS[VKEY[vname]]) return photoVillaLot(VKEY[vname], vname, lx, lz, ry, sc, sd, record);
   const key = VKEY[vname], F = VFRAME[key];
   const th = Math.PI - Math.atan2(MX * F.door.ox, F.door.oz), c = Math.cos(th), sn = Math.sin(th); // porte d'entrée face à la rue ; sur les trois plans, la piscine est à l'opposé, donc au fond du jardin
   const rot = (x, z) => [x * c + z * sn, -x * sn + z * c]; // rotation.y de th
@@ -513,10 +533,13 @@ function mirrorGeo(geo, mw) { // copie en flottants passée dans le repère de l
 function loadVillaGLBs() {
   const loader = new GLTFLoader();
   for (const key of Object.keys(VILLA_INST)) { const list = VILLA_INST[key]; if (!list.length) continue;
-    loader.load('models/villas/' + key + '.glb', g => { g.scene.updateMatrixWorld(true);
-      g.scene.traverse(o => { if (!o.isMesh || o.material?.alphaTest > 0) return; const geo = VILLA_MIRROR ? mirrorGeo(o.geometry, o.matrixWorld) : o.geometry;
+    const photo = !!PHOTO_VILLAS[key], mirror = VILLA_MIRROR && !photo;
+    loader.load('models/villas/' + key + (photo ? '-photo' : '') + '.glb', g => { g.scene.updateMatrixWorld(true);
+      g.scene.traverse(o => { if (!o.isMesh || o.material?.alphaTest > 0) return;
+        if (photo) { const mt = o.material; mt.metalness = 0; mt.roughness = 1; mt.envMapIntensity = 0.3; mt.color.setScalar(0.8); } // l'éclairage est déjà dans la photo : on évite de le doubler const geo = mirror ? mirrorGeo(o.geometry, o.matrixWorld) : o.geometry;
+        const geo = mirror ? mirrorGeo(o.geometry, o.matrixWorld) : o.geometry;
         const im = new THREE.InstancedMesh(geo, o.material, list.length), tmp = new THREE.Matrix4();
-        list.forEach((m, i) => im.setMatrixAt(i, VILLA_MIRROR ? m : tmp.multiplyMatrices(m, o.matrixWorld)));
+        list.forEach((m, i) => im.setMatrixAt(i, mirror ? m : tmp.multiplyMatrices(m, o.matrixWorld)));
         const mt = o.material; if (mt && mt.transparent && !mt.map && !mt.normalMap && (mt.opacity ?? 1) > 0.4 && !villaGlass.includes(mt)) villaGlass.push(mt);
         im.instanceMatrix.needsUpdate = true; im.computeBoundingSphere(); im.castShadow = true; im.receiveShadow = true; im.userData = { noInk: true, noSketch: true, villa: key }; scene.add(im); });
     }, undefined, e => console.warn('villa', key, e)); }
