@@ -784,7 +784,12 @@ html.night #contact.dark{background:#0d0b09}
 .fb-page::after{content:"";position:absolute;inset:0;background:linear-gradient(to right,rgba(0,0,0,.12),rgba(0,0,0,0) 14%);pointer-events:none}
 .fb-ctl{display:flex;justify-content:center;align-items:center;gap:1.6rem;margin-top:1.6rem;font-size:.62rem;letter-spacing:.3em}
 .fb-ctl button{background:none;border:1px solid var(--line);width:44px;height:44px;cursor:pointer;color:inherit;font-size:1.2rem}
-@media (max-width:860px){.fb-book{aspect-ratio:909/1287;width:min(520px,92vw)}.fb-page{left:0;width:100%;transform-origin:center;transition:opacity .5s}.fb-page.flipped{transform:none;opacity:0;pointer-events:none}.fb-page::after{display:none}}
+/* brochures Red Stone : pages 16:9 une à une, fondu enchaîné */
+.fb-wide .fb-book{width:min(1180px,92vw);aspect-ratio:16/9;box-shadow:0 30px 60px -30px rgba(0,0,0,.4)}
+.fb-wide .fb-page{left:0;width:100%;transform-origin:center;transition:opacity .6s ease,transform .6s ease}
+.fb-wide .fb-page.flipped{transform:translateX(-2%);opacity:0;pointer-events:none}
+.fb-wide .fb-page{box-shadow:none}.fb-wide .fb-page::after{display:none}
+@media (max-width:860px){.fb-book{aspect-ratio:909/1287;width:min(520px,92vw)}.fb-page{left:0;width:100%;transform-origin:center;transition:opacity .5s}.fb-page.flipped{transform:none;opacity:0;pointer-events:none}.fb-page::after{display:none}.fb-wide .fb-book{aspect-ratio:16/9;width:92vw}}
 .cmpx{position:relative;height:min(85vh,820px);overflow:hidden;--v:50}
 .cmpx-img{position:absolute;inset:0}.cmpx-img img{width:100%;height:100%;object-fit:cover}
 .cmpx-b{clip-path:inset(0 0 0 50%)}
