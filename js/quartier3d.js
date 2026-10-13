@@ -477,13 +477,98 @@ function villaFrame(key) { // géométrie utile d'un plan : conversion px → m,
 const VFRAME = {}; for (const k of ['chloe', 'celine', 'margaux']) VFRAME[k] = villaFrame(k);
 // Villas posées en miroir : la porte reste côté rue mais la piscine passe de l'autre côté de la maison, comme sur le plan de masse (?sansmiroir pour l'ancien sens)
 const VILLA_MIRROR = !new URLSearchParams(location.search).has('sansmiroir'), MX = VILLA_MIRROR ? -1 : 1;
-// Villas reconstruites d'après leurs photos (photo du site → vue isolée → Higgsfield image→3D, site-src/blender/prep_villa_photo.py) :
-// rectangles relevés dans le modèle, en mètres (façade d'entrée vers -z, piscine vers +z). ?anciennes_villas pour les villas construites d'après les plans.
-const PHOTO_VILLAS = new URLSearchParams(location.search).has('anciennes_villas') ? {} : {
-  chloe: { house: [-13.47, -12.44, 12.57, 9.71], pool: [-13.55, 9.71, 8.33, 17.7], all: [-17.48, -16.74, 15.14, 17.79] },
-  celine: { house: [-14.36, -10.33, 13.04, 14.42], pool: [-13.43, 14.42, 15.47, 18.83], all: [-16.32, -14.16, 16.5, 19.43] },
-  margaux: { house: [-14.13, -12.44, 14.12, 13.76], pool: [-11.46, 18.63, 11.55, 26.17], all: [-19, -17.09, 17.46, 27.07] }, // avant : vue de l'entrée ; arrière : vue de la piscine (site-src/blender/assemble_villa.py)
-};
+// Villas dans le style des photos du site, construites en volumes nets avec leurs matériaux : piliers en travertin et marbre noir,
+// bardage et sous-faces de toit en bois, débords épais à ligne LED, grandes baies avec l'intérieur éclairé (photos d'intérieur
+// du site derrière les vitres), entrée à porte pivotante côté rue, abri voiture, piscine en mosaïque au fond. ?anciennes_villas : villas d'après les plans.
+const VILLA_STYLE = !new URLSearchParams(location.search).has('anciennes_villas');
+const VMAT = (() => {
+  if (!VILLA_STYLE) return {};
+  const T = n => { const t = texLoader.load('textures/' + n + '.webp'); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8; return t; };
+  const std = o => new THREE.MeshStandardMaterial({ roughness: 0.7, metalness: 0, ...o });
+  const photo = n => { const t = texLoader.load('img/sm/' + n + '.webp'); t.colorSpace = THREE.SRGBColorSpace; return new THREE.MeshBasicMaterial({ map: t, color: '#ece0cc' }); };
+  const M = {
+    trav: std({ map: T('travertine_c'), color: '#f4ecdf', roughness: 0.55 }), deck: std({ map: T('travertine_c'), color: '#e6ddcd', roughness: 0.75 }),
+    nero: std({ map: T('marbled_c'), color: '#55555b', roughness: 0.22, metalness: 0.05 }),
+    teak: std({ map: T('wood_c'), color: '#9c6a40', roughness: 0.5 }), soffit: std({ map: T('woodlight_c'), color: '#e3a86a', roughness: 0.6, emissive: '#6a3810', emissiveIntensity: 0.3 }),
+    fascia: std({ color: '#2f2c29', roughness: 0.35, metalness: 0.55 }), bronze: std({ color: '#6e5336', roughness: 0.3, metalness: 0.8 }),
+    roofL: std({ map: T('concrete_c'), color: '#cfcac2', roughness: 0.9 }), roofD: std({ map: T('stone_c'), color: '#4a4846', roughness: 0.8 }),
+    glass: new THREE.MeshStandardMaterial({ color: '#25343a', roughness: 0.03, metalness: 0.9, transparent: true, opacity: 0.3, depthWrite: false }),
+    rail: new THREE.MeshStandardMaterial({ color: '#d4e6e8', roughness: 0.05, metalness: 0.3, transparent: true, opacity: 0.22, depthWrite: false }),
+    led: new THREE.MeshBasicMaterial({ color: '#ffd59a' }), warm: new THREE.MeshBasicMaterial({ color: '#f3d3a0' }),
+    mosaic: std({ map: T('tiles_c'), color: '#2f97b0', roughness: 0.35 }),
+    water: new THREE.MeshStandardMaterial({ color: '#2cb0c8', roughness: 0.03, metalness: 0.2, emissive: '#0a4d5c', emissiveIntensity: 0.4, transparent: true, opacity: 0.72, depthWrite: false }),
+    sofa: std({ color: '#efe9de', roughness: 0.9 }),
+  };
+  ['chloe-v04-sejour', 'margaux-v06-bibliotheque', 'celine-v04-salon', 'margaux-v04-salon', 'chloe-v05-cuisine', 'celine-v06-salon-soiree', 'margaux-v09-hall', 'chloe-v06-suite'].forEach((n, i) => { M['int' + i] = photo(n); });
+  return M;
+})();
+const VUV = { trav: 1 / 2.4, deck: 1 / 2, nero: 1 / 2, teak: 1 / 1.4, soffit: 1 / 1.5, roofL: 1 / 3, roofD: 1 / 2.5, mosaic: 1 / 0.9 }; // mètres par carreau de texture
+function buildVillaKit(D) {
+  const parts = {}, add = (k, g) => (parts[k] ||= []).push(g);
+  const B = (k, x0, x1, y0, y1, z0, z1) => { if (x1 - x0 < 1e-3 || y1 - y0 < 1e-3 || z1 - z0 < 1e-3) return; add(k, new THREE.BoxGeometry(x1 - x0, y1 - y0, z1 - z0).translate((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2)); };
+  let ii = D.seed || 0;
+  const roomBehind = (xa, xb, y0, y1, z, sgn) => { // pièce éclairée derrière une baie : photo d'intérieur au fond, plafond chaud, joues sombres
+    const zi = z - sgn * 2.6, za = Math.min(z, zi), zb = Math.max(z, zi), g = new THREE.PlaneGeometry(xb - xa - 0.3, y1 - y0 - 0.2);
+    if (sgn < 0) g.rotateY(Math.PI); add('int' + (ii++ % 8), g.translate((xa + xb) / 2, (y0 + y1) / 2, zi));
+    B('warm', xa, xb, y1 - 0.06, y1, za, zb); B('fascia', xa, xa + 0.06, y0, y1, za, zb); B('fascia', xb - 0.06, xb, y0, y1, za, zb); B('deck', xa, xb, y0, y0 + 0.02, za, zb);
+  };
+  const seg = (kind, xa, xb, y0, y1, z, sgn) => {
+    if (kind === 'glass') { B('glass', xa, xb, y0, y1, z - 0.02, z + 0.02); const n = Math.max(1, Math.round((xb - xa) / 1.6)); for (let i = 0; i <= n; i++) { const x = xa + (xb - xa) * i / n; B('bronze', x - 0.035, x + 0.035, y0, y1, z - 0.06, z + 0.06); } B('bronze', xa, xb, y0, y0 + 0.06, z - 0.08, z + 0.08); roomBehind(xa, xb, y0, y1, z, sgn); }
+    else if (kind === 'door') { B('trav', xa, xb, y0, y1, z - 0.3, z + 0.3); const c = (xa + xb) / 2, h = Math.min(3.4, y1 - y0 - 0.2); B('fascia', c - 0.95, c + 0.95, y0, y0 + h + 0.1, z + sgn * 0.31 - 0.02, z + sgn * 0.31 + 0.02); B('teak', c - 0.8, c + 0.8, y0, y0 + h, z + sgn * 0.34 - 0.03, z + sgn * 0.34 + 0.03); B('bronze', c + 0.5, c + 0.55, y0 + 0.9, y0 + 2.5, z + sgn * 0.4 - 0.03, z + sgn * 0.4 + 0.03); B('led', c - 1.1, c + 1.1, y0 + h + 0.15, y0 + h + 0.2, z + sgn * 0.3, z + sgn * 0.36); }
+    else if (kind === 'trav') B('trav', xa, xb, y0, y1, z - 0.3, z + 0.3);
+    else if (kind === 'nero') B('nero', xa, xb, y0, y1, z - 0.45, z + 0.45);
+    else if (kind === 'fins') { B('fascia', xa, xb, y0, y1, z - 0.1, z + 0.1); for (let x = xa + 0.05; x + 0.09 < xb; x += 0.21) B('teak', x, x + 0.09, y0, y1, z + sgn * 0.14 - 0.07, z + sgn * 0.14 + 0.07); }
+  };
+  const facade = (z, sgn, x0, x1, y0, y1, pat) => { const tot = pat.reduce((s, p) => s + p[1], 0); let x = x0; for (const [k, w] of pat) { const xb = x + w * (x1 - x0) / tot; seg(k, x, xb, y0, y1, z, sgn); x = xb; } };
+  const volume = v => { const y1 = v.y + v.h;
+    facade(v.z0, -1, v.x0, v.x1, v.y, y1, v.front); facade(v.z1, 1, v.x0, v.x1, v.y, y1, v.back);
+    for (const [x, s] of [[v.x0, -1], [v.x1, 1]]) { B('trav', x - 0.3, x + 0.3, v.y, y1, v.z0, v.z1); if (v.fins) for (let z = v.z0 + 0.4; z + 0.09 < v.z1 - 0.4; z += 0.21) B('teak', x + s * 0.34 - 0.05, x + s * 0.34 + 0.05, v.y, y1, z, z + 0.09); }
+    B('fascia', v.x0 + 0.3, v.x1 - 0.3, v.y, y1 - 0.06, (v.z0 + v.z1) / 2 - 0.15, (v.z0 + v.z1) / 2 + 0.15); };
+  const slab = (s, roofKey) => { const { x0, x1, z0, z1, y, th, o } = s; // dalle débordante : bandeau, sous-face bois, ligne LED sous le bord, dessus de toit
+    B('fascia', x0 - o, x1 + o, y, y + th, z0 - o, z1 + o); if (roofKey) B(roofKey, x0 - o + 0.15, x1 + o - 0.15, y + th, y + th + 0.04, z0 - o + 0.15, z1 + o - 0.15);
+    B('soffit', x0 - o + 0.04, x1 + o - 0.04, y - 0.03, y, z0 - o + 0.04, z1 + o - 0.04);
+    const e = 0.16; B('led', x0 - o + e, x1 + o - e, y - 0.07, y - 0.03, z0 - o + e, z0 - o + e + 0.05); B('led', x0 - o + e, x1 + o - e, y - 0.07, y - 0.03, z1 + o - e - 0.05, z1 + o - e);
+    B('led', x0 - o + e, x0 - o + e + 0.05, y - 0.07, y - 0.03, z0 - o + e, z1 + o - e); B('led', x1 + o - e - 0.05, x1 + o - e, y - 0.07, y - 0.03, z0 - o + e, z1 + o - e); };
+  const rail = (x0, x1, z, y) => { B('rail', x0, x1, y, y + 1.05, z - 0.02, z + 0.02); B('bronze', x0, x1, y + 1.02, y + 1.08, z - 0.04, z + 0.04); };
+  const pillar = (k, x, z, w, d, h) => B(k, x - w / 2, x + w / 2, 0, h, z - d / 2, z + d / 2);
+  const { W, Dh } = D, G = 0.22;
+  B('deck', -W / 2 - 2, W / 2 + 2, 0, G, -3, Dh + 2.5); // socle et parvis
+  for (const v of D.vols) volume(v); for (const sl of D.slabs) slab(sl, sl.roof); for (const r of D.rails || []) rail(...r); for (const p of D.pillars || []) pillar(...p);
+  if (D.carport) { const [cx0, cx1] = D.carport, y = 3.25; slab({ x0: cx0, x1: cx1, z0: -0.5, z1: 6.5, y, th: 0.38, o: 0.3 }, 'roofL'); for (const [x, z] of [[cx0 < 0 ? cx0 + 0.3 : cx1 - 0.3, -0.4], [cx0 < 0 ? cx0 + 0.3 : cx1 - 0.3, 6.4]]) pillar('nero', x, z, 0.6, 0.6, y); B('deck', Math.min(cx0, cx1) - 0.5, Math.max(cx0, cx1) + 0.5, 0, G, -3, 7); }
+  const [px0, px1, pz0, pz1] = D.pool; // piscine au fond, plage en travertin, transats
+  const T2 = G + 0.3, xL = -W / 2 - 2, xR = W / 2 + 2, zA = Dh + 2.5, zB = pz1 + 3; // plage surélevée tout autour d'un bassin creusé
+  B('deck', xL, xR, 0, T2, zA, pz0); B('deck', xL, xR, 0, T2, pz1, zB); B('deck', xL, px0, 0, T2, pz0, pz1); B('deck', px1, xR, 0, T2, pz0, pz1);
+  B('trav', px0 - 0.45, px1 + 0.45, T2, T2 + 0.06, pz0 - 0.45, pz0); B('trav', px0 - 0.45, px1 + 0.45, T2, T2 + 0.06, pz1, pz1 + 0.45); B('trav', px0 - 0.45, px0, T2, T2 + 0.06, pz0, pz1); B('trav', px1, px1 + 0.45, T2, T2 + 0.06, pz0, pz1); // margelle
+  B('mosaic', px0, px1, 0, 0.05, pz0, pz1); B('mosaic', px0, px0 + 0.05, 0, T2, pz0, pz1); B('mosaic', px1 - 0.05, px1, 0, T2, pz0, pz1); B('mosaic', px0, px1, 0, T2, pz0, pz0 + 0.05); B('mosaic', px0, px1, 0, T2, pz1 - 0.05, pz1);
+  B('water', px0 + 0.05, px1 - 0.05, T2 - 0.12, T2 - 0.08, pz0 + 0.05, pz1 - 0.05);
+  for (let i = 0; i < 4; i++) { const x = px1 + 1.4, z = pz0 + 0.8 + i * 1.6; B('sofa', x - 0.35, x + 0.35, T2, T2 + 0.38, z - 0.95, z + 0.95); B('sofa', x - 0.35, x + 0.35, T2 + 0.38, T2 + 0.75, z + 0.65, z + 0.95); }
+  const xs = [-W / 2 - 2, W / 2 + 2, ...(D.carport || [])];
+  return { parts, info: { house: [-W / 2, 0, W / 2, Dh], pool: [px0, pz0, px1, pz1], all: [Math.min(...xs), -3, Math.max(...xs), pz1 + 3] } };
+}
+const G1 = 0.22, H1 = 3.7, S1 = G1 + H1, F1 = S1 + 0.45, H2 = 3.3, R1 = F1 + H2;
+const VILLA_KITS = VILLA_STYLE ? {
+  chloe: buildVillaKit({ W: 26, Dh: 16, seed: 0, carport: [-13, -20],
+    vols: [{ x0: -13, x1: 13, z0: 0, z1: 16, y: G1, h: H1, front: [['nero', 1], ['fins', 3], ['glass', 5], ['trav', 1.4], ['door', 2.6], ['trav', 1.2], ['glass', 6], ['trav', 1.6], ['glass', 3.4], ['nero', 1]], back: [['nero', 1], ['glass', 7], ['trav', 1.4], ['glass', 8], ['trav', 1.4], ['glass', 6], ['nero', 1]] },
+      { x0: -11, x1: 9, z0: 1.6, z1: 14.4, y: F1, h: H2, fins: true, front: [['fins', 3], ['glass', 6], ['trav', 2], ['glass', 6], ['fins', 3]], back: [['glass', 6], ['trav', 2], ['glass', 8], ['nero', 2]] }],
+    slabs: [{ x0: -13, x1: 13, z0: 0, z1: 16, y: S1, th: 0.45, o: 1.3 }, { x0: -11, x1: 9, z0: 1.6, z1: 14.4, y: R1, th: 0.6, o: 2.4, roof: 'roofL' }],
+    rails: [[-14.2, 14.2, -1.2, F1], [-14.2, 14.2, 17.2, F1]], pillars: [['nero', -8.5, -1.6, 0.8, 0.8, R1 + 0.6], ['nero', 5.5, -1.6, 0.8, 0.8, R1 + 0.6], ['trav', 12.4, -1.6, 0.9, 0.9, R1 + 0.6]],
+    pool: [-10, 8, 19.5, 26] }),
+  celine: buildVillaKit({ W: 27, Dh: 16, seed: 2, carport: [13.5, 20.5],
+    vols: [{ x0: -13.5, x1: 13.5, z0: 0, z1: 16, y: G1, h: H1, front: [['trav', 1.2], ['glass', 6], ['fins', 2.5], ['trav', 1.4], ['door', 2.6], ['trav', 1.4], ['glass', 5], ['fins', 2.5], ['nero', 1.2]], back: [['nero', 1.2], ['glass', 9], ['trav', 1.4], ['glass', 9], ['nero', 1.2]] },
+      { x0: -12.5, x1: -2.5, z0: 1.2, z1: 14.8, y: F1, h: H2, fins: true, front: [['fins', 2], ['glass', 6], ['trav', 2]], back: [['glass', 7], ['trav', 3]] },
+      { x0: 2.5, x1: 12.5, z0: 1.2, z1: 14.8, y: F1, h: H2, fins: true, front: [['trav', 2], ['glass', 6], ['fins', 2]], back: [['trav', 3], ['glass', 7]] },
+      { x0: -2.5, x1: 2.5, z0: 1.2, z1: 14.8, y: F1, h: H2 + 0.8, front: [['glass', 5]], back: [['glass', 5]] }],
+    slabs: [{ x0: -13.5, x1: 13.5, z0: 0, z1: 16, y: S1, th: 0.45, o: 1.2 }, { x0: -12.5, x1: -2.5, z0: 1.2, z1: 14.8, y: R1, th: 0.65, o: 2.2, roof: 'roofD' }, { x0: 2.5, x1: 12.5, z0: 1.2, z1: 14.8, y: R1, th: 0.65, o: 2.2, roof: 'roofD' }, { x0: -2.5, x1: 2.5, z0: 1.2, z1: 14.8, y: R1 + 0.8, th: 0.6, o: 1.4, roof: 'roofD' }],
+    rails: [[-14.7, 14.7, -1.2, F1], [-14.7, 14.7, 17.2, F1]], pillars: [['trav', -3.2, -1.7, 0.9, 0.9, R1 + 1.4], ['trav', 3.2, -1.7, 0.9, 0.9, R1 + 1.4], ['nero', -13.2, -1.7, 0.8, 0.8, R1 + 0.6], ['nero', 13.2, -1.7, 0.8, 0.8, R1 + 0.6]],
+    pool: [-12, 9, 19.5, 26.5] }),
+  margaux: buildVillaKit({ W: 28, Dh: 17, seed: 4, carport: [-14, -21],
+    vols: [{ x0: -14, x1: 14, z0: 0, z1: 17, y: G1, h: H1, front: [['nero', 1.4], ['trav', 3], ['glass', 4], ['trav', 1.2], ['door', 2.8], ['trav', 1.2], ['glass', 4], ['fins', 3], ['nero', 1.4]], back: [['nero', 1.4], ['glass', 7.5], ['trav', 1.5], ['glass', 7.5], ['trav', 1.5], ['glass', 5], ['nero', 1.4]] },
+      { x0: -14, x1: 14, z0: 0.8, z1: 16.2, y: F1, h: H2, front: [['nero', 1.4], ['glass', 6], ['trav', 4], ['fins', 3], ['trav', 4], ['glass', 6], ['nero', 1.4]], back: [['nero', 1.4], ['glass', 8], ['trav', 3], ['glass', 8], ['nero', 1.4]] }],
+    slabs: [{ x0: -14, x1: 14, z0: 0, z1: 17, y: S1, th: 0.45, o: 0.9 }, { x0: -14, x1: 14, z0: 0.8, z1: 16.2, y: R1, th: 0.7, o: 1.8, roof: 'roofL' }],
+    rails: [[-14.9, 14.9, -0.9, F1], [-14.9, 14.9, 17.9, F1]], pillars: [['nero', -14.3, -1, 1, 1, R1 + 0.8], ['nero', 14.3, -1, 1, 1, R1 + 0.8], ['trav', 0, -1.3, 1.2, 0.8, R1 + 0.8]],
+    pool: [-9, 9, 20.5, 27.5] }),
+} : {};
+const PHOTO_VILLAS = Object.fromEntries(Object.entries(VILLA_KITS).map(([k, v]) => [k, v.info]));
 function photoVillaLot(key, vname, lx, lz, ry, sc, sd, record) {
   const I = PHOTO_VILLAS[key], [ax0, az0, ax1, az1] = I.all, W0 = LW * sc, D0 = LD * sd;
   const k = Math.min(W0 * 0.94 / (ax1 - ax0), D0 * 0.9 / (az1 - az0)), tu = -(ax0 + ax1) / 2 * k, tv = D0 * 0.05 - az0 * k;
@@ -533,10 +618,14 @@ function mirrorGeo(geo, mw) { // copie en flottants passée dans le repère de l
 function loadVillaGLBs() {
   const loader = new GLTFLoader();
   for (const key of Object.keys(VILLA_INST)) { const list = VILLA_INST[key]; if (!list.length) continue;
-    const photo = !!PHOTO_VILLAS[key], mirror = VILLA_MIRROR && !photo;
+    if (VILLA_KITS[key]) { // villas dans le style des photos : une InstancedMesh par matière
+      for (const [mk, geos] of Object.entries(VILLA_KITS[key].parts)) { const geo = mergeGeometries(geos.map(g => g.index ? g.toNonIndexed() : g)); if (VUV[mk]) worldUV(geo, VUV[mk]);
+        const im = new THREE.InstancedMesh(geo, VMAT[mk], list.length); list.forEach((m, i) => im.setMatrixAt(i, m)); im.instanceMatrix.needsUpdate = true; im.computeBoundingSphere();
+        im.castShadow = !/^(glass|rail|led|warm|water|int)/.test(mk); im.receiveShadow = true; im.userData = { noInk: true, noSketch: true, villa: key }; scene.add(im); }
+      continue; }
+    const photo = false, mirror = VILLA_MIRROR;
     loader.load('models/villas/' + key + (photo ? '-photo' : '') + '.glb', g => { g.scene.updateMatrixWorld(true);
       g.scene.traverse(o => { if (!o.isMesh || o.material?.alphaTest > 0) return;
-        if (photo) { const mt = o.material; mt.metalness = 0; mt.roughness = 1; mt.envMapIntensity = 0.3; mt.color.setScalar(0.8); } // l'éclairage est déjà dans la photo : on évite de le doubler const geo = mirror ? mirrorGeo(o.geometry, o.matrixWorld) : o.geometry;
         const geo = mirror ? mirrorGeo(o.geometry, o.matrixWorld) : o.geometry;
         const im = new THREE.InstancedMesh(geo, o.material, list.length), tmp = new THREE.Matrix4();
         list.forEach((m, i) => im.setMatrixAt(i, mirror ? m : tmp.multiplyMatrices(m, o.matrixWorld)));
