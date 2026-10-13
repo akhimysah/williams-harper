@@ -339,7 +339,7 @@ const LD = 28, LW = 23.75;
 const PX = (px, py) => [(px - 85) / 4.5 - 130, (py - 150) / 4.5 - 131];
 const PM = px => px / 4.5;
 const WORLD = { x0: -300, x1: 300, z0: -250, z1: 300 };
-const SITE_PX = [[85, 150], [1255, 150], [1255, 520], [1320, 640], [1300, 800], [1230, 920], [1170, 1050], [1060, 1200], [950, 1300], [880, 1330], [170, 1330], [425, 1075], [425, 830], [25, 650]];
+const SITE_PX = [[85, 150], [1255, 150], [1255, 520], [1320, 640], [1300, 800], [1230, 920], [1170, 1050], [1060, 1200], [950, 1300], [880, 1330], [230, 1330], [395, 1000], [425, 830], [25, 650]];
 const SITE_POLY = SITE_PX.map(p => PX(...p));
 const PARK_PX = [590, 320, 650, 855], PLAZA_PX = [450, 880, 650, 1050], P1_PX = [598, 330, 642, 430], P2_PX = [790, 1005, 880, 1045], P3_PX = [447, 880, 470, 1030], COURT_PX = [598, 755, 642, 845];
 const rectPX = r => { const a = PX(r[0], r[1]), b = PX(r[2], r[3]); return [a[0], a[1], b[0], b[1]]; };
@@ -361,13 +361,13 @@ const ROADS = [
   { name: "Allée de l'entrée", p0: PX(65, 150), p1: PX(25, 650), w: 10, ai: false, side: true },
   { name: 'Servitude de passage', p0: PX(25, 650), p1: PX(425, 830), w: 10, ai: false, side: true },
   { name: 'Voie N°4', p0: PX(425, 300), p1: PX(425, 765), w: 9, ai: false, side: true, end: true }, // fermée au sud : cul-de-sac devant le poste transformateur (plan de masse)
-  { name: 'Voie N°4', p0: PX(425, 830), p1: PX(425, 1060), w: 9, ai: false, side: true }, // la servitude tourne ici à angle droit et descend le long de l'espace commun
+  { name: 'Voie N°4', p0: PX(425, 830), p1: PX(390, 1000), w: 9, ai: false, side: true }, // la servitude tourne ici à angle droit et descend le long de l'espace commun
   { name: 'Voie N°1', p0: PX(53, 300), p1: PX(1040, 300), w: 10, ai: true, side: true },
-  { name: 'Voie N°6', p0: PX(680, 300), p1: PX(680, 1060), w: 10, ai: true, side: true },
+  { name: 'Voie N°6', p0: PX(680, 300), p1: PX(680, 1104), w: 10, ai: true, side: true },
   { name: 'Voie N°3', p0: PX(1040, 82), p1: PX(1040, 940), w: 10, ai: true, side: true },
-  { name: 'Voie N°3', p0: PX(1040, 940), p1: PX(870, 1060), w: 10, ai: false, side: true },
-  { name: 'Voie N°5', p0: PX(425, 1060), p1: PX(870, 1060), w: 10, ai: true, side: true },
-  { name: 'Accès sud', p0: PX(425, 1060), p1: PX(170, 1375), w: 10, ai: false, side: true },
+  { name: 'Voie N°3', p0: PX(1040, 940), p1: PX(950, 1104), w: 10, ai: false, side: true }, // virage relevé sur le plan de masse
+  { name: 'Voie N°5', p0: PX(341, 1104), p1: PX(950, 1104), w: 10, ai: true, side: true }, // plus au sud qu'avant : calée sur le plan de masse (les villas Céline sont entre elle et la Voie N°12)
+  { name: 'Accès sud', p0: PX(390, 1000), p1: PX(215, 1375), w: 10, ai: false, side: true }, // la servitude descend en biais jusqu'à la Voie N°12, comme sur le plan
 ];
 for (const rd of ROADS) {
   const [x0, z0] = rd.p0, [x1, z1] = rd.p1;
@@ -793,11 +793,11 @@ for (let k = 0; k < 5; k++) lotPX(447, 373.5 + k * 107, 'W', 'Chloé', 1.0);
 // east block: two columns of six
 for (let k = 0; k < 6; k++) { lotPX(703, 371.5 + k * 103.3, 'W', 'Chloé', 0.965); lotPX(1017, 371.5 + k * 103.3, 'E', 'Chloé', 0.965); }
 // the large eastern lots along the Voie N°3
-for (let k = 0; k < 7; k++) lotPX(1072, 228 + k * 101, 'W', 'Margaux', 0.92); // derrière le trottoir de la Voie N°3 // la colonne est : sept villas comme sur le plan de masse
+for (const y of [199, 383, 551, 728, 892]) lotPX(1072, y, 'W', 'Margaux', 1.45, 1.4); // colonne est : cinq grandes villas, positions relevées sur le plan de masse (les deux suivantes sont dans le virage) // la colonne est : sept villas comme sur le plan de masse
 // the southern row and the two lots on the bend, served by the Voie N°5
-for (let k = 0; k < 4; k++) lotPX(490 + k * 107, 1083, 'N', 'Céline', 1.0); // décalée vers l'est : l'accès sud passait sous la première maison
-lotAt(...PX(1030, 990), 0.615, 'Céline', 1.3);
-lotAt(...PX(926, 1077), 0.35, 'Céline', 1.15); // décalée et réduite : elle chevauchait la parcelle voisine du virage
+for (const [x, sc] of [[410, 1.3], [553, 1.3], [705, 1.3], [845, 1.15]]) lotPX(x, 1137, 'N', 'Céline', sc, 1.7); // quatre grandes villas entre la Voie N°5 et la Voie N°12, positions relevées sur le plan de masse
+lotAt(...PX(1045, 1000), 0.615, 'Céline', 1.3);
+lotAt(...PX(957, 1128), 0.6, 'Céline', 1.15); // après le virage, comme sur le plan de masse
 if (USE_VILLA_GLB) loadVillaGLBs();
 // palms along the big roads' verges and the eastern servitude strip
 for (let x = 140; x < 1240; x += 55) palm(...PX(x, 160), 7 + rnd() * 2, 'washingtonia'); // grandes avenues : palmiers washingtonia, comme à Marrakech
@@ -937,7 +937,7 @@ function guardHouse(px, py, ry) {
   bx('metal', -2.6, 2.6, 0.95, 1.0, -3.5, -3.4); // barrier
   solidR(x, z, 1.2, 2.4, ry, 3.2); solidR(x, z, 3.3, 0.2, ry, 3.2);
 }
-guardHouse(118, 268, 0); guardHouse(393, 1042, Math.PI / 2);
+guardHouse(118, 268, 0); guardHouse(408, 1050, Math.PI / 2 - 0.44);
 { // poste transformateur au bout de la Voie N°4 fermée, sur la bande verte qui la sépare de la servitude de passage
   const [x, z] = PX(425, 795), M = mat4(x, 0, z), bx = (k, u0, u1, y0, y1, v0, v1) => box(k, u0, u1, y0, y1, v0, v1, M);
   bx('wall2', -1.9, 1.9, 0, 2.6, -1.4, 1.4); bx('slab2', -2.05, 2.05, 2.6, 2.78, -1.55, 1.55); bx('curb', -2.1, 2.1, 0, 0.18, -1.6, 1.6);
@@ -1467,7 +1467,7 @@ function curvePath(curve) {
   return { len, loop: false, at(s) { const t = clamp(s / len, 0, 1), p = curve.getPointAt(t), tg = curve.getTangentAt(t); return [p.x, p.z, tg.x, tg.z]; } };
 }
 const pedPaths = [];
-{ const a = PX(60, 285), b = PX(1040, 285), c = PX(60, 1070), d = PX(870, 1070), e = PX(140, 165), f = PX(1000, 165); pedPaths.push(linePath(a[0], b[0], a[1]), linePath(c[0], d[0], c[1]), linePath(e[0], f[0], e[1])); }
+{ const a = PX(60, 285), b = PX(1040, 285), c = PX(60, 1114), d = PX(950, 1114), e = PX(140, 165), f = PX(1000, 165); pedPaths.push(linePath(a[0], b[0], a[1]), linePath(c[0], d[0], c[1]), linePath(e[0], f[0], e[1])); }
 for (const c of parkCurves) pedPaths.push(curvePath(c));
 for (let i = 0; i < 44; i++) {
   const path = pedPaths[i % pedPaths.length];
@@ -1629,7 +1629,7 @@ let waypoint = null;
 
 /* ================= missions ================= */
 const VISIT = [['Chloé', 10], ['Céline', 3], ['Margaux', 2]].map(([n, k]) => doors.filter(d => d.name === n)[k] || doors.find(d => d.name === n));
-const RACE_CP = [[680, 1060], [680, 300], [425, 300], [425, 830], [425, 1060], [870, 1060]].map(p => PX(...p));
+const RACE_CP = [[680, 1104], [680, 300], [425, 300], [425, 830], [390, 1000], [341, 1104], [950, 1104]].map(p => PX(...p));
 const MISSIONS = {
   visite: { title: 'Visite privée', start: PX(140, 272), reward: 25000, time: 240, color: '#f2c230', letter: 'V' },
   course: { title: 'Contre-la-montre', start: PX(865, 1022), reward: 15000, time: 95, color: '#5fb3e0', letter: 'C', needCar: true }
@@ -1853,7 +1853,7 @@ function applySketch() {
 /* ================= annotations (sketch) ================= */
 const notes = [];
 function note(text, x, y, z) { const el = document.createElement('div'); el.className = 'note'; el.textContent = text; $('notes').appendChild(el); notes.push({ el, p: V(x, y, z) }); }
-{ const N = (t, px, py, y) => { const [x, z] = PX(px, py); note(t, x, y, z); }; N('Espace commun', 545, 955, 3.4); N('Poste transformateur', 425, 795, 3.6); N('Padel', 620, 800, 3.2); N('Coulée verte', 620, 600, 4); N('Guérite 1', 118, 268, 3.6); N('Guérite 2', 393, 1042, 3.6); N('Voie N°16', 600, 82, 3); }
+{ const N = (t, px, py, y) => { const [x, z] = PX(px, py); note(t, x, y, z); }; N('Espace commun', 545, 955, 3.4); N('Poste transformateur', 425, 795, 3.6); N('Padel', 620, 800, 3.2); N('Coulée verte', 620, 600, 4); N('Guérite 1', 118, 268, 3.6); N('Guérite 2', 408, 1050, 3.6); N('Voie N°16', 600, 82, 3); }
 for (const l of lots.filter(l => l.green).filter((_, i) => i % 6 === 0)) note('Toit végétalisé', l.roof.x, 7.4, l.roof.z);
 for (const l of lots.filter((_, i) => i % 7 === 3)) note('Piscine privée', l.pool.x, 1, l.pool.z);
 
@@ -1875,7 +1875,7 @@ const mapImg = document.createElement('canvas'); mapImg.width = MW * MPX; mapImg
   c.fillStyle = '#4aa3c2'; for (const [x, z, rx, rz] of ponds) { c.beginPath(); c.ellipse(x, z, rx, rz, 0, 0, 7); c.fill(); }
   c.strokeStyle = '#c9b98f'; c.lineWidth = 2.6; for (const cv of parkCurves) { c.beginPath(); cv.getPoints(60).forEach((p, i) => i ? c.lineTo(p.x, p.z) : c.moveTo(p.x, p.z)); c.stroke(); }
   c.fillStyle = '#cfc6b4'; for (const [px, py, r] of [[620, 490, 5.5], [610, 1010, 6.5]]) { const [x, z] = PX(px, py); c.beginPath(); c.arc(x, z, r, 0, 7); c.fill(); }
-  c.fillStyle = '#d9d4c7'; for (const [px, py] of [[118, 268], [393, 1042]]) { const [x, z] = PX(px, py); c.fillRect(x - 2.5, z - 2.5, 5, 5); }
+  c.fillStyle = '#d9d4c7'; for (const [px, py] of [[118, 268], [408, 1050]]) { const [x, z] = PX(px, py); c.fillRect(x - 2.5, z - 2.5, 5, 5); }
 }
 const mm = $('minimap'), mmx = mm.getContext('2d'), MMR = mm.width / 2;
 const RG = (() => { // road graph: nodes at every crossing and road end
@@ -2474,7 +2474,7 @@ function zoneOf(x, z) {
   if (inRect(PARK, x, z)) return ['Domaine Red Stone', 'Coulée verte'];
   if (inRect(PLAZA, x, z)) return ['Domaine Red Stone', 'Espace commun'];
   if ([P1, P2, P3].some(r => inRect(r, x, z))) return ['Domaine Red Stone', 'Parking'];
-  for (const [px, py, nm] of [[118, 268, 'Entrée ouest'], [393, 1042, 'Entrée sud']]) { const [gx, gz] = PX(px, py); if (Math.hypot(x - gx, z - gz) < 8) return ['Domaine Red Stone', nm]; }
+  for (const [px, py, nm] of [[118, 268, 'Entrée ouest'], [408, 1050, 'Entrée sud']]) { const [gx, gz] = PX(px, py); if (Math.hypot(x - gx, z - gz) < 8) return ['Domaine Red Stone', nm]; }
   if (!inPoly(SITE_POLY, x, z)) return ['Les abords', 'La pinède'];
   return ['Domaine Red Stone', 'Le domaine'];
 }

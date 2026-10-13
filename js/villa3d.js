@@ -300,7 +300,9 @@ export function mount(el, opts = {}) {
   // bassin
   const poolShape = new THREE.Shape(M.pool.map(([x, y]) => new THREE.Vector2(px(x), -pz(y))));
   const pool = new THREE.Mesh(new THREE.ShapeGeometry(poolShape), mWater); pool.rotation.x = -Math.PI / 2; pool.position.y = 0.2; pool.renderOrder = 3; /* dessinée après le plan transparent du RDC */ groups.rdc.add(pool); setStage(0.9, 0.97, 'rise'); tag(pool); setStage(0.14, 0.24, 'grow');
-  const rim = new THREE.Mesh(new THREE.ExtrudeGeometry(poolShape, { depth: 1.5, bevelEnabled: false }), pbr('tiles', 2, { color: 0x3f8e9c, roughness: 0.4 })); rim.rotation.x = Math.PI / 2; rim.position.y = 0.195; /* au-dessus du plan (0,19) pour que la mosaïque, et non le plan, transparaisse sous l'eau */ rim.receiveShadow = true; groups.rdc.add(rim); setStage(0.16, 0.24, 'pop'); tag(rim);
+  const rimShape = new THREE.Shape(M.pool.map(([x, y]) => new THREE.Vector2(px(x), pz(y)))); // tourné de +90° (parois vers le bas) : y du contour = +z, sinon le bassin se retrouve en miroir de l'eau, de l'autre côté de la maison
+  const rimMat = pbr('tiles', 2, { color: 0x3f8e9c, roughness: 0.4 }); rimMat.side = THREE.DoubleSide;
+  const rim = new THREE.Mesh(new THREE.ExtrudeGeometry(rimShape, { depth: 1.5, bevelEnabled: false }), rimMat); rim.rotation.x = Math.PI / 2; rim.position.y = 0.195; /* au-dessus du plan (0,19) pour que la mosaïque, et non le plan, transparaisse sous l'eau */ rim.receiveShadow = true; groups.rdc.add(rim); setStage(0.16, 0.24, 'pop'); tag(rim);
   { const floor = new THREE.Mesh(new THREE.ShapeGeometry(poolShape), pbr('tiles', 1.2, { color: 0x2f8ea6, roughness: 0.5 })); floor.rotation.x = -Math.PI / 2; floor.position.y = -1.3; floor.receiveShadow = true; groups.rdc.add(floor); tag(floor); } // fond du bassin en mosaïque bleue
   { // margelle en travertin : une dalle de 40 cm le long de chaque bord du bassin, vers l'extérieur (polygone en L accepté)
     const P = M.pool.map(([x, y]) => [px(x), pz(y)]); let area = 0; for (let i = 0; i < P.length; i++) { const a = P[i], b = P[(i + 1) % P.length]; area += a[0] * b[1] - b[0] * a[1]; } const sgn = area > 0 ? 1 : -1;
