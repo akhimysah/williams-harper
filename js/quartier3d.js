@@ -476,12 +476,12 @@ function villaFrame(key) { // géométrie utile d'un plan : conversion px → m,
 const VFRAME = {}; for (const k of ['chloe', 'celine', 'margaux']) VFRAME[k] = villaFrame(k);
 // Villas posées en miroir : la porte reste côté rue mais la piscine passe de l'autre côté de la maison, comme sur le plan de masse (?sansmiroir pour l'ancien sens)
 const VILLA_MIRROR = !new URLSearchParams(location.search).has('sansmiroir'), MX = VILLA_MIRROR ? -1 : 1;
-function villaLot(vname, lx, lz, ry, sc, record) {
+function villaLot(vname, lx, lz, ry, sc, record, sd = sc) {
   const key = VKEY[vname], F = VFRAME[key], th = Math.PI - Math.atan2(MX * F.door.ox, F.door.oz), c = Math.cos(th), sn = Math.sin(th);
   const rot = (x, z) => [x * c + z * sn, -x * sn + z * c]; // rotation.y de th
   const corners = [[F.plot[0], F.plot[1]], [F.plot[2], F.plot[1]], [F.plot[2], F.plot[3]], [F.plot[0], F.plot[3]]].map(([x, z]) => rot(MX * x, z));
   const u0 = Math.min(...corners.map(p => p[0])), u1 = Math.max(...corners.map(p => p[0])), v0 = Math.min(...corners.map(p => p[1])), v1 = Math.max(...corners.map(p => p[1]));
-  const k = Math.min(LW * sc / (u1 - u0), LD * sc / (v1 - v0)) * 0.98, tu = -(u0 + u1) / 2 * k, tv = -v0 * k + 0.15;
+  const k = Math.min(LW * sc / (u1 - u0), LD * sd / (v1 - v0)) * 0.98, tu = -(u0 + u1) / 2 * k, tv = -v0 * k + 0.15;
   const lotM = mat4(lx, 0, lz, 0, ry, 0, 1, 1, 1), local = new THREE.Matrix4().compose(V(tu, 0, tv), new THREE.Quaternion().setFromEuler(new THREE.Euler(0, th, 0)), V(k, k, k));
   const Mw = lotM.clone().multiply(local); VILLA_INST[key].push(Mw);
   const W = (x, z) => V(MX * x, 0, z).applyMatrix4(Mw), WQ = ([x0, z0, x1, z1]) => [W(x0, z0), W(x1, z0), W(x1, z1), W(x0, z1)].map(p => [p.x, p.z]);
@@ -521,19 +521,19 @@ function loadVillaGLBs() {
 }
 function lot(lx, front, dir, vname, sc = 1) { return lotAt(lx, front, dir > 0 ? 0 : Math.PI, vname, sc); }
 // a lot with its front line at (lx, lz), facing -local z, rotated by ry, scaled by sc in plan
-function lotAt(lx, lz, ry, vname, sc = 1) {
-  const B = mat4(lx, 0, lz, 0, ry, 0, sc, 1, sc);
+function lotAt(lx, lz, ry, vname, sc = 1, sd = sc) { // sd : échelle en profondeur (parcelle moins profonde quand une voie passe derrière)
+  const B = mat4(lx, 0, lz, 0, ry, 0, sc, 1, sd);
   const s = rnd() < 0.5 ? 1 : -1;
   const lb = (k, u0, u1, y0, y1, v0, v1) => box(k, s * u0, s * u1, y0, y1, v0, v1, B);
   const W = (u, v) => V(s * u, 0, v).applyMatrix4(B);
   const quad = (u0, u1, v0, v1) => [W(u0, v0), W(u1, v0), W(u1, v1), W(u0, v1)].map(p => [p.x, p.z]);
-  const ls = (u0, u1, v0, v1, h, kind) => { const c = W((u0 + u1) / 2, (v0 + v1) / 2); solidR(c.x, c.z, Math.abs(u1 - u0) / 2 * sc, (v1 - v0) / 2 * sc, ry, h, kind); };
+  const ls = (u0, u1, v0, v1, h, kind) => { const c = W((u0 + u1) / 2, (v0 + v1) / 2); solidR(c.x, c.z, Math.abs(u1 - u0) / 2 * sc, (v1 - v0) / 2 * sd, ry, h, kind); };
   const hw = LW / 2;
   lb('fence', -hw, -hw + 0.1, 0, 1.6, 0.3, LD); lb('fence', hw - 0.1, hw, 0, 1.6, 0.3, LD); lb('fence', -hw, hw, 0, 1.6, LD - 0.1, LD);
   ls(-hw, -hw + 0.1, 0.3, LD, 1.7); ls(hw - 0.1, hw, 0.3, LD, 1.7); ls(-hw, hw, LD - 0.1, LD, 1.7);
   const vurl = VILLAS[vname];
   const record = extra => { const poly = quad(-hw, hw, 0, LD), bb = bboxOf(poly); doors.push(extra.door); lots.push({ x0: bb[0], z0: bb[1], x1: bb[2], z1: bb[3], poly, name: vname, n: lots.length + 1, ...extra }); };
-  if (USE_VILLA_GLB && VKEY[vname]) return villaLot(vname, lx, lz, ry, sc, record);
+  if (USE_VILLA_GLB && VKEY[vname]) return villaLot(vname, lx, lz, ry, sc, record, sd);
   facadePhoto(vname, B, s, sc);
   if (vname === 'Céline') return celine(ry, s, B, lb, W, quad, ls, vname, vurl, record);
   if (vname === 'Margaux') return margaux(ry, s, B, lb, W, quad, ls, vname, vurl, record);
@@ -761,20 +761,21 @@ function celine(ry, s, B, lb, W, rect, ls, vname, vurl, record) {
 }
 // ---- the lots, block by block, as drawn on the plan de masse ----
 const F = { S: Math.PI, N: 0, W: Math.PI / 2, E: -Math.PI / 2 }; // facing direction -> lot rotation
-const lotPX = (px, py, face, name, sc = 1) => lotAt(...PX(px, py), F[face], name, sc);
+const lotPX = (px, py, face, name, sc = 1, sd = sc) => lotAt(...PX(px, py), F[face], name, sc, sd);
 // row along the Voie N°16, served by the Voie N°1
-for (let i = 0; i < 7; i++) lotPX(120 + 61.5 + i * 123, 283, 'S', 'Chloé', 1.15);
+for (let i = 0; i < 7; i++) lotPX(120 + 61.5 + i * 123, 268, 'S', 'Chloé', 1.15, 0.9); // devant : le trottoir de la Voie N°1 ; derrière : la Voie N°16 (les maisons empiétaient dessus)
 // west block: 3 lots facing the entrance road, 4 facing the Voie N°4
 for (let k = 0; k < 3; k++) lotPX(95, 378 + k * 117, 'W', 'Chloé', 1.1);
-for (let k = 0; k < 4; k++) lotPX(400, 378 + k * 117, 'E', 'Chloé', 1.1);
+for (let k = 0; k < 3; k++) lotPX(400, 378 + k * 117, 'E', 'Chloé', 1.1);
+lotPX(400, 713, 'E', 'Chloé', 0.75); // la dernière, réduite : la servitude de passage passe en biais derrière
 // the column along the green strip
 for (let k = 0; k < 5; k++) lotPX(447, 373.5 + k * 107, 'W', 'Chloé', 1.0);
 // east block: two columns of six
 for (let k = 0; k < 6; k++) { lotPX(703, 371.5 + k * 103.3, 'W', 'Chloé', 0.965); lotPX(1017, 371.5 + k * 103.3, 'E', 'Chloé', 0.965); }
 // the large eastern lots along the Voie N°3
-for (let k = 0; k < 7; k++) lotPX(1062, 228 + k * 101, 'W', 'Margaux', 0.92); // la colonne est : sept villas comme sur le plan de masse
+for (let k = 0; k < 7; k++) lotPX(1072, 228 + k * 101, 'W', 'Margaux', 0.92); // derrière le trottoir de la Voie N°3 // la colonne est : sept villas comme sur le plan de masse
 // the southern row and the two lots on the bend, served by the Voie N°5
-for (let k = 0; k < 4; k++) lotPX(397 + k * 134, 1083, 'N', 'Céline', 1.25);
+for (let k = 0; k < 4; k++) lotPX(490 + k * 107, 1083, 'N', 'Céline', 1.0); // décalée vers l'est : l'accès sud passait sous la première maison
 lotAt(...PX(1030, 990), 0.615, 'Céline', 1.3);
 lotAt(...PX(930, 1075), 0.35, 'Céline', 1.3);
 if (USE_VILLA_GLB) loadVillaGLBs();
@@ -2692,4 +2693,4 @@ applySketch();
 renderer.setAnimationLoop(frame);
 go.disabled = false; go.textContent = 'Jouer';
 
-window.WHQ = { P, doors, lots, act, peds, benches, kids, PG, swings, seesaw, merry, propMeshes, PLACE, cars, toggleCar, cam: (y, p, d) => { yaw = y; pitch = p; camDist = d; lastMouse = performance.now() / 1000; } }; // accès de débogage (tests)
+window.WHQ = { P, doors, lots, act, ROADS, peds, benches, kids, PG, swings, seesaw, merry, propMeshes, PLACE, cars, toggleCar, cam: (y, p, d) => { yaw = y; pitch = p; camDist = d; lastMouse = performance.now() / 1000; } }; // accès de débogage (tests)
