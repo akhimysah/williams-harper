@@ -854,3 +854,24 @@ html[dir=rtl] .wa{left:auto;right:clamp(16px,2.4vw,34px)}html[dir=rtl] .totop{ri
 .matgrid figure{margin:0}.matgrid img{width:100%;aspect-ratio:4/3;object-fit:cover;cursor:zoom-in}
 .matgrid figcaption{margin-top:.9rem}.matgrid b{display:block;font-family:var(--display);font-weight:300;font-size:1.35rem}.matgrid span{display:block;color:var(--muted);font-size:.88rem;margin-top:.3rem}
 @media (max-width:860px){.matgrid{grid-template-columns:1fr 1fr}.steps li{grid-template-columns:3.2rem 1fr}.clim{height:200px;gap:.25rem}.clim div{font-size:.5rem;letter-spacing:.05em}.clim i::before{font-size:.8rem}}
+/* ---- accueil : déclaration mot à mot, séquence cinématique au défilement, vidéo de fond du bandeau */
+.statement{padding:clamp(6rem,12vw,11rem) 0 clamp(3rem,6vw,5rem)}
+.st{font-family:var(--display);font-weight:300;font-size:clamp(2.1rem,5vw,4.8rem);line-height:1.15;max-width:24ch;margin:0}
+.st .sw{color:#d6cfc2;transition:color .45s ease}
+.st .sw.on{color:var(--ink)}
+.st em .sw.on{color:var(--champagne-deep)}
+html.night .st .sw{color:#3a352d}
+.scrub{height:320vh;position:relative;background:#0e0c0a}
+.scrub-sticky{position:sticky;top:0;height:100vh;height:100svh;overflow:hidden}
+.scrub-v{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
+.scrub-caps{position:absolute;inset:0;z-index:2;display:grid;align-items:end;padding:clamp(3rem,8vw,7rem) clamp(1.5rem,6vw,6rem);color:#fff;background:linear-gradient(to top,rgba(10,8,6,.6),rgba(10,8,6,0) 55%)}
+.scrub-cap{grid-area:1/1;opacity:0;transform:translateY(22px);transition:opacity .7s cubic-bezier(.2,.7,.2,1),transform .7s cubic-bezier(.2,.7,.2,1);pointer-events:none}
+.scrub-cap.on{opacity:1;transform:none;pointer-events:auto}
+.scrub-cap .label{color:#e6d9bd}
+.scrub-cap h2{font-size:clamp(2.6rem,6.5vw,6rem);margin:.6rem 0 1.4rem;max-width:12ch;line-height:1.02}
+.scrub-bar{position:absolute;left:0;right:0;bottom:0;height:2px;background:rgba(255,255,255,.18);z-index:3}
+.scrub-bar i{display:block;height:100%;width:calc(var(--p,0) * 100%);background:#e6d9bd;transition:width .15s linear}
+@media (max-width:860px){.scrub{height:260vh}.scrub-cap h2{font-size:clamp(2.2rem,11vw,3.4rem)}}
+@media (prefers-reduced-motion:reduce){.scrub{height:auto}.scrub-sticky{position:relative;height:70vh}.scrub-bar{display:none}}
+.band video.bg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+@media (prefers-reduced-motion:reduce){.band video.bg{display:none}}
