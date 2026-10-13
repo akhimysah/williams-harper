@@ -1937,29 +1937,37 @@ function drawMinimap() {
   mmx.fillStyle = '#fff'; mmx.font = `600 ${12 * k * 0.7}px Jost, sans-serif`; mmx.textAlign = 'center'; mmx.textBaseline = 'middle'; mmx.fillText('N', nX, nY + 1);
 }
 const bigmap = $('bigmap'), bmx = bigmap.getContext('2d');
+const MAP_ROT = -31.5 * Math.PI / 180; // la grande carte est tournée dans le sens du plan de masse (Voie N°16 en diagonale, comme sur le plan de l'architecte)
 function drawBigmap() {
   const r = bigmap.getBoundingClientRect(); bigmap.width = r.width * devicePixelRatio; bigmap.height = r.height * devicePixelRatio;
-  const s = Math.min(bigmap.width / (MW * MPX), bigmap.height / (MH * MPX)), w = MW * MPX * s, h = MH * MPX * s, ox = (bigmap.width - w) / 2, oy = (bigmap.height - h) / 2;
-  bmx.clearRect(0, 0, bigmap.width, bigmap.height); bmx.drawImage(mapImg, ox, oy, w, h);
-  const T = (x, z) => [ox + (x - MX0) * MPX * s, oy + (z - MZ0) * MPX * s];
+  const co = Math.cos(MAP_ROT), si = Math.sin(MAP_ROT), bb = bboxOf(SITE_POLY), xc = (bb[0] + bb[2]) / 2, zc = (bb[1] + bb[3]) / 2;
+  let hu = 0, hv = 0; for (const [x, z] of SITE_POLY) { hu = Math.max(hu, Math.abs((x - xc) * co - (z - zc) * si)); hv = Math.max(hv, Math.abs((x - xc) * si + (z - zc) * co)); }
+  hu += 30; hv += 30; // un peu des voies autour
+  const s = Math.min(bigmap.width / (2 * hu * MPX), bigmap.height / (2 * hv * MPX)), cx = bigmap.width / 2, cy = bigmap.height / 2, k = s * MPX;
+  const T = (x, z) => [cx + k * ((x - xc) * co - (z - zc) * si), cy + k * ((x - xc) * si + (z - zc) * co)];
+  bmx.fillStyle = '#34402f'; bmx.fillRect(0, 0, bigmap.width, bigmap.height);
+  bmx.save(); bmx.translate(cx, cy); bmx.rotate(MAP_ROT); bmx.scale(s, s); bmx.drawImage(mapImg, (MX0 - xc) * MPX, (MZ0 - zc) * MPX); bmx.restore();
   bmx.font = `${12 * devicePixelRatio}px Jost, sans-serif`; bmx.fillStyle = 'rgba(255,255,255,.75)'; bmx.textAlign = 'center';
+  const seen = new Set();
   for (const rd of ROADS) {
-    if (rd.w < 8) continue;
-    const mx = clamp((rd.p0[0] + rd.p1[0]) / 2, WORLD.x0 + 60, WORLD.x1 - 60), mz = clamp((rd.p0[1] + rd.p1[1]) / 2, WORLD.z0 + 40, WORLD.z1 - 40);
-    const [x, y] = T(mx, mz); let a = Math.atan2(rd.dz, rd.dx); if (a > Math.PI / 2 || a < -Math.PI / 2) a += Math.PI;
+    if (rd.w < 8 || seen.has(rd.name + rd.p0)) continue; seen.add(rd.name + rd.p0);
+    let mx = (rd.p0[0] + rd.p1[0]) / 2, mz = (rd.p0[1] + rd.p1[1]) / 2;
+    if (rd.wrap) { const t = clamp((xc - rd.p0[0]) * rd.dx + (zc - rd.p0[1]) * rd.dz, 0, rd.L); mx = rd.p0[0] + rd.dx * t; mz = rd.p0[1] + rd.dz * t; } // grandes voies : nom au droit du quartier
+    const [x, y] = T(mx, mz); let a = Math.atan2(rd.dz, rd.dx) + MAP_ROT; if (a > Math.PI / 2) a -= Math.PI; if (a < -Math.PI / 2) a += Math.PI;
     bmx.save(); bmx.translate(x, y); bmx.rotate(a); bmx.fillText(rd.name, 0, -4 * devicePixelRatio); bmx.restore();
   }
   for (const [t, px, py] of [['Villas Chloé', 250, 560], ['Villas Chloé', 860, 620], ['Coulée verte', 620, 300], ['Espace commun', 545, 1065], ['Villas Céline', 660, 1300], ['Villas Margaux', 1160, 480], ['Entrée', 118, 250], ['Entrée', 393, 1075]]) { const [x, z] = PX(px, py), [a, b] = T(x, z); bmx.fillText(t, a, b); }
   if (route) { bmx.strokeStyle = route.c; bmx.lineWidth = 4 * devicePixelRatio; bmx.beginPath(); route.p.forEach(([x, z], i) => { const [a, b] = T(x, z); i ? bmx.lineTo(a, b) : bmx.moveTo(a, b); }); bmx.stroke(); }
   for (const bl of blipList()) { const [x, y] = T(bl.x, bl.z); drawBlip(bmx, x, y, bl, devicePixelRatio); }
   const [px, py] = T(P.car ? P.car.x : P.x, P.car ? P.car.z : P.z);
-  bmx.save(); bmx.translate(px, py); bmx.rotate(-(P.car ? P.car.h : P.heading) + Math.PI); const k = devicePixelRatio * 1.2;
-  bmx.fillStyle = '#fff'; bmx.strokeStyle = '#111'; bmx.lineWidth = 2; bmx.beginPath(); bmx.moveTo(0, -11 * k); bmx.lineTo(8 * k, 9 * k); bmx.lineTo(0, 4 * k); bmx.lineTo(-8 * k, 9 * k); bmx.closePath(); bmx.fill(); bmx.stroke(); bmx.restore();
-  bigmap._T = { ox, oy, s };
+  bmx.save(); bmx.translate(px, py); bmx.rotate(-(P.car ? P.car.h : P.heading) + Math.PI + MAP_ROT); const ka = devicePixelRatio * 1.2;
+  bmx.fillStyle = '#fff'; bmx.strokeStyle = '#111'; bmx.lineWidth = 2; bmx.beginPath(); bmx.moveTo(0, -11 * ka); bmx.lineTo(8 * ka, 9 * ka); bmx.lineTo(0, 4 * ka); bmx.lineTo(-8 * ka, 9 * ka); bmx.closePath(); bmx.fill(); bmx.stroke(); bmx.restore();
+  bigmap._T = { cx, cy, k, xc, zc, co, si };
 }
 bigmap.addEventListener('click', e => {
   const r = bigmap.getBoundingClientRect(), T = bigmap._T; if (!T) return;
-  const x = ((e.clientX - r.left) * devicePixelRatio - T.ox) / (MPX * T.s) + MX0, z = ((e.clientY - r.top) * devicePixelRatio - T.oy) / (MPX * T.s) + MZ0;
+  const du = ((e.clientX - r.left) * devicePixelRatio - T.cx) / T.k, dv = ((e.clientY - r.top) * devicePixelRatio - T.cy) / T.k;
+  const x = T.xc + du * T.co + dv * T.si, z = T.zc - du * T.si + dv * T.co; // repère tourné de la carte → monde
   if (waypoint && Math.hypot(waypoint[0] - x, waypoint[1] - z) < 12) waypoint = null; else waypoint = [x, z];
   routeT = 0; drawBigmap();
 });
