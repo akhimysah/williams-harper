@@ -1494,7 +1494,8 @@ const CHAR_H = { 'garcon-polo': 1.3, 'garcon-marin': 1.16, 'fille-jaune': 1.22, 
 const CHAR_CLIPS = { hero: { run: 'hero-run', idle: 'hero-idle', sit: 'hero-sit' }, joueur: { run: 'joueur-run', idle: 'joueur-idle', sit: 'joueur-sit' } }; // clips supplémentaires (fichiers à part, même squelette)
 for (const k of CHAR_KEYS) CHAR_CLIPS[k] = { idle: k + '-idle', sit: k + '-sit' }; // repos des passants quand ils s'arrêtent, assis sur les bancs du parc
 const KID_KEYS = ['enfant', 'garcon-polo', 'garcon-marin', 'fille-jaune'];
-for (const k of KID_KEYS) CHAR_CLIPS[k] = { idle: k + '-idle', sit: k + '-sit', run: k + '-run' }; // les enfants de l'aire de jeux courent
+for (const k of KID_KEYS) CHAR_CLIPS[k] = { idle: k + '-idle', sit: k + '-sit', run: k + '-run' };
+CHAR_CLIPS.enfant.idle = 'femme-lin-idle'; CHAR_CLIPS['garcon-marin'].idle = 'garcon-polo-idle'; // repos calme emprunté (leur « Idle_03 » levait les bras) ; seules les rotations sont reprises // les enfants de l'aire de jeux courent
 const charCache = {}, charLoader = new GLTFLoader();
 function parallelTraverse(a, b, cb) { cb(a, b); for (let i = 0; i < a.children.length; i++) parallelTraverse(a.children[i], b.children[i], cb); }
 function cloneSkinned(source) { // équivalent de SkeletonUtils.clone : chaque clone garde son propre squelette
@@ -1505,7 +1506,7 @@ const loadGLB = url => new Promise(res => charLoader.load(url, g => res(g), unde
 function charEntry(key) {
   return charCache[key] || (charCache[key] = (async () => {
     const g = await loadGLB('models/persos/' + key + '.glb'); if (!g) return null;
-    const clips = { walk: g.animations[0] }; for (const [k, f] of Object.entries(CHAR_CLIPS[key] || {})) { const e = await loadGLB('models/persos/' + f + '.glb'); if (e && e.animations[0]) clips[k] = e.animations[0]; }
+    const clips = { walk: g.animations[0] }; for (const [k, f] of Object.entries(CHAR_CLIPS[key] || {})) { const e = await loadGLB('models/persos/' + f + '.glb'); if (e && e.animations[0]) { const c = e.animations[0]; if (!f.startsWith(key + '-')) c.tracks = c.tracks.filter(t => !/\.position$/.test(t.name)); clips[k] = c; } }
     g.scene.updateMatrixWorld(true); const b = new THREE.Box3().setFromObject(g.scene), h = b.max.y - b.min.y, k = (CHAR_H[key] || 1.8) / h;
     const speeds = {}; for (const c of ['walk', 'run']) if (clips[c]) speeds[c] = clipSpeed(g.scene, clips[c], k, c === 'run' ? 3.5 : 1.3);
     g.scene.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = false; o.frustumCulled = false; if (o.material) o.material.envMapIntensity = 0.6; } });
@@ -1547,6 +1548,27 @@ function makePerson(o) {
   if (o.char) attachChar(person, o.char);
   return person;
 }
+// Bras plus naturels : les clips appliqués sur des personnages reconstruits en pose « A » gardent les bras écartés du corps et
+// les coudes pliés. Après l'animation, on ramène chaque bras vers le corps (dans le plan latéral seulement : le balancement avant-arrière
+// de la marche est conservé) et on déplie un peu les coudes.
+const _rq = new THREE.Quaternion(), _rq2 = new THREE.Quaternion(), _rv = [0, 1, 2, 3, 4, 5].map(() => new THREE.Vector3()), _down = new THREE.Vector3(0, -1, 0);
+function worldRotBone(b, axis, ang) { b.parent.getWorldQuaternion(_rq); _rq2.setFromAxisAngle(axis, ang); b.quaternion.premultiply(_rq.clone().invert().multiply(_rq2).multiply(_rq)); }
+function relaxArms(p, s, abd, elb) {
+  const g = p.glb, m = g.model; if (!m || s <= 0.01) return;
+  const B = g.arms || (g.arms = ['Left', 'Right'].map(sd => [m.getObjectByName(sd + 'Arm'), m.getObjectByName(sd + 'ForeArm'), m.getObjectByName(sd + 'Hand')]).filter(a => a.every(Boolean)));
+  const chest = m.getObjectByName('Spine02') || m.getObjectByName('Spine01'); if (!chest || !B.length) return;
+  p.root.updateMatrixWorld(true);
+  const [pc, pa, pf, ph, lat, ax] = _rv; chest.getWorldPosition(pc);
+  for (const [a, f, h] of B) {
+    a.getWorldPosition(pa); f.getWorldPosition(pf);
+    lat.copy(pa).sub(pc); lat.y = 0; if (lat.lengthSq() < 1e-8) continue; lat.normalize();
+    const u = pf.clone().sub(pa).normalize(), cur = Math.atan2(u.dot(lat), u.dot(_down)); // écart latéral du bras (rad)
+    if (cur > abd) { ax.crossVectors(_down, lat).normalize(); worldRotBone(a, ax, -(cur - abd) * s); a.updateMatrixWorld(true); }
+    f.getWorldPosition(pf); h.getWorldPosition(ph); a.getWorldPosition(pa);
+    const up = pf.clone().sub(pa).normalize(), lo = ph.clone().sub(pf).normalize(), bend = Math.acos(Math.max(-1, Math.min(1, up.dot(lo))));
+    if (bend > elb) { ax.crossVectors(up, lo); if (ax.lengthSq() > 1e-8) { ax.normalize(); worldRotBone(f, ax, -(bend - elb) * s); f.updateMatrixWorld(true); } }
+  }
+}
 function animatePerson(p, phase, amp, st = {}) {
   if (p.glb) { // personnage réel : on choisit le clip et on cale son temps sur la phase de marche (pieds synchrones avec le déplacement)
     const A = p.glb.actions, want = st.sit && A.sit ? 'sit' : (amp > 0.62 && A.run) ? 'run' : amp > 0.05 ? 'walk' : A.idle ? 'idle' : 'walk';
@@ -1559,6 +1581,7 @@ function animatePerson(p, phase, amp, st = {}) {
       if (k === 'walk' || k === 'run') A[k].time = (A[k].time + dt * Math.min(2.5, g.sp / (g.speeds?.[k] || 1.3))) % d; // les pas suivent exactement l'avancée : plus de pieds qui glissent
       else A[k].time = t % d; }
     p.glb.mixer.update(0);
+    if (!st.sit) relaxArms(p, 0.85 * (W.idle || 0) + 0.7 * (W.walk || 0) + 0.4 * (W.run || 0), 0.12, (W.run || 0) > 0.5 ? 1.4 : 0.35); // bras le long du corps
     p.body.position.y = 0; p.body.rotation.x = 0; p.body.rotation.z = 0;
     if (st.swim) { p.body.rotation.x = -1.2; p.body.position.y = -0.5; }
     if (st.down) { p.body.rotation.x = -Math.PI / 2 * st.down; p.body.position.y = 0.25 * st.down; }
@@ -2840,4 +2863,4 @@ applySketch();
 renderer.setAnimationLoop(frame);
 go.disabled = false; go.textContent = 'Jouer';
 
-window.WHQ = { P, doors, lots, act, ROADS, peds, benches, kids, PG, swings, seesaw, merry, propMeshes, PLACE, cars, toggleCar, cam: (y, p, d) => { yaw = y; pitch = p; camDist = d; lastMouse = performance.now() / 1000; } }; // accès de débogage (tests)
+window.WHQ = { P, hero, doors, lots, act, ROADS, peds, benches, kids, PG, swings, seesaw, merry, propMeshes, PLACE, cars, toggleCar, cam: (y, p, d) => { yaw = y; pitch = p; camDist = d; lastMouse = performance.now() / 1000; } }; // accès de débogage (tests)
