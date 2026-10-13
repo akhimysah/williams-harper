@@ -1310,6 +1310,7 @@ function treeLOD(force) { // répartit chaque arbre entre la version détaillée
   for (const [kind, def] of Object.entries(CAR_MODELS)) {
     loader.load(def.url, gltf => {
       compactModel(gltf.scene, def.paint);
+      gltf.scene.traverse(o => { const mt = o.material; if (o.isMesh && mt.transparent && !mt.map && mt.opacity > 0.5) mt.opacity = 0.38; }); // vitres trop sombres (911) : on voit le conducteur
       const tpl = { scene: gltf.scene, paint: def.paint };
       for (const c of cars) if (c.kind === +kind) c.useModel(tpl);
       if (sketch) applySketch();
@@ -1354,7 +1355,7 @@ function attachChar(p, key) {
   charEntry(key).then(e => { if (!e) return; const c = cloneSkinned(e.scene); c.scale.setScalar(e.k); c.position.y = e.y0;
     p.body.children.forEach(ch => { ch.visible = false; }); p.body.add(c);
     const mixer = new THREE.AnimationMixer(c), actions = {}; for (const [k, clip] of Object.entries(e.clips)) { const a = mixer.clipAction(clip); a.play(); a.setEffectiveWeight(0); actions[k] = a; }
-    p.glb = { mixer, actions, w: { walk: 1 }, t0: Math.random() * 20, last: performance.now(), head: c.getObjectByName('Head'), arm: c.getObjectByName('RightForeArm'), uarm: c.getObjectByName('RightArm') }; });
+    p.glb = { mixer, actions, w: { walk: 1 }, t0: Math.random() * 20, last: performance.now(), head: c.getObjectByName('Head'), arm: c.getObjectByName('RightForeArm'), uarm: c.getObjectByName('RightArm'), model: c }; });
 }
 function makePerson(o) {
   const root = new THREE.Group(), body = new THREE.Group(); root.add(body);
@@ -1425,6 +1426,26 @@ for (let i = 0; i < 44; i++) {
   const path = pedPaths[i % pedPaths.length];
   const p = makePerson({ skin: pick(SKIN), hair: pick(HAIR), shirt: pick(SHIRT), pants: pick(PANTS), long: rnd() < 0.4, char: CHAR_KEYS[i % CHAR_KEYS.length] });
   peds.push({ p, path, s: rnd() * path.len, dir: rnd() < 0.5 ? 1 : -1, v: 1.1 + rnd() * 0.5, phase: rnd() * 6, off: 0, offT: 0, y: 0, vy: 0, down: 0, x: 0, z: 0, h: 0, wait: 0, sit: null, sitCd: rnd() * 20, greet: null, greetCd: rnd() * 5, heroCd: 0 });
+}
+
+/* ================= conducteurs ================= */
+// Une personne assise au volant de chaque voiture qui roule (calage par modèle, mains au volant, jambes vers les pédales), et le joueur quand il conduit.
+const DRIVE = { 3: [0.2, 0.38, -0.03, -1.0], 4: [0.15, 0.25, -0.18, -1.5], 5: [0.2, 0.2, 0.4, -1.1], def: [0.3, 0.2, 0.05, -1.0] }; // [vers la gauche, vers l'avant, hauteur, genoux]
+const DRIVER_KEYS = CHAR_KEYS.filter(k => k !== 'enfant'), ejected = [];
+cars.forEach((c, i) => { if (c.ai) c.driver = makePerson({ skin: pick(SKIN), hair: pick(HAIR), shirt: pick(SHIRT), pants: pick(PANTS), char: DRIVER_KEYS[(i * 3) % DRIVER_KEYS.length] }); });
+function seatDriver(p, c) {
+  const [l, f, y, kx] = c.model ? (DRIVE[c.kind] || DRIVE.def) : DRIVE.def, fx = c.fx, fz = c.fz;
+  p.root.position.set(c.x + fz * l + fx * f, y, c.z - fx * l + fz * f); p.root.rotation.set(0, c.h, 0);
+  animatePerson(p, 0, 0, { sit: true, snap: true });
+  const g = p.glb;
+  if (g && g.model) { // bras levés vers le volant (qui suivent un peu la direction), jambes allongées vers les pédales
+    const B = g.drive || (g.drive = ['Left', 'Right'].map(sd => [sd === 'Right' ? -1 : 1, g.model.getObjectByName(sd + 'Arm'), g.model.getObjectByName(sd + 'Leg')]));
+    for (const [sg, arm, leg] of B) { if (arm) { arm.rotateX(0.9); arm.rotateZ(sg * 0.25 + (c.steer || 0) * 0.3); } if (leg) leg.rotateX(kx); }
+  } else { p.legL.rotation.x = p.legR.rotation.x = -1.45; p.armL.rotation.x = p.armR.rotation.x = -1.15; }
+}
+function updateDrivers(dt) {
+  for (const c of cars) { const p = c.driver; if (!p) continue; const show = !!(c.model && c.lod); p.root.visible = show; if (show) seatDriver(p, c); }
+  for (let i = ejected.length - 1; i >= 0; i--) { const e = ejected[i]; e.t -= dt; animatePerson(e.p, 0, 0); if (e.t <= 0) { e.p.root.visible = false; ejected.splice(i, 1); } }
 }
 
 /* ================= enfants de l'aire de jeux ================= */
@@ -2022,7 +2043,9 @@ function toggleCar() {
   if (!nearCar) return;
   wantJump = false;
   const c = nearCar;
-  if (c.ai) { say(pick(['Hé ! Ma voiture !', 'Mais… !', 'Prenez-la, je vais à pied…', 'Faites attention à elle !']), c, 2.4); c.ai = null; }
+  if (c.ai) { const d = c.driver; c.driver = null; c.ai = null;
+    if (d) { d.root.visible = true; d.root.position.set(c.x + c.fz * 1.6, 0.1, c.z - c.fx * 1.6); d.root.rotation.set(0, Math.atan2(-c.fz, c.fx), 0); ejected.push({ p: d, t: 7 }); } // le conducteur descend, reste planté là un moment
+    say(pick(['Hé ! Ma voiture !', 'Mais… !', 'Prenez-la, je vais à pied…', 'Faites attention à elle !']), d ? d.root : c, 2.3); }
   c.setDyn(true); P.car = c; hero.root.visible = false; c.along = c.vx * c.fx + c.vz * c.fz;
   audio.sfx('door');
   yaw = c.h + Math.PI; lastMouse = -10;
@@ -2177,12 +2200,7 @@ function updateDrive(c, dt) {
   if (hit > 2.5) { audio.crash(hit); shake = Math.min(1, hit / 12); }
   c.along = c.vx * nfx + c.vz * nfz;
   for (let i = 0; i < 4; i++) { const w = c.wheels[i]; w.children[0].rotation.x += c.along * dt / 0.37; if (i < 2) w.rotation.y = c.steer; }
-  if (c.kind === 4 && !c.model) { // procedural cabriolet: the driver stays visible (the Sketchfab model has its soft top up)
-    hero.root.visible = true;
-    hero.root.position.set(c.x + c.fz * 0.36 - c.fx * 0.22, -0.02, c.z - c.fx * 0.36 - c.fz * 0.22); hero.root.position.y = c.model ? -0.4 : 0.1; hero.root.rotation.y = c.h;
-    animatePerson(hero, 0, 0, { sit: true, snap: true }); hero.legL.rotation.x = hero.legR.rotation.x = -1.45; hero.armL.rotation.x = hero.armR.rotation.x = -1.15;
-    hero.armL.rotation.z = -0.25; hero.armR.rotation.z = 0.25; hero.body.position.y = 0;
-  }
+  hero.root.visible = true; seatDriver(hero, c); // on voit le joueur au volant (la vue à la première personne le masque plus loin)
   c.tailM.material = brk && c.along > 0.5 ? MAT.brake : MAT.tail;
   c.sync();
   // drift smoke-ish sound
@@ -2422,7 +2440,7 @@ function frame() {
   for (const [ax, s] of [['x', lx], ['z', lz]]) { MAT['tl' + ax + 'r'].color.set(s === 'r' ? '#ff2a1a' : '#3a1210'); MAT['tl' + ax + 'a'].color.set(s === 'a' ? '#ffb31a' : '#3a2a10'); MAT['tl' + ax + 'g'].color.set(s === 'g' ? '#37e07a' : '#10301c'); }
 
   if (started) { if (P.car) updateDrive(P.car, dt); else { updateFoot(dt); audio.update(false, 0, 0, night > 0.5, dt); audio.horn(false); } }
-  updateTraffic(dt, simT);
+  updateTraffic(dt, simT); updateDrivers(dt);
   for (const c of cars) if (c.model) c.setLod(c === P.car || (c.x - camera.position.x) ** 2 + (c.z - camera.position.z) ** 2 < (hq ? 16900 : 6400));
   updatePeds(dt); updateKids(dt); treeLOD();
 
@@ -2638,4 +2656,4 @@ applySketch();
 renderer.setAnimationLoop(frame);
 go.disabled = false; go.textContent = 'Jouer';
 
-window.WHQ = { P, doors, lots, act, peds, benches, kids, PG, swings, seesaw, merry, propMeshes, PLACE, cam: (y, p, d) => { yaw = y; pitch = p; camDist = d; lastMouse = performance.now() / 1000; } }; // accès de débogage (tests)
+window.WHQ = { P, doors, lots, act, peds, benches, kids, PG, swings, seesaw, merry, propMeshes, PLACE, cars, toggleCar, cam: (y, p, d) => { yaw = y; pitch = p; camDist = d; lastMouse = performance.now() / 1000; } }; // accès de débogage (tests)
