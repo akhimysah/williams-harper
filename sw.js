@@ -1,5 +1,5 @@
 // Service worker : mise en cache des pages visitées et des ressources statiques, consultation hors ligne.
-const C='wh-v48';
+const C='wh-v49';
 const CORE=['index.html','styles.css','fx.js','wow.js','wow2.js','config.js','forms.js','img/logo.png','img/logo-dark.png','villa-chloe.html','villa-celine.html','villa-margaux.html'];
 self.addEventListener('install',e=>{e.waitUntil(caches.open(C).then(c=>c.addAll(CORE.map(u=>new Request(u,{cache:'reload'}))).catch(()=>{})).then(()=>self.skipWaiting()))});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==C).map(k=>caches.delete(k)))).then(()=>self.clients.claim()))});

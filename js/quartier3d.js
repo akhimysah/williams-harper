@@ -466,7 +466,8 @@ function villaFrame(key) { // géométrie utile d'un plan : conversion px → m,
   const poly = M.rdc[0], P = poly.pts; let area = 0; for (let i = 0; i < P.length; i++) { const a = P[i], b = P[(i + 1) % P.length]; area += a[0] * b[1] - b[0] * a[1]; }
   const [ei, d0, d1] = poly.door, a = P[ei], b = P[(ei + 1) % P.length], ax = px(a[0]), az = pz(a[1]), bx = px(b[0]), bz = pz(b[1]);
   const ang = Math.atan2(bz - az, bx - ax), inw = area > 0 ? 1 : -1, ox = Math.sin(ang) * inw, oz = -Math.cos(ang) * inw;
-  const door = { x: ax + (bx - ax) * (d0 + d1) / 2, z: az + (bz - az) * (d0 + d1) / 2, ox, oz };
+  let door = { x: ax + (bx - ax) * (d0 + d1) / 2, z: az + (bz - az) * (d0 + d1) / 2, ox, oz };
+  if (key === 'chloe') door = { x: px(455), z: pz(876), ox: -1, oz: 0 }; // vraie entrée de la Chloé (plan du rez-de-chaussée) : façade ouest, à côté du parking ; la piscine est à l'est, donc au fond
   const [q0, q1] = M.plot; const plot = [px(q0[0]), pz(q0[1]), px(q1[0]), pz(q1[1])];
   const houses = M.rdc.map(pl => { const xs = pl.pts.map(p => px(p[0])), zs = pl.pts.map(p => pz(p[1])); return [Math.min(...xs), Math.min(...zs), Math.max(...xs), Math.max(...zs)]; });
   const pp = M.pool.map(([x, y]) => [px(x), pz(y)]), ys = [...new Set(pp.map(p => p[1]))].sort((u, v) => u - v), poolRects = []; // bassin découpé en rectangles
@@ -478,11 +479,7 @@ const VFRAME = {}; for (const k of ['chloe', 'celine', 'margaux']) VFRAME[k] = v
 const VILLA_MIRROR = !new URLSearchParams(location.search).has('sansmiroir'), MX = VILLA_MIRROR ? -1 : 1;
 function villaLot(vname, lx, lz, ry, sc, record, sd = sc) {
   const key = VKEY[vname], F = VFRAME[key];
-  // orientation : parmi les quarts de tour autour de « porte vers la rue », celui qui met la piscine le plus au fond de la parcelle (comme sur le plan de masse)
-  const H0c = F.houses[0], P0c = F.poolRects.reduce((m, r) => [m[0] + (r[0] + r[2]) / 2 / F.poolRects.length, m[1] + (r[1] + r[3]) / 2 / F.poolRects.length], [0, 0]);
-  const pvx = MX * (P0c[0] - (H0c[0] + H0c[2]) / 2), pvz = P0c[1] - (H0c[1] + H0c[3]) / 2, th0 = Math.PI - Math.atan2(MX * F.door.ox, F.door.oz);
-  let th = th0, best = -1e9; for (let q = 0; q < 4; q++) { const t = th0 + q * Math.PI / 2, v = -pvx * Math.sin(t) + pvz * Math.cos(t) - (q ? 0.01 : 0); if (v > best) { best = v; th = t; } }
-  const c = Math.cos(th), sn = Math.sin(th);
+  const th = Math.PI - Math.atan2(MX * F.door.ox, F.door.oz), c = Math.cos(th), sn = Math.sin(th); // porte d'entrée face à la rue ; sur les trois plans, la piscine est à l'opposé, donc au fond du jardin
   const rot = (x, z) => [x * c + z * sn, -x * sn + z * c]; // rotation.y de th
   const corners = [[F.plot[0], F.plot[1]], [F.plot[2], F.plot[1]], [F.plot[2], F.plot[3]], [F.plot[0], F.plot[3]]].map(([x, z]) => rot(MX * x, z));
   const u0 = Math.min(...corners.map(p => p[0])), u1 = Math.max(...corners.map(p => p[0])), v0 = Math.min(...corners.map(p => p[1])), v1 = Math.max(...corners.map(p => p[1]));
