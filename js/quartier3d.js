@@ -521,7 +521,25 @@ function loadVillaGLBs() {
 }
 function lot(lx, front, dir, vname, sc = 1) { return lotAt(lx, front, dir > 0 ? 0 : Math.PI, vname, sc); }
 // a lot with its front line at (lx, lz), facing -local z, rotated by ry, scaled by sc in plan
+function fitLot(lx, lz, ry, sc, sd) { // recule la parcelle derrière le trottoir de sa voie de façade ; la raccourcit si une voie passe derrière, la décale ou la rétrécit si une voie longe son côté
+  const clr = rd => rd.w / 2 + (rd.side ? 2.1 : 0.3) + 0.15;
+  const nx = Math.sin(ry), nz = Math.cos(ry), ux = Math.cos(ry), uz = -Math.sin(ry); // vers l'intérieur de la parcelle (local +z) et en travers (local +x)
+  const par = ROADS.filter(rd => Math.abs(rd.dx * nx + rd.dz * nz) < 0.5), perp = ROADS.filter(rd => !par.includes(rd));
+  const dist = (list, x, z) => { let m = 1e9; for (const rd of list) { const px = x - rd.p0[0], pz = z - rd.p0[1], t = clamp(px * rd.dx + pz * rd.dz, 0, rd.L); m = Math.min(m, Math.hypot(px - rd.dx * t, pz - rd.dz * t) - clr(rd)); } return m; };
+  let pushed = 0;
+  for (let it = 0; it < 120; it++) {
+    const hw = LW / 2 * sc, D = LD * sd, Pt = (u, v) => [lx + ux * u + nx * v, lz + uz * u + nz * v];
+    const front = Math.min(...[-hw, 0, hw].map(u => dist(par, ...Pt(u, 0)))), back = Math.min(...[-hw, 0, hw].map(u => dist(par, ...Pt(u, D))));
+    if (front < -0.05 && pushed < 8) { const st = Math.min(0.5, 0.05 - front); lx += nx * st; lz += nz * st; pushed += st; continue; }
+    if (back < -0.05 && sd > 0.55) { sd -= 0.02; continue; }
+    let worst = 0, wu = 0; for (const u of [-hw, hw]) for (const v of [0, D * 0.5, D]) { const d = dist(perp, ...Pt(u, v)); if (d < worst) { worst = d; wu = u; } }
+    if (worst < -0.05 && sc > 0.55) { const st = Math.min(0.5, 0.05 - worst); sc -= st / LW; lx -= ux * Math.sign(wu) * st / 2; lz -= uz * Math.sign(wu) * st / 2; continue; } // rétrécie du côté de la voie seulement : le bord côté voisine ne bouge pas
+    break;
+  }
+  return [lx, lz, sc, sd];
+}
 function lotAt(lx, lz, ry, vname, sc = 1, sd = sc) { // sd : échelle en profondeur (parcelle moins profonde quand une voie passe derrière)
+  [lx, lz, sc, sd] = fitLot(lx, lz, ry, sc, sd);
   const B = mat4(lx, 0, lz, 0, ry, 0, sc, 1, sd);
   const s = rnd() < 0.5 ? 1 : -1;
   const lb = (k, u0, u1, y0, y1, v0, v1) => box(k, s * u0, s * u1, y0, y1, v0, v1, B);
@@ -777,7 +795,7 @@ for (let k = 0; k < 7; k++) lotPX(1072, 228 + k * 101, 'W', 'Margaux', 0.92); //
 // the southern row and the two lots on the bend, served by the Voie N°5
 for (let k = 0; k < 4; k++) lotPX(490 + k * 107, 1083, 'N', 'Céline', 1.0); // décalée vers l'est : l'accès sud passait sous la première maison
 lotAt(...PX(1030, 990), 0.615, 'Céline', 1.3);
-lotAt(...PX(930, 1075), 0.35, 'Céline', 1.3);
+lotAt(...PX(926, 1077), 0.35, 'Céline', 1.15); // décalée et réduite : elle chevauchait la parcelle voisine du virage
 if (USE_VILLA_GLB) loadVillaGLBs();
 // palms along the big roads' verges and the eastern servitude strip
 for (let x = 140; x < 1240; x += 55) palm(...PX(x, 160), 7 + rnd() * 2, 'washingtonia'); // grandes avenues : palmiers washingtonia, comme à Marrakech
