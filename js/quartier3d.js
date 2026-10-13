@@ -360,7 +360,8 @@ const ROADS = [
   { name: 'Voie N°12', p0: PX(-500, 1375), p1: PX(1800, 1375), w: 20, ai: true, wrap: true },
   { name: "Allée de l'entrée", p0: PX(65, 150), p1: PX(25, 650), w: 10, ai: false, side: true },
   { name: 'Servitude de passage', p0: PX(25, 650), p1: PX(425, 830), w: 10, ai: false, side: true },
-  { name: 'Voie N°4', p0: PX(425, 300), p1: PX(425, 1060), w: 9, ai: true, side: true },
+  { name: 'Voie N°4', p0: PX(425, 300), p1: PX(425, 765), w: 9, ai: false, side: true, end: true }, // fermée au sud : cul-de-sac devant le poste transformateur (plan de masse)
+  { name: 'Voie N°4', p0: PX(425, 830), p1: PX(425, 1060), w: 9, ai: false, side: true }, // la servitude tourne ici à angle droit et descend le long de l'espace commun
   { name: 'Voie N°1', p0: PX(53, 300), p1: PX(1040, 300), w: 10, ai: true, side: true },
   { name: 'Voie N°6', p0: PX(680, 300), p1: PX(680, 1060), w: 10, ai: true, side: true },
   { name: 'Voie N°3', p0: PX(1040, 82), p1: PX(1040, 940), w: 10, ai: true, side: true },
@@ -916,6 +917,14 @@ function guardHouse(px, py, ry) {
   solidR(x, z, 1.2, 2.4, ry, 3.2); solidR(x, z, 3.3, 0.2, ry, 3.2);
 }
 guardHouse(118, 268, 0); guardHouse(393, 1042, Math.PI / 2);
+{ // poste transformateur au bout de la Voie N°4 fermée, sur la bande verte qui la sépare de la servitude de passage
+  const [x, z] = PX(425, 795), M = mat4(x, 0, z), bx = (k, u0, u1, y0, y1, v0, v1) => box(k, u0, u1, y0, y1, v0, v1, M);
+  bx('wall2', -1.9, 1.9, 0, 2.6, -1.4, 1.4); bx('slab2', -2.05, 2.05, 2.6, 2.78, -1.55, 1.55); bx('curb', -2.1, 2.1, 0, 0.18, -1.6, 1.6);
+  for (const u of [-1.1, 0.25]) bx('metal', u, u + 0.85, 0.2, 2.2, -1.43, -1.39); // portes métalliques côté route
+  bx('parasol', -1.6, -1.25, 1.6, 1.95, -1.44, -1.42); // panneau de danger
+  for (const u of [-2.6, 2.6]) bx('fence', u - 0.04, u + 0.04, 0, 1.1, -2.1, 2.1); bx('fence', -2.6, 2.6, 0, 1.1, 2.06, 2.14);
+  solid(x - 2.7, x + 2.7, z - 2.2, z + 2.2, 2.8);
+}
 
 // pines and trees around the site, a few in the unbuilt corners inside
 for (let i = 0; i < 300; i++) {
@@ -1823,7 +1832,7 @@ function applySketch() {
 /* ================= annotations (sketch) ================= */
 const notes = [];
 function note(text, x, y, z) { const el = document.createElement('div'); el.className = 'note'; el.textContent = text; $('notes').appendChild(el); notes.push({ el, p: V(x, y, z) }); }
-{ const N = (t, px, py, y) => { const [x, z] = PX(px, py); note(t, x, y, z); }; N('Espace commun', 545, 955, 3.4); N('Padel', 620, 800, 3.2); N('Coulée verte', 620, 600, 4); N('Guérite 1', 118, 268, 3.6); N('Guérite 2', 393, 1042, 3.6); N('Voie N°16', 600, 82, 3); }
+{ const N = (t, px, py, y) => { const [x, z] = PX(px, py); note(t, x, y, z); }; N('Espace commun', 545, 955, 3.4); N('Poste transformateur', 425, 795, 3.6); N('Padel', 620, 800, 3.2); N('Coulée verte', 620, 600, 4); N('Guérite 1', 118, 268, 3.6); N('Guérite 2', 393, 1042, 3.6); N('Voie N°16', 600, 82, 3); }
 for (const l of lots.filter(l => l.green).filter((_, i) => i % 6 === 0)) note('Toit végétalisé', l.roof.x, 7.4, l.roof.z);
 for (const l of lots.filter((_, i) => i % 7 === 3)) note('Piscine privée', l.pool.x, 1, l.pool.z);
 
