@@ -805,7 +805,7 @@ const bench = (x, z, r) => {
   put('wood', new THREE.BoxGeometry(2.2, 0.5, 0.1).translate(0, 0.8, 0.28), mat4(x, 0, z, 0, r));
 };
 plaza(...PX(620, 490), 5.5, 4);
-for (const [x, y, r] of [[602, 380, 1.57], [638, 600, -1.57], [602, 690, 1.57]]) bench(...PX(x, y), r);
+for (const [x, y, r] of [[604, 452, 1.57], [638, 600, -1.57], [602, 690, 1.57]]) bench(...PX(x, y), r); // le premier sur la pelouse, entre le parking et la placette
 for (let i = 0; i < 26; i++) { const x = 594 + rnd() * 52, y = 330 + rnd() * 520; if (Math.abs(x - 620) < 4 || (y > 440 && y < 540) || y > 750 || y < 435) continue; rnd() < 0.5 ? palm(...PX(x, y), 5 + rnd() * 3) : tree(...PX(x, y), 0.6 + rnd() * 0.4); }
 // padel court: blue surface, glass walls, white lines
 { const [x0, z0, x1, z1] = COURT; box('court', x0, x1, 0, 0.06, z0, z1); box('line', x0 + 0.1, x1 - 0.1, 0.06, 0.08, (z0 + z1) / 2 - 0.05, (z0 + z1) / 2 + 0.05);
@@ -820,8 +820,12 @@ box('deck', ...(() => { const a = PX(520, 988); return [a[0] - 3, a[0] + 3]; })(
 { const a = PX(520, 988); solid(a[0] - 3, a[0] + 3, a[1] - 1.2, a[1] + 1.2, 0.35); }
 plaza(...PX(610, 1010), 6.5, 5);
 ribbon('sand', [[...PX(470, 890)], [...PX(478, 930)], [...PX(500, 1000)], [...PX(560, 1030)], [...PX(600, 1040)]], 2.2, 0.065);
+// allée nord de l'étang : longe les deux bancs face à l'eau et rejoint la terrasse du café (boucle autour de l'étang)
+const NORD_PX = [[476, 904], [512, 914], [550, 917], [585, 918], [603, 927], [609, 950], [606, 983]];
+ribbon('sand', NORD_PX.map(([x, y]) => [...PX(x, y)]), 2.2, 0.067);
 for (const [x, y, r] of [[470, 960, 1.57], [585, 905, 0], [620, 940, -1.57]]) bench(...PX(x, y), r);
-for (let i = 0; i < 12; i++) { const x = 455 + rnd() * 190, y = 885 + rnd() * 160; if (Math.hypot((x - 540) / 70, (y - 955) / 38) < 1 || Math.hypot(x - 610, y - 1010) < 35) continue; rnd() < 0.5 ? palm(...PX(x, y), 5 + rnd() * 3) : tree(...PX(x, y), 0.7 + rnd() * 0.4); }
+const nearNord = (x, y) => NORD_PX.some(([a, b], i) => i && Math.hypot(x - (a + NORD_PX[i - 1][0]) / 2, y - (b + NORD_PX[i - 1][1]) / 2) < 14 || Math.hypot(x - a, y - b) < 12);
+for (let i = 0; i < 12; i++) { const x = 455 + rnd() * 190, y = 885 + rnd() * 160; if (Math.hypot((x - 540) / 70, (y - 955) / 38) < 1 || Math.hypot(x - 610, y - 1010) < 35 || nearNord(x, y)) continue; rnd() < 0.5 ? palm(...PX(x, y), 5 + rnd() * 3) : tree(...PX(x, y), 0.7 + rnd() * 0.4); }
 // parkings: in the strip's north end, north of the Voie N°5 and along the Voie N°4
 function parking(r, along, bays = true) {
   const [x0, z0, x1, z1] = r; box('asphalt', x0, x1, 0, 0.022, z0, z1);
