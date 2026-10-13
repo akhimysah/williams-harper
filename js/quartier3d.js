@@ -477,7 +477,12 @@ const VFRAME = {}; for (const k of ['chloe', 'celine', 'margaux']) VFRAME[k] = v
 // Villas posées en miroir : la porte reste côté rue mais la piscine passe de l'autre côté de la maison, comme sur le plan de masse (?sansmiroir pour l'ancien sens)
 const VILLA_MIRROR = !new URLSearchParams(location.search).has('sansmiroir'), MX = VILLA_MIRROR ? -1 : 1;
 function villaLot(vname, lx, lz, ry, sc, record, sd = sc) {
-  const key = VKEY[vname], F = VFRAME[key], th = Math.PI - Math.atan2(MX * F.door.ox, F.door.oz), c = Math.cos(th), sn = Math.sin(th);
+  const key = VKEY[vname], F = VFRAME[key];
+  // orientation : parmi les quarts de tour autour de « porte vers la rue », celui qui met la piscine le plus au fond de la parcelle (comme sur le plan de masse)
+  const H0c = F.houses[0], P0c = F.poolRects.reduce((m, r) => [m[0] + (r[0] + r[2]) / 2 / F.poolRects.length, m[1] + (r[1] + r[3]) / 2 / F.poolRects.length], [0, 0]);
+  const pvx = MX * (P0c[0] - (H0c[0] + H0c[2]) / 2), pvz = P0c[1] - (H0c[1] + H0c[3]) / 2, th0 = Math.PI - Math.atan2(MX * F.door.ox, F.door.oz);
+  let th = th0, best = -1e9; for (let q = 0; q < 4; q++) { const t = th0 + q * Math.PI / 2, v = -pvx * Math.sin(t) + pvz * Math.cos(t) - (q ? 0.01 : 0); if (v > best) { best = v; th = t; } }
+  const c = Math.cos(th), sn = Math.sin(th);
   const rot = (x, z) => [x * c + z * sn, -x * sn + z * c]; // rotation.y de th
   const corners = [[F.plot[0], F.plot[1]], [F.plot[2], F.plot[1]], [F.plot[2], F.plot[3]], [F.plot[0], F.plot[3]]].map(([x, z]) => rot(MX * x, z));
   const u0 = Math.min(...corners.map(p => p[0])), u1 = Math.max(...corners.map(p => p[0])), v0 = Math.min(...corners.map(p => p[1])), v1 = Math.max(...corners.map(p => p[1]));
