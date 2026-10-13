@@ -1507,14 +1507,24 @@ function charEntry(key) {
     const g = await loadGLB('models/persos/' + key + '.glb'); if (!g) return null;
     const clips = { walk: g.animations[0] }; for (const [k, f] of Object.entries(CHAR_CLIPS[key] || {})) { const e = await loadGLB('models/persos/' + f + '.glb'); if (e && e.animations[0]) clips[k] = e.animations[0]; }
     g.scene.updateMatrixWorld(true); const b = new THREE.Box3().setFromObject(g.scene), h = b.max.y - b.min.y, k = (CHAR_H[key] || 1.8) / h;
+    const speeds = {}; for (const c of ['walk', 'run']) if (clips[c]) speeds[c] = clipSpeed(g.scene, clips[c], k, c === 'run' ? 3.5 : 1.3);
     g.scene.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = false; o.frustumCulled = false; if (o.material) o.material.envMapIntensity = 0.6; } });
-    return { scene: g.scene, clips, k, y0: -b.min.y * k };
+    return { scene: g.scene, clips, k, y0: -b.min.y * k, speeds };
   })()); }
+function clipSpeed(root, clip, k, def) { // vitesse « naturelle » d'un clip de marche ou de course : trajet du pied posé au sol (le plus bas) pendant le clip, en m/s
+  const L = root.getObjectByName('LeftFoot'), R = root.getObjectByName('RightFoot'); if (!L || !R) return def;
+  const mx = new THREE.AnimationMixer(root), a = mx.clipAction(clip); a.play();
+  const N = 90, d = clip.duration, pl = new THREE.Vector3(), pr = new THREE.Vector3(); let prev = null, sum = 0;
+  for (let i = 0; i <= N; i++) { mx.setTime(d * i / N); root.updateMatrixWorld(true); L.getWorldPosition(pl); R.getWorldPosition(pr);
+    const cur = [pl.clone(), pr.clone()]; if (prev) { const f = cur[0].y < cur[1].y ? 0 : 1; sum += Math.hypot(cur[f].x - prev[f].x, cur[f].z - prev[f].z); } prev = cur; }
+  mx.stopAllAction(); mx.uncacheRoot(root); root.traverse(o => { if (o.isBone) o.updateMatrixWorld(true); });
+  const v = sum * k / d; return v > 0.4 && v < 8 ? v : def;
+}
 function attachChar(p, key) {
   charEntry(key).then(e => { if (!e) return; const c = cloneSkinned(e.scene); c.scale.setScalar(e.k); c.position.y = e.y0;
     p.body.children.forEach(ch => { ch.visible = false; }); p.body.add(c);
     const mixer = new THREE.AnimationMixer(c), actions = {}; for (const [k, clip] of Object.entries(e.clips)) { const a = mixer.clipAction(clip); a.play(); a.setEffectiveWeight(0); actions[k] = a; }
-    p.glb = { mixer, actions, w: { walk: 1 }, t0: Math.random() * 20, last: performance.now(), head: c.getObjectByName('Head'), arm: c.getObjectByName('RightForeArm'), uarm: c.getObjectByName('RightArm'), model: c }; });
+    p.glb = { mixer, actions, speeds: e.speeds, sp: 0, lp: null, w: { walk: 1 }, t0: Math.random() * 20, last: performance.now(), head: c.getObjectByName('Head'), arm: c.getObjectByName('RightForeArm'), uarm: c.getObjectByName('RightArm'), model: c }; });
 }
 function makePerson(o) {
   const root = new THREE.Group(), body = new THREE.Group(); root.add(body);
@@ -1541,10 +1551,13 @@ function animatePerson(p, phase, amp, st = {}) {
   if (p.glb) { // personnage réel : on choisit le clip et on cale son temps sur la phase de marche (pieds synchrones avec le déplacement)
     const A = p.glb.actions, want = st.sit && A.sit ? 'sit' : (amp > 0.62 && A.run) ? 'run' : amp > 0.05 ? 'walk' : A.idle ? 'idle' : 'walk';
     const now = performance.now(), dt = Math.min(0.1, (now - p.glb.last) / 1000), W = p.glb.w, f = st.snap ? 1 : Math.min(1, dt * 6); p.glb.last = now;
-    const cyc = (((phase / (Math.PI * 2)) % 1) + 1) % 1, t = now / 1000 + p.glb.t0;
+    const g = p.glb, t = now / 1000 + g.t0, rp = p.root.position; // vitesse réelle du personnage (déplacement depuis l'image précédente), lissée
+    const v = g.lp ? Math.min(12, Math.hypot(rp.x - g.lp.x, rp.z - g.lp.z) / Math.max(dt, 1e-3)) : 0; (g.lp ||= rp.clone()).copy(rp); g.sp += (v - g.sp) * Math.min(1, dt * 8);
     for (const k in A) { // fondu de ~0,3 s entre marche, course et repos ; chaque repos décalé pour que les passants ne bougent pas en chœur
       W[k] = (W[k] || 0) + ((k === want ? 1 : 0) - (W[k] || 0)) * f; A[k].setEffectiveWeight(W[k]);
-      const d = A[k].getClip().duration; A[k].time = k === 'walk' || k === 'run' ? cyc * d : t % d; }
+      const d = A[k].getClip().duration;
+      if (k === 'walk' || k === 'run') A[k].time = (A[k].time + dt * Math.min(2.5, g.sp / (g.speeds?.[k] || 1.3))) % d; // les pas suivent exactement l'avancée : plus de pieds qui glissent
+      else A[k].time = t % d; }
     p.glb.mixer.update(0);
     p.body.position.y = 0; p.body.rotation.x = 0; p.body.rotation.z = 0;
     if (st.swim) { p.body.rotation.x = -1.2; p.body.position.y = -0.5; }
@@ -1626,10 +1639,11 @@ function kidMount(k, group, lp, yaw, pitch = 0) { // place l'enfant dans le rep�
 function kidGo(k, u, v) { // trajet par l'allée centrale
   k.route = Math.abs(k.u) > 1.2 || Math.abs(u) > 1.2 ? [[0, k.v], [0, v], [u, v]] : [[u, v]];
 }
+const KID_SPEED = 0.55; // les enfants courent à la vitesse de leurs animations (~1,3-1,7 m/s), plus au double
 function kidStep(k, dt, sp) { // avance vers le prochain point du trajet ; renvoie true à l'arrivée
   const [tu, tv] = k.route[0] || [k.u, k.v], du = tu - k.u, dv = tv - k.v, d = Math.hypot(du, dv);
   if (d < 0.12) { k.route.shift(); return !k.route.length; }
-  const st = Math.min(d, sp * dt); k.u += du / d * st; k.v += dv / d * st; k.h += wrapA(Math.atan2(du, dv) - k.h) * Math.min(1, dt * 10); k.speed = sp; return false;
+  sp *= KID_SPEED; const st = Math.min(d, sp * dt); k.u += du / d * st; k.v += dv / d * st; k.h += wrapA(Math.atan2(du, dv) - k.h) * Math.min(1, dt * 10); k.speed = sp; return false;
 }
 const KID_CRIS = { swing: ['Plus haut !', 'Wouhou !', 'Pousse-moi !'], slide: ['Attention, j\'arrive !', 'Encore !', 'Wouhou !'], seesaw: ['Hop !', 'À toi !'], merry: ['Plus vite !', 'Ça tourne !'], chase: ['Chat !', 'Attrape-moi !', 'Tu m\'auras pas !'] };
 function kidShout(k, kind) { if (k.shout <= 0 && nearHero({ x: PG.cx + k.u, z: PG.cz + k.v }) && rnd() < 0.5) { say(pick(KID_CRIS[kind]), k.p.root, 1.5); k.shout = 6 + rnd() * 6; } }
@@ -1670,7 +1684,7 @@ function updateKids(dt) {
         if (k.t <= 0) { k.st = 'off'; } if (k.st === 'off' && s.amp < 0.12) { k.p.root.quaternion.identity(); k.u = s.u; k.v = -5.3; kidLeave(k); } } }
     else if (k.act === 'slide') {
       if (k.st === 'go') { if (kidStep(k, dt, 2.6)) { k.st = 'climb'; k.t = 0; k.h = 0; } }
-      else if (k.st === 'climb') { k.t += dt / 1.3; const t = Math.min(1, k.t); k.u = -3.2; k.v = -2.75 + 1.4 * t; y = 0.1 + 1.38 * t; k.speed = 1.1; k.h = 0; if (t >= 1) { k.st = 'top'; k.t = 0.5; } }
+      else if (k.st === 'climb') { k.t += dt / 1.3; const t = Math.min(1, k.t); k.u = -3.2; k.v = -2.75 + 1.4 * t; y = 0.1 + 1.38 * t; k.speed = 0.6; k.h = 0; if (t >= 1) { k.st = 'top'; k.t = 0.5; } }
       else if (k.st === 'top') { y = 1.48; k.v = -1.0; k.t -= dt; if (k.t <= 0) { k.st = 'down'; k.t = 0; kidShout(k, 'slide'); } }
       else if (k.st === 'down') { k.t += dt / 1.1; const t = Math.min(1, k.t * k.t * 0.4 + k.t * 0.6), su = SLIDE_TOP[2] + (SLIDE_END[2] - SLIDE_TOP[2]) * t, sy = SLIDE_TOP[1] + (SLIDE_END[1] - SLIDE_TOP[1]) * t;
         k.seated = true; pitch = SLIDE_ANG; k.u = -3.2; k.v = su + KID_SEAT[0]; y = sy + 0.05 - KID_SEAT[1]; if (k.t >= 1) { k.st = 'land'; k.t = 0.35; } }
@@ -1692,8 +1706,8 @@ function updateKids(dt) {
       if (other && !kids.some(o => o.act === 'chase' && o.it)) k.it = true;
       k.t -= dt; if (k.t <= 0) { k.it = false; kidLeave(k); } }
     if (!mounted) { k.p.root.position.set(PG.cx + k.u, y, PG.cz + k.v); k.p.root.quaternion.setFromEuler(ke.set(pitch, k.h, 0)); }
-    k.phase += dt * k.speed * (k.speed > 1.8 ? 3.2 : 2.6);
-    animatePerson(k.p, k.phase, k.seated ? 0 : k.speed > 1.8 ? 0.8 : k.speed > 0.05 ? 0.5 : 0, { sit: k.seated });
+    k.phase += dt * k.speed * (k.speed > 1.0 ? 3.2 : 2.6);
+    animatePerson(k.p, k.phase, k.seated ? 0 : k.speed > 1.0 ? 0.8 : k.speed > 0.05 ? 0.5 : 0, { sit: k.seated });
   }
 }
 
@@ -2266,7 +2280,7 @@ function updateFoot(dt) {
   const mag = Math.min(1, Math.hypot(f, s));
   const run = press('ShiftLeft') || press('ShiftRight') || runToggle || (joy && mag > 0.95) || vrIn.run;
   const swimming = P.swim;
-  let target = P.down > 0 ? 0 : mag * (swimming ? 2.2 : run ? 7.6 : 3.6);
+  let target = P.down > 0 ? 0 : mag * (swimming ? 2.2 : run ? 6.8 : 2.3); // marche plus posée : les pas suivent l'animation
   P.speed = damp(P.speed, target, 8, dt);
   if (mag > 0.05 && P.down <= 0) {
     const fx = -Math.sin(yaw), fz = -Math.cos(yaw), rx = Math.cos(yaw), rz = -Math.sin(yaw);
@@ -2483,6 +2497,7 @@ function updatePeds(dt) {
       if (ahead > 0) { p.offT = 1.6; p.vy = 4.2; p.off = (p.off > 0 ? -1 : 1) * 2.2; if (rnd() < 0.6) say(pick(['Attention !', 'Doucement !', 'Oh là !', 'Hé !', 'Ralentissez !']), p.p.root); }
     }
     if (pc && hd < 1.6 && sp > 4 && p.down <= 0) { p.down = 2.4; p.vy = 3; say(pick(['Aïe…', 'Mon dos !', 'Ça va, ça va…']), p.p.root); }
+    if (!p.vSet && p.p.glb?.speeds?.walk) { p.v = p.p.glb.speeds.walk * (0.95 + rnd() * 0.15); p.vSet = true; } // allure de chaque passant = celle de son animation
     if (p.wait > 0) { p.wait -= dt; block = true; }
     else if ((!pc || hd > 20) && p.sitCd <= 0 && p.down <= 0 && p.offT <= 0 && p.p.glb?.actions.sit) for (const b of benches) { // un banc libre tout près du chemin : on s'y assoit un moment
       if (!b.who && Math.abs(b.x - p.x) < 5 && Math.abs(b.z - p.z) < 5 && rnd() < dt * (b.mate.who?.sit?.mode === 'sit' ? 0.6 : 0.15)) { b.who = p; p.sit = { b, mode: 'go', rx: p.x, rz: p.z, t: 0 }; break; }
@@ -2497,7 +2512,7 @@ function updatePeds(dt) {
     p.vy -= 16 * dt; p.y = Math.max(0, p.y + p.vy * dt); if (p.y === 0) p.vy = 0;
     const nx = -tz, nz = tx;
     p.x = x + nx * p.off; p.z = z + nz * p.off;
-    if (!block && p.down <= 0) p.h = Math.atan2(tx * p.dir, tz * p.dir);
+    if (!block && p.down <= 0) p.h += wrapA(Math.atan2(tx * p.dir, tz * p.dir) - p.h) * Math.min(1, dt * 7); // demi-tour en douceur
     const moving = !block && p.down <= 0;
     p.phase += dt * (moving ? p.v * 2.1 : 0);
     // cheap culling of the animation for far peds
