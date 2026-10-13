@@ -7,3 +7,4 @@ js/vendor/jsm — three.js r160 examples (post-processing, RGBELoader), licence 
 models/props — Poly Haven 3D models (https://polyhaven.com), licence CC0: island_tree_02, tree_small_02, fir_sapling_medium, shrub_01, shrub_04.
   Leaf clusters converted to cards and branches decimated with Blender for real-time use.
 pavers_c/n/r.webp — pavés autobloquants en H générés pour le site (site-src/gen_paves.py), pas de licence tierce.
+models/cullinan.glb, urus.glb, svj.glb — générées pour le site (photo GPT Image puis Higgsfield image→3D, préparées par site-src/blender/prep_voiture.py).
