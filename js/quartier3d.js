@@ -499,7 +499,7 @@ const VMAT = (() => {
     water: new THREE.MeshStandardMaterial({ color: '#2cb0c8', roughness: 0.03, metalness: 0.2, emissive: '#0a4d5c', emissiveIntensity: 0.4, transparent: true, opacity: 0.72, depthWrite: false }),
     sofa: std({ color: '#efe9de', roughness: 0.9 }),
   };
-  ['chloe-v04-sejour', 'margaux-v06-bibliotheque', 'celine-v04-salon', 'margaux-v04-salon', 'chloe-v05-cuisine', 'celine-v06-salon-soiree', 'margaux-v09-hall', 'chloe-v06-suite'].forEach((n, i) => { M['int' + i] = photo(n); });
+  ['photo-06', 'margaux-v06-bibliotheque', 'celine-v04-salon', 'margaux-v04-salon', 'photo-07', 'celine-v06-salon-soiree', 'margaux-v09-hall', 'photo-01'].forEach((n, i) => { M['int' + i] = photo(n); });
   return M;
 })();
 const VUV = { trav: 1 / 2.4, deck: 1 / 2, nero: 1 / 2, teak: 1 / 1.4, soffit: 1 / 1.5, roofL: 1 / 3, roofD: 1 / 2.5, mosaic: 1 / 0.9 }; // mètres par carreau de texture
