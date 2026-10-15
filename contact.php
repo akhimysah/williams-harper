@@ -54,8 +54,8 @@ if (!is_writable(dirname($log))) { $log = __DIR__ . '/.wh-demandes.log'; }
 // Accusé de réception au visiteur.
 if ($ok) {
   $ack = $lang === 'en'
-    ? "Thank you, $name.\n\nWe have received your request regarding $villa and will come back to you within two working days.\n\nWilliams & Harper\n+212 6 17 17 47 78 · contact@williamsharper.com\nDomaine Red Stone, Marrakech"
-    : "Merci, $name.\n\nNous avons bien reçu votre demande concernant $villa et vous répondrons sous 48 h ouvrées.\n\nWilliams & Harper\n+212 6 17 17 47 78 · contact@williamsharper.com\nDomaine Red Stone, Marrakech";
+    ? "Thank you, $name.\n\nWe have received your request regarding $villa and will come back to you within two working days.\n\nWilliams & Harper\n+212 6 34 04 89 77 · contact@williamsharper.com\nDomaine Red Stone, Marrakech"
+    : "Merci, $name.\n\nNous avons bien reçu votre demande concernant $villa et vous répondrons sous 48 h ouvrées.\n\nWilliams & Harper\n+212 6 34 04 89 77 · contact@williamsharper.com\nDomaine Red Stone, Marrakech";
   $ackSubject = '=?UTF-8?B?' . base64_encode($lang === 'en' ? 'Your request — Williams & Harper' : 'Votre demande — Williams & Harper') . '?=';
   @mail($email, $ackSubject, $ack, "From: Williams & Harper <$FROM>\r\nReply-To: $TO\r\nMIME-Version: 1.0\r\nContent-Type: text/plain; charset=UTF-8\r\n", "-f$FROM");
 }

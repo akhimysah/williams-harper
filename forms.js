@@ -30,7 +30,7 @@
       toast.hidden=false;toast.classList.remove('err');form.reset();
     }catch(e){
       toast.hidden=false;toast.classList.add('err');
-      toast.textContent=t("L'envoi a échoué. Appelez le +212 6 17 17 47 78 ou écrivez à "+cfg.email+'.','Sending failed. Please call +212 6 17 17 47 78 or write to '+cfg.email+'.');
+      toast.textContent=t("L'envoi a échoué. Appelez le +212 6 34 04 89 77 ou écrivez à "+cfg.email+'.','Sending failed. Please call +212 6 34 04 89 77 or write to '+cfg.email+'.');
     }finally{btn.disabled=false;btn.textContent=label}
   }
   document.querySelectorAll('form[data-wh]').forEach(f=>{
