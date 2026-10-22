@@ -10,7 +10,7 @@ import json, re, shutil, sys, pathlib, zipfile, html
 
 HERE = pathlib.Path(__file__).resolve().parent
 REPO = HERE.parent
-VERSION = "wh-base-2026-10-22e"
+VERSION = "wh-base-2026-10-22g"
 LANGS = ["fr", "en", "nl", "ar"]
 
 # Photos ajoutées (vraies vues de Chloé, film du domaine) — copiées depuis le site GitHub Pages.
@@ -21,8 +21,13 @@ EXTRA_ASSETS = {
     "chloe-salons.jpg": REPO / "img/photo-07.jpg",
     "domaine-film-720.mp4": REPO / "media/film-720.mp4",
     "domaine-film-poster.jpg": REPO / "media/film-poster.jpg",
+    # version verticale pour téléphone (site-src/build_film_mobile.py)
+    "domaine-film-mobile.mp4": REPO / "media/film-mobile-720.mp4",
+    "domaine-film-mobile-poster.jpg": REPO / "media/film-mobile-poster.jpg",
     "bois-nobles-palette.webp": HERE / "assets/bois-nobles-palette.webp",
 }
+# Écran de téléphone en portrait : film vertical du domaine.
+MOBILE_FILM_MQ = "(max-width: 860px) and (orientation: portrait)"
 # Photos de l'autre villa (écartées) remplacées dans la galerie Chloé.
 PHOTO_SWAPS = {
     "chloe-6-photo.webp": "chloe-jardin-instants.jpg",
@@ -215,7 +220,9 @@ def transform_body(body, lang, page, home_href):
         hero = re.search(r'<section class="domain" id="domaine">(.*?)</section>', main, flags=re.S)
         content = hero.group(1).replace('class="button"', 'class="btn btn--light"')
         new = (f'<section class="wh-hero wh-hero--domaine" id="domaine"><div class="wh-hero__media">'
-               f'<video autoplay muted loop playsinline preload="metadata" poster="/assets/domaine-film-poster.jpg?v={VERSION}" aria-hidden="true"><source src="/assets/domaine-film-720.mp4?v={VERSION}" type="video/mp4"></video></div>'
+               f'<video autoplay muted loop playsinline preload="metadata" poster="/assets/domaine-film-poster.jpg?v={VERSION}" data-poster-mobile="/assets/domaine-film-mobile-poster.jpg?v={VERSION}" aria-hidden="true">'
+               f'<source src="/assets/domaine-film-mobile.mp4?v={VERSION}" type="video/mp4" media="{MOBILE_FILM_MQ}">'
+               f'<source src="/assets/domaine-film-720.mp4?v={VERSION}" type="video/mp4"></video></div>'
                f'<div class="wrap"><div class="wh-hero__copy">{content}</div></div></section>')
         main = main.replace(hero.group(0), new)
     elif page == "art":
