@@ -10,7 +10,7 @@ import json, re, shutil, sys, pathlib, zipfile, html
 
 HERE = pathlib.Path(__file__).resolve().parent
 REPO = HERE.parent
-VERSION = "wh-base-2026-10-22b"
+VERSION = "wh-base-2026-10-22c"
 LANGS = ["fr", "en", "nl", "ar"]
 
 # Photos ajoutées (vraies vues de Chloé, film du domaine) — copiées depuis le site GitHub Pages.
@@ -140,6 +140,8 @@ def transform_head(head, lang, page):
 
 
 def transform_body(body, lang, page, home_href):
+    # Petites mentions en Arial (style en ligne) alignées sur les autres mentions de la charte
+    body = body.replace('<p style="font:11px/1.7 Arial,sans-serif;color:#697168">', '<p class="fine">')
     old_header = re.search(r'<header\b.*?</header>', body, flags=re.S).group(0)
     old_footer = re.search(r'<footer\b.*?</footer>', body, flags=re.S).group(0)
     main_m = re.search(r'(<main\b[^>]*>)(.*)(</main>)', body, flags=re.S)
