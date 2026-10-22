@@ -215,6 +215,15 @@ def transform_body(body, lang, page, home_href):
         i = j
     main = "".join(out)
 
+    # --- accueil : la carte Localisation passe avant « La vie au domaine » ---
+    if page == "index":
+        def swap(m):
+            cards = re.findall(r'<a href="[^"]*" class="home-domain-card">.*?</a>', m.group(2), flags=re.S)
+            if len(cards) == 3:
+                return m.group(1) + cards[0] + cards[2] + cards[1] + m.group(3)
+            return m.group(0)
+        main = re.sub(r'(<div class="home-domain-grid">)(.*?)(</div>)', swap, main, count=1, flags=re.S)
+
     # --- carte de localisation : recadrage sur la carte seule (sans bandeau ni panneau de brochure) ---
     if page == "index":
         main = re.sub(r'(<a href="[^"]*" class="home-domain-card">)(<img [^>]*domaine-localisation[^>]*>)', r'\1<span class="wh-map-crop">\2</span>', main)
