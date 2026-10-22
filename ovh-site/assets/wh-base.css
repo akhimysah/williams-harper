@@ -632,3 +632,9 @@ html[dir=rtl] .company-logo{margin-inline:0 auto}
 .wh-vision__links{display:flex;flex-wrap:wrap;justify-content:center;gap:1rem 3rem;margin-top:clamp(2rem,3.5vw,3rem)}
 .wh-vision .wh-visual-notice{text-align:center;margin-inline:auto}
 @media (max-width:860px){.wh-vision__grid{grid-template-columns:1fr}}
+
+/* Jardins & paysages : texte et citation à gauche, planche à droite alignée en haut */
+.landscape-chapter{align-items:start}
+.landscape-chapter>.park-highlight{grid-column:1;margin-top:1.4rem}
+.landscape-chapter>figure{grid-column:2;grid-row:1/span 2;margin:0}
+@media (max-width:860px){.landscape-chapter>.park-highlight,.landscape-chapter>figure{grid-column:1;grid-row:auto}}
