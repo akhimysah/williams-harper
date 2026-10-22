@@ -533,15 +533,15 @@ dialog#detail .close{color:var(--ink)}
 .wh-footer__legal .wh-footer-notice{display:block;margin:.2rem 0}
 @media (max-width:860px){.wh-footer .wrap{grid-template-columns:1fr;gap:2.4rem}}
 
-/* ===== Conseiller (widget) — harmonisation ===== */
-html body .wh-launch{font:400 .6rem/1.3 var(--body);letter-spacing:.26em;text-transform:uppercase;background:var(--green);border:1px solid rgba(230,189,104,.55);color:#f3eee2;border-radius:0;box-shadow:0 12px 32px rgba(14,43,36,.22);padding:0 1.25rem 0 .6rem;gap:.75rem;min-height:0;height:52px;right:28px;bottom:calc(28px + env(safe-area-inset-bottom));max-width:none;transition:background .35s,border-color .35s,transform .35s}
-html body .wh-launch:hover{background:var(--green-deep);border-color:var(--gold);transform:translateY(-2px)}
-html body .wh-launch>span:last-child{font:inherit;letter-spacing:inherit;text-transform:inherit;line-height:1.3}
-html body .wh-launch .wh-seal{flex:0 0 36px;width:36px;min-width:36px;height:36px;border:0;background:transparent;border-radius:0;font:inherit;padding:0}
+/* ===== Conseiller (widget) — pastille ivoire discrète ===== */
+html body .wh-launch{font:400 .58rem/1.3 var(--body);letter-spacing:.26em;text-transform:uppercase;background:rgba(247,245,240,.94);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border:1px solid var(--champagne);color:var(--ink);border-radius:999px;box-shadow:0 10px 28px rgba(21,19,15,.12);padding:0 1.2rem 0 .45rem;gap:.7rem;min-height:0;height:48px;right:28px;bottom:calc(28px + env(safe-area-inset-bottom));max-width:none;transition:background .35s,border-color .35s,box-shadow .35s,transform .35s}
+html body .wh-launch:hover{background:#fff;border-color:var(--champagne-deep);box-shadow:0 14px 32px rgba(21,19,15,.16);transform:translateY(-2px)}
+html body .wh-launch>span:last-child{font:inherit;letter-spacing:inherit;text-transform:inherit;line-height:1.3;color:var(--ink)}
+html body .wh-launch .wh-seal{flex:0 0 38px;width:38px;min-width:38px;height:38px;border:0;background:transparent;border-radius:0;font:inherit;padding:2px;object-fit:contain}
 html body .wh-launch .wh-seal:after{display:none}
-@media (max-width:600px){html body .wh-launch{right:16px;bottom:calc(16px + env(safe-area-inset-bottom));height:46px;padding:0 1rem 0 .5rem;gap:.55rem;font-size:.56rem}html body .wh-launch .wh-seal{flex-basis:30px;width:30px;min-width:30px;height:30px}}
-html[dir=rtl] body .wh-launch{right:auto;left:28px;padding:0 .6rem 0 1.25rem}
-@media (max-width:600px){html[dir=rtl] body .wh-launch{left:16px;padding:0 .5rem 0 1rem}}
+@media (max-width:600px){html body .wh-launch{right:16px;bottom:calc(16px + env(safe-area-inset-bottom));height:44px;padding:0 1rem 0 .4rem;gap:.5rem;font-size:.54rem}html body .wh-launch .wh-seal{flex-basis:32px;width:32px;min-width:32px;height:32px}}
+html[dir=rtl] body .wh-launch{right:auto;left:28px;padding:0 .45rem 0 1.2rem}
+@media (max-width:600px){html[dir=rtl] body .wh-launch{left:16px;padding:0 .4rem 0 1rem}}
 .wh-dialog{border-radius:0;font-family:var(--body);border-color:var(--line-strong)}
 .wh-head{background:var(--green)}
 .wh-head h2,.wh-body h3{font-family:var(--display);font-weight:300}

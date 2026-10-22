@@ -234,6 +234,7 @@ def transform_body(body, lang, page, home_href):
     # url() dans une variable CSS inline : chemin absolu (sinon résolu depuis la feuille de style)
     body = body.replace("url('assets/", "url('/assets/").replace("url('../assets/", "url('/assets/")
     body = re.sub(r'(\["|", ")(?:\.\./)?assets/(chloe-2-photo\.webp|celine-exterieur-1-photo\.webp|margaux-exterieur-1\.jpeg)', r'\1/assets/\2', body)
+    body = re.sub(r'concierge\.js\?v=[^"]*', 'concierge.js?v=' + VERSION, body)
     if photo_hero:
         body = re.sub(r'<body(?: class="([^"]*)")?>', lambda k: f'<body class="{(k.group(1) + " ") if k.group(1) else ""}wh-photo-hero">', body, count=1)
     return body
@@ -260,6 +261,9 @@ def main():
     shutil.copytree(src / "www", out / "www", ignore=shutil.ignore_patterns(".*.pdf.*"))
     for name, path in EXTRA_ASSETS.items():
         shutil.copy2(path, out / "www/assets" / name)
+    # Écusson vert (fond ivoire) pour le bouton du conseiller
+    cj = out / "www/assets/concierge.js"
+    cj.write_text(cj.read_text().replace("el('img','wh-seal',''),{src:'/assets/logo-definitif-ecusson-clair.svg'", "el('img','wh-seal',''),{src:'/assets/logo-definitif-ecusson-fonce.svg'"))
     shutil.copy2(HERE / "assets/wh-base.css", out / "www/assets/wh-base.css")
     shutil.copy2(HERE / "assets/wh-base.js", out / "www/assets/wh-base.js")
     for c in OLD_CSS:
