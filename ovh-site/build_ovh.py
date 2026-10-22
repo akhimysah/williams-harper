@@ -21,7 +21,7 @@ EXTRA_ASSETS = {
     "chloe-salons.jpg": REPO / "img/photo-07.jpg",
     "domaine-film-720.mp4": REPO / "media/film-720.mp4",
     "domaine-film-poster.jpg": REPO / "media/film-poster.jpg",
-    # version verticale pour téléphone (site-src/build_film_mobile.py)
+    # version verticale pour téléphone (ovh-site/build_film_mobile.py)
     "domaine-film-mobile.mp4": REPO / "media/film-mobile-720.mp4",
     "domaine-film-mobile-poster.jpg": REPO / "media/film-mobile-poster.jpg",
     "bois-nobles-palette.webp": HERE / "assets/bois-nobles-palette.webp",

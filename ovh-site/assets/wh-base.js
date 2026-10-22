@@ -29,3 +29,12 @@
     setTimeout(function(){pending.forEach(function(el){el.classList.add('in');});pending=[];},2500);
   }
 })();
+/* Film du domaine : version verticale sur téléphone (affiche assortie), jamais sur ordinateur même si le navigateur ignore source[media]. */
+(function(){
+  var v=document.querySelector('video[data-poster-mobile]');if(!v)return;
+  var s=v.querySelector('source[media]');if(!s)return;
+  if(window.matchMedia(s.getAttribute('media')).matches){v.poster=v.getAttribute('data-poster-mobile');return;}
+  var picked=v.currentSrc&&v.currentSrc.indexOf('film-mobile')>-1;
+  s.parentNode.removeChild(s);
+  if(picked){v.load();var p=v.play();if(p&&p.catch)p.catch(function(){});}
+})();
