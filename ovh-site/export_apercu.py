@@ -79,7 +79,7 @@ for lang, pages in paths.items():
         out.parent.mkdir(parents=True, exist_ok=True)
         out.write_text(html)
         n += 1
-        for a in re.findall(r'assets/([A-Za-z0-9_\-\.%]+)', html):
+        for a in re.findall(r'assets/([A-Za-z0-9_\-\./%]+)', html):
             needed.add(urllib.parse.unquote(a))
 
 # fichiers référencés par le CSS / JS
@@ -87,7 +87,7 @@ for extra in ("wh-base.css", "concierge.css", "concierge.js", "concierge-knowled
     f = SRC / "www/assets" / extra
     if f.exists():
         needed.add(extra)
-        for a in re.findall(r'assets/([A-Za-z0-9_\-\.%]+)', f.read_text(errors="ignore")):
+        for a in re.findall(r'assets/([A-Za-z0-9_\-\./%]+)', f.read_text(errors="ignore")):
             needed.add(urllib.parse.unquote(a))
         for a in re.findall(r'url\((["\']?)(?!data:|http)([^)"\']+)', f.read_text(errors="ignore")):
             needed.add(pathlib.Path(a[1]).name)
@@ -101,6 +101,7 @@ copied = skipped = 0
 for name in sorted(needed):
     f = SRC / "www/assets" / name
     if f.exists() and f.is_file():
+        (OUT / "assets" / name).parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(f, OUT / "assets" / name); copied += 1
     else:
         skipped += 1
