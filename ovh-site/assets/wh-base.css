@@ -44,6 +44,7 @@ table{border-collapse:collapse;width:100%}
 .wh-visual-notice,.residents-note,.comfort-note,.purchase-note,.brochure-note,.fine,.plan-zoom-hint,.estate-map-caption,.wh-film-note{font-size:.72rem;line-height:1.6;color:var(--muted);letter-spacing:.02em;max-width:none}
 main section>p.wh-visual-notice,main section>p.residents-note,main section>p.comfort-note,main section>p.purchase-note,main section>p.brochure-note,main section>p.fine,main section>p.plan-zoom-hint,main section>p.estate-map-caption,main section>p.wh-film-note{max-width:none}
 main>section .wh-visual-notice,main section>.wh-visual-notice,main div>.wh-visual-notice{margin-top:1.2rem;max-width:none}
+main figure+.wh-visual-notice,main .wh-figures+p+.wh-visual-notice{margin-top:.5rem}
 
 /* ===== En-tête ===== */
 .wh-header{position:fixed;inset:env(safe-area-inset-top,0px) 0 auto 0;z-index:60;height:var(--header);display:flex;align-items:center;color:var(--ink);background:rgba(247,245,240,.92);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-bottom:1px solid var(--line);transition:background .5s,color .5s,border-color .5s,transform .45s}

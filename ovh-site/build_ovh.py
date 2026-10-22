@@ -10,7 +10,7 @@ import json, re, shutil, sys, pathlib, zipfile, html
 
 HERE = pathlib.Path(__file__).resolve().parent
 REPO = HERE.parent
-VERSION = "wh-base-2026-10-22c"
+VERSION = "wh-base-2026-10-22d"
 LANGS = ["fr", "en", "nl", "ar"]
 
 # Photos ajoutées (vraies vues de Chloé, film du domaine) — copiées depuis le site GitHub Pages.
@@ -139,9 +139,29 @@ def transform_head(head, lang, page):
     return head.replace('</head>', add + '</head>')
 
 
+SMALL_NOTES = "fine|estate-map-caption|plan-zoom-hint|comfort-note|residents-note|brochure-note|purchase-note|wh-film-note|wh-visual-notice"
+_PAIR = re.compile(r'<p class="(' + SMALL_NOTES + r')">(.*?)</p>\s*<p class="wh-visual-notice">(.*?)</p>', re.S)
+
+
+def merge_small_notes(body):
+    """Une petite note suivie de la mention « visuels non contractuels » : les deux sur la même ligne,
+    en un seul paragraphe (« note · mention ») ; deux mentions identiques qui se suivent n'en font qu'une."""
+    def repl(m):
+        cls, a, b = m.group(1), m.group(2).strip(), m.group(3).strip()
+        if a == b:
+            return f'<p class="wh-visual-notice">{a}</p>'
+        cls = cls if cls == "wh-visual-notice" else cls + " wh-visual-notice"
+        return f'<p class="{cls}">{a} · {b}</p>'
+    prev = None
+    while prev != body:
+        prev, body = body, _PAIR.sub(repl, body)
+    return body
+
+
 def transform_body(body, lang, page, home_href):
     # Petites mentions en Arial (style en ligne) alignées sur les autres mentions de la charte
     body = body.replace('<p style="font:11px/1.7 Arial,sans-serif;color:#697168">', '<p class="fine">')
+    body = merge_small_notes(body)
     old_header = re.search(r'<header\b.*?</header>', body, flags=re.S).group(0)
     old_footer = re.search(r'<footer\b.*?</footer>', body, flags=re.S).group(0)
     main_m = re.search(r'(<main\b[^>]*>)(.*)(</main>)', body, flags=re.S)
