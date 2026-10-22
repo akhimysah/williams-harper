@@ -59,6 +59,11 @@ for lang, pages in paths.items():
         depth = rel.count("/")
         html = rewrite(src.read_text(), depth)
         html = html.replace('<a href="#villas"', '<a href="#collection"') if page == "index" else html
+        # titre d'onglet : en production il est injecté par le PHP (<!--WH_SEO_HEAD-->)
+        h = re.search(r'<h1[^>]*>(.*?)</h1>', html, flags=re.S)
+        titre = re.sub(r'<[^>]+>', ' ', h.group(1)).strip() if h else page
+        titre = re.sub(r'\s+', ' ', titre)
+        html = html.replace('<!--WH_SEO_HEAD-->', f'<title>{titre} · Williams &amp; Harper</title><meta name="robots" content="noindex">', 1)
         out = OUT / rel
         out.parent.mkdir(parents=True, exist_ok=True)
         out.write_text(html)
@@ -84,6 +89,12 @@ for name in sorted(needed):
         shutil.copy2(f, OUT / "assets" / name); copied += 1
     else:
         skipped += 1
+# le bouton du conseiller (JS) charge son écusson à la racine : chemin recalculé depuis l'adresse de la page
+cj = OUT / "assets/concierge.js"
+if cj.exists():
+    js = cj.read_text()
+    js = js.replace("'/assets/logo-definitif-ecusson-fonce.svg'", "(location.pathname.replace(/\\/(en|nl|ar)\\/[^/]*$|\\/[^/]*$/, '/') + 'assets/logo-definitif-ecusson-fonce.svg')")
+    cj.write_text(js)
 (OUT / ".nojekyll").write_text("")
 size = sum(p.stat().st_size for p in OUT.rglob("*") if p.is_file()) // 1_000_000
 print(f"{n} pages, {copied} fichiers copiés ({skipped} référencés introuvables), {size} Mo dans {OUT}")
