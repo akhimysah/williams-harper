@@ -10,7 +10,7 @@ import json, re, shutil, sys, pathlib, zipfile, html
 
 HERE = pathlib.Path(__file__).resolve().parent
 REPO = HERE.parent
-VERSION = "wh-base-2026-10-22d"
+VERSION = "wh-base-2026-10-22e"
 LANGS = ["fr", "en", "nl", "ar"]
 
 # Photos ajoutées (vraies vues de Chloé, film du domaine) — copiées depuis le site GitHub Pages.
@@ -21,6 +21,7 @@ EXTRA_ASSETS = {
     "chloe-salons.jpg": REPO / "img/photo-07.jpg",
     "domaine-film-720.mp4": REPO / "media/film-720.mp4",
     "domaine-film-poster.jpg": REPO / "media/film-poster.jpg",
+    "bois-nobles-palette.webp": HERE / "assets/bois-nobles-palette.webp",
 }
 # Photos de l'autre villa (écartées) remplacées dans la galerie Chloé.
 PHOTO_SWAPS = {
@@ -158,6 +159,27 @@ def merge_small_notes(body):
     return body
 
 
+WOOD_BOARD = {
+    "fr": ("Bois nobles, élégance naturelle · Agrandir la planche", "Bois nobles, élégance naturelle : chêne naturel mat, chêne fumé, noyer brun, teck naturel · Williams &amp; Harper"),
+    "en": ("Fine woods, natural elegance · Enlarge the board", "Fine woods, natural elegance: matt natural oak, smoked oak, brown walnut, natural teak · Williams &amp; Harper"),
+    "nl": ("Edele houtsoorten, natuurlijke elegantie · Vergroot het overzicht", "Edele houtsoorten, natuurlijke elegantie: mat naturel eiken, gerookt eiken, bruin notenhout, naturel teak · Williams &amp; Harper"),
+    "ar": ("أخشاب نبيلة، أناقة طبيعية · تكبير اللوحة", "أخشاب نبيلة، أناقة طبيعية: بلوط طبيعي مطفي، بلوط مدخّن، جوز بني، ساج طبيعي · Williams &amp; Harper"),
+}
+
+
+def insert_wood_board(main, lang):
+    """Page Matières : la planche « Bois nobles » prend place entre la palette des matières et « Bois massif & nuances »."""
+    m = re.search(r'<figure id="collection-bois">.*?src="([^"]*?)collection-bois\.webp"', main, flags=re.S)
+    if not m or 'id="bois-nobles"' in main:
+        return main
+    prefix = m.group(1)
+    cap, alt = WOOD_BOARD[lang]
+    fig = (f'<figure id="bois-nobles"><a aria-label="{cap}" href="{prefix}bois-nobles-palette.webp?v={VERSION}" rel="noopener" target="_blank">'
+           f'<img alt="{alt}" loading="lazy" src="{prefix}bois-nobles-palette.webp?v={VERSION}" width="1600" height="800" decoding="async"></a>'
+           f'<figcaption>{cap}</figcaption></figure>')
+    return main.replace('<figure id="collection-bois">', fig + '<figure id="collection-bois">', 1)
+
+
 def transform_body(body, lang, page, home_href):
     # Petites mentions en Arial (style en ligne) alignées sur les autres mentions de la charte
     body = body.replace('<p style="font:11px/1.7 Arial,sans-serif;color:#697168">', '<p class="fine">')
@@ -200,6 +222,7 @@ def transform_body(body, lang, page, home_href):
         main = main.replace('<section class="art-opening">', '<section class="art-opening wh-hero--text">', 1)
     elif page == "matieres-finitions":
         main = main.replace('<div class="materials-intro">', '<div class="materials-intro wh-hero--text">', 1)
+        main = insert_wood_board(main, lang)
     elif page == "reservation":
         main = main.replace('<div class="reservation-intro">', '<div class="reservation-intro wh-hero--text">', 1)
     elif page == "faq":
