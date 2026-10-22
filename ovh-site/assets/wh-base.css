@@ -42,7 +42,7 @@ table{border-collapse:collapse;width:100%}
 .btn--light{color:#fff;border-color:rgba(255,255,255,.8)}
 .btn--light:hover{background:#fff;color:var(--ink);border-color:#fff}
 .wh-visual-notice,.residents-note,.comfort-note,.purchase-note,.brochure-note,.fine,.plan-zoom-hint,.estate-map-caption,.wh-film-note{font-size:.72rem;line-height:1.6;color:var(--muted);letter-spacing:.02em}
-main>section .wh-visual-notice,main section>.wh-visual-notice,main div>.wh-visual-notice{margin-top:1.6rem;max-width:60ch}
+main>section .wh-visual-notice,main section>.wh-visual-notice,main div>.wh-visual-notice{margin-top:1.2rem;max-width:60ch}
 
 /* ===== En-tête ===== */
 .wh-header{position:fixed;inset:env(safe-area-inset-top,0px) 0 auto 0;z-index:60;height:var(--header);display:flex;align-items:center;color:var(--ink);background:rgba(247,245,240,.92);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-bottom:1px solid var(--line);transition:background .5s,color .5s,border-color .5s,transform .45s}
@@ -124,7 +124,7 @@ html[dir=rtl] .wh-scrollcue{right:auto;left:var(--gutter)}
 @media (max-width:860px){.company-hero>.wrap{grid-template-columns:1fr}}
 
 /* ===== Sections génériques ===== */
-main>section,main>div>section,main>article,.art-chapters>section,.lifestyle>section,.residents-group .rental-local{padding-block:clamp(4rem,9vw,8rem)}
+main>section,main>div>section,main>article,.art-chapters>section,.lifestyle>section,.residents-group .rental-local{padding-block:clamp(3.5rem,6.5vw,5.5rem)}
 main>section>.eyebrow:first-child+h2,main section .eyebrow+h2,main section .eyebrow+h1,main section .eyebrow+h3{margin-bottom:1.3rem}
 main section>h2+p,main section>div>h2+p{color:var(--muted);max-width:60ch}
 main section>p{max-width:60ch;color:var(--muted)}
