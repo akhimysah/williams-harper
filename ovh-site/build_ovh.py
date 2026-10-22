@@ -10,7 +10,7 @@ import json, re, shutil, sys, pathlib, zipfile, html
 
 HERE = pathlib.Path(__file__).resolve().parent
 REPO = HERE.parent
-VERSION = "wh-base-2026-10-22k"
+VERSION = "wh-base-2026-10-22l"
 LANGS = ["fr", "en", "nl", "ar"]
 
 # Photos ajoutées (vraies vues de Chloé, film du domaine) — copiées depuis le site GitHub Pages.
@@ -28,6 +28,12 @@ EXTRA_ASSETS = {
     "tenues-collection.webp": HERE / "assets/tenues-collection.webp",
     "coffret-bienvenue.webp": HERE / "assets/coffret-bienvenue.webp",
     "domaine-botanique-paysage-sans-fond.webp": HERE / "assets/domaine-botanique-paysage-sans-fond.webp",
+    "vision-1.mp4": HERE / "assets/vision-1.mp4",
+    "vision-1-poster.webp": HERE / "assets/vision-1-poster.webp",
+    "vision-2.mp4": HERE / "assets/vision-2.mp4",
+    "vision-2-poster.webp": HERE / "assets/vision-2-poster.webp",
+    "vision-3.mp4": HERE / "assets/vision-3.mp4",
+    "vision-3-poster.webp": HERE / "assets/vision-3-poster.webp",
 }
 # Écran de téléphone en portrait : film vertical du domaine.
 MOBILE_FILM_MQ = "(max-width: 860px) and (orientation: portrait)"
@@ -252,6 +258,34 @@ def add_comfort_cta(main, header):
     return main[:k + 6] + html_cta + main[k + 6:]
 
 
+_HOME_DISCOVERIES = re.compile(r'<section class="home-discoveries">(.*?)</section>(?:</div>)?</section>', re.S)
+
+
+def replace_home_discoveries(main):
+    """Accueil : les deux cartes « matières » et « ART » laissent place à une section « du trait à la villa »,
+    trois films (filaire → villa réelle) avec les textes et liens déjà traduits de la carte ART."""
+    m = _HOME_DISCOVERIES.search(main)
+    if not m:
+        return main
+    inner = m.group(1)
+    eyebrows = re.findall(r'<div class="eyebrow">(.*?)</div>', inner, flags=re.S)
+    h2s = re.findall(r'<h2[^>]*>(.*?)</h2>', inner, flags=re.S)
+    ps = re.findall(r'<p>(.*?)</p>', inner, flags=re.S)
+    links = re.findall(r'<a class="text-link" href="([^"]+)">(.*?)</a>', inner, flags=re.S)
+    notice = re.search(r'<p class="wh-visual-notice">.*?</p>', inner, flags=re.S)
+    if len(eyebrows) < 2 or len(h2s) < 2 or len(ps) < 2 or len(links) < 2:
+        return main
+    films = "".join(
+        f'<figure class="wh-vision__item"><video autoplay muted loop playsinline preload="metadata" poster="/assets/vision-{n}-poster.webp?v={VERSION}" aria-hidden="true">'
+        f'<source src="/assets/vision-{n}.mp4?v={VERSION}" type="video/mp4"></video></figure>' for n in (1, 2, 3))
+    new = (f'<section class="wh-vision" aria-labelledby="art-home-title"><div class="wrap">'
+           f'<div class="wh-vision__head"><div class="eyebrow">{eyebrows[1]}</div><h2 id="art-home-title">{h2s[1]}</h2><p>{ps[1]}</p></div>'
+           f'<div class="wh-vision__grid">{films}</div>'
+           f'<div class="wh-vision__links"><a class="text-link" href="{links[1][0]}">{links[1][1]}</a><a class="text-link" href="{links[0][0]}">{links[0][1]}</a></div>'
+           + (notice.group(0) if notice else '') + '</div></section>')
+    return main[:m.start()] + new + main[m.end():]
+
+
 def transform_body(body, lang, page, home_href):
     # Petites mentions en Arial (style en ligne) alignées sur les autres mentions de la charte
     body = body.replace('<p style="font:11px/1.7 Arial,sans-serif;color:#697168">', '<p class="fine">')
@@ -276,6 +310,7 @@ def transform_body(body, lang, page, home_href):
         main = main.replace(hero.group(0), new)
         main = main.replace('<section aria-label="', '<section id="collection" aria-label="', 1) if 'class="collection"' in main and 'id="collection"' not in main else main
         main = re.sub(r'<section([^>]*)class="collection"', r'<section id="collection"\1class="collection"', main, count=1) if 'id="collection"' not in main else main
+        main = replace_home_discoveries(main)
     elif page in ("chloe", "celine", "margaux"):
         hero = re.search(r'<section class="gallery-intro">(.*?)</section>', main, flags=re.S)
         content = re.sub(r'<p>(?!<)', '<p class="hero-lead">', hero.group(1), count=1)
@@ -326,7 +361,7 @@ def transform_body(body, lang, page, home_href):
             if depth == 0:
                 j = mm.end(); break
         block = main[m.start():j]
-        if 'class="wh-hero' in block.split('>')[0] or 'wh-hero__' in block.split('>')[0]:
+        if 'class="wh-hero' in block.split('>')[0] or 'wh-hero__' in block.split('>')[0] or 'class="wh-vision' in block.split('>')[0]:
             out.append(block)
         else:
             cls = attr(block.split('>')[0], "class")

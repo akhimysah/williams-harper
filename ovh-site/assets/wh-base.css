@@ -620,3 +620,15 @@ html[dir=rtl] .company-logo{margin-inline:0 auto}
 
 /* Planche botanique détourée : pas de fond blanc ni de bordure autour de l'image transparente */
 .material-board img[src*="sans-fond"]{background:transparent!important;border:0!important;box-shadow:none!important}
+
+/* Accueil : « du trait à la villa », trois films (filaire → villa réelle) */
+.wh-vision{background:var(--surface);border-block:1px solid var(--line)}
+.wh-vision__head{text-align:center;max-width:720px;margin:0 auto clamp(2.4rem,4vw,3.4rem)}
+.wh-vision__head h2{font-size:clamp(2rem,3.4vw,3.2rem);margin-bottom:1.1rem;text-wrap:balance}
+.wh-vision__head p{color:var(--muted);text-wrap:pretty}
+.wh-vision__grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:clamp(1rem,2.2vw,2rem)}
+.wh-vision__item{margin:0;overflow:hidden;background:var(--line)}
+.wh-vision__item video{display:block;width:100%;aspect-ratio:752/416;height:auto;object-fit:cover}
+.wh-vision__links{display:flex;flex-wrap:wrap;justify-content:center;gap:1rem 3rem;margin-top:clamp(2rem,3.5vw,3rem)}
+.wh-vision .wh-visual-notice{text-align:center;margin-inline:auto}
+@media (max-width:860px){.wh-vision__grid{grid-template-columns:1fr}}
