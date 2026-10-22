@@ -13,14 +13,14 @@ REPO = HERE.parent
 VERSION = "wh-base-2026-10-22"
 LANGS = ["fr", "en", "nl", "ar"]
 
-# Photos ajoutées (vraies vues de Chloé, vidéo aérienne du domaine) — copiées depuis le site GitHub Pages.
+# Photos ajoutées (vraies vues de Chloé, film du domaine) — copiées depuis le site GitHub Pages.
 EXTRA_ASSETS = {
     "chloe-hero.jpg": REPO / "img/photo-03.jpg",
     "chloe-jardin-instants.jpg": REPO / "img/photo-09.jpg",
     "chloe-sejour-double-hauteur.jpg": REPO / "img/photo-06.jpg",
     "chloe-salons.jpg": REPO / "img/photo-07.jpg",
-    "domaine-aerial-720.mp4": REPO / "media/domaine-aerial-720.mp4",
-    "domaine-aerial-poster.jpg": REPO / "media/domaine-aerial-poster.jpg",
+    "domaine-film-720.mp4": REPO / "media/film-720.mp4",
+    "domaine-film-poster.jpg": REPO / "media/film-poster.jpg",
 }
 # Photos de l'autre villa (écartées) remplacées dans la galerie Chloé.
 PHOTO_SWAPS = {
@@ -171,7 +171,7 @@ def transform_body(body, lang, page, home_href):
         hero = re.search(r'<section class="domain" id="domaine">(.*?)</section>', main, flags=re.S)
         content = hero.group(1).replace('class="button"', 'class="btn btn--light"')
         new = (f'<section class="wh-hero wh-hero--domaine" id="domaine"><div class="wh-hero__media">'
-               f'<video autoplay muted loop playsinline preload="metadata" poster="/assets/domaine-aerial-poster.jpg?v={VERSION}" aria-hidden="true"><source src="/assets/domaine-aerial-720.mp4?v={VERSION}" type="video/mp4"></video></div>'
+               f'<video autoplay muted loop playsinline preload="metadata" poster="/assets/domaine-film-poster.jpg?v={VERSION}" aria-hidden="true"><source src="/assets/domaine-film-720.mp4?v={VERSION}" type="video/mp4"></video></div>'
                f'<div class="wrap"><div class="wh-hero__copy">{content}</div></div></section>')
         main = main.replace(hero.group(0), new)
     elif page == "art":
@@ -314,7 +314,7 @@ redirections, PHP, brochures, plans, photos) et remplace son habillage :
 - Charte ivoire / encre / champagne, vert forêt réservé au pied de page, aux boutons et à l'appel final.
 - Typographie Cormorant Garamond (titres) et Jost (textes), Noto Naskh / Noto Sans pour l'arabe.
 - En-tête fin et fixe, transparent sur les photos puis ivoire au défilement ; menu mobile ; langues FR EN NL AR.
-- Héros plein écran : accueil (villa), pages villas (photo de chaque modèle), domaine (vidéo aérienne).
+- Héros plein écran : accueil (villa), pages villas (photo de chaque modèle), domaine (film du domaine).
 - Galeries en grille, plans sur fond blanc, FAQ en accordéon, pied de page vert avec contact et langues.
 - Un seul fichier de style (assets/wh-base.css) et un script léger (assets/wh-base.js). Les anciens
   fichiers CSS ne sont plus utilisés ; le conseiller (concierge) et le film de construction sont conservés.
