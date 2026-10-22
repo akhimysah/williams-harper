@@ -577,3 +577,16 @@ html[lang=ar] .wh-scrollcue{display:none}
 
 /* Planche « Bois nobles » (2:1) : affichée entière, sans recadrage */
 main #bois-nobles img{aspect-ratio:2/1!important;object-fit:contain!important;height:auto!important;background:#fff}
+
+/* À propos : planche des tenues (portrait) et coffret (paysage) côte à côte, à la même hauteur */
+.brand-figures{display:grid;grid-template-columns:1fr 2.25fr;gap:clamp(1rem,2.5vw,2rem);align-items:start;margin-top:2.4rem}
+.brand-figures figure{margin:0}
+.brand-figures img{width:100%;height:auto!important;display:block;aspect-ratio:auto!important;object-fit:contain!important}
+@media (max-width:760px){.brand-figures{grid-template-columns:1fr}}
+
+/* À propos : logo à l'écusson à la place du monogramme WH */
+.company-logo{display:block;width:min(260px,70%);height:auto;margin:.6rem 0 2rem}
+html[dir=rtl] .company-logo{margin-inline:0 auto}
+/* Cartes résidents : une rangée de deux cartes est centrée (même largeur que dans une rangée de trois) */
+.residents-grid:has(>article:nth-child(2):last-child){grid-template-columns:repeat(2,calc((100% - 2*clamp(1.4rem,3vw,2.6rem))/3));justify-content:center}
+@media (max-width:860px){.residents-grid:has(>article:nth-child(2):last-child){grid-template-columns:1fr}}

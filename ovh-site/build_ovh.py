@@ -10,7 +10,7 @@ import json, re, shutil, sys, pathlib, zipfile, html
 
 HERE = pathlib.Path(__file__).resolve().parent
 REPO = HERE.parent
-VERSION = "wh-base-2026-10-22g"
+VERSION = "wh-base-2026-10-22i"
 LANGS = ["fr", "en", "nl", "ar"]
 
 # Photos ajoutées (vraies vues de Chloé, film du domaine) — copiées depuis le site GitHub Pages.
@@ -25,6 +25,8 @@ EXTRA_ASSETS = {
     "domaine-film-mobile.mp4": REPO / "media/film-mobile-720.mp4",
     "domaine-film-mobile-poster.jpg": REPO / "media/film-mobile-poster.jpg",
     "bois-nobles-palette.webp": HERE / "assets/bois-nobles-palette.webp",
+    "tenues-collection.webp": HERE / "assets/tenues-collection.webp",
+    "coffret-bienvenue.webp": HERE / "assets/coffret-bienvenue.webp",
 }
 # Écran de téléphone en portrait : film vertical du domaine.
 MOBILE_FILM_MQ = "(max-width: 860px) and (orientation: portrait)"
@@ -185,6 +187,40 @@ def insert_wood_board(main, lang):
     return main.replace('<figure id="collection-bois">', fig + '<figure id="collection-bois">', 1)
 
 
+BRAND_FIGURES = {
+    "fr": ("La collection des tenues · Agrandir", "Collection des tenues Williams &amp; Harper : conciergerie, jardinier, sécurité, pisciniste, Red Coffee, supérette",
+           "Le coffret de bienvenue · Agrandir", "Le coffret de bienvenue Williams &amp; Harper : peignoirs, serviettes, porte-clés, casquette, gourde et douceurs"),
+    "en": ("The uniform collection · Enlarge", "Williams &amp; Harper uniform collection: concierge, gardener, security, pool technician, Red Coffee, mini-market",
+           "The welcome box · Enlarge", "The Williams &amp; Harper welcome box: bathrobes, towels, key rings, cap, bottle and sweet treats"),
+    "nl": ("De kledingcollectie · Vergroot", "Kledingcollectie Williams &amp; Harper: conciërgerie, tuinman, beveiliging, zwembadtechnicus, Red Coffee, supermarkt",
+           "De welkomstbox · Vergroot", "De welkomstbox van Williams &amp; Harper: badjassen, handdoeken, sleutelhangers, pet, drinkfles en lekkernijen"),
+    "ar": ("مجموعة الأزياء · تكبير", "مجموعة أزياء Williams &amp; Harper: الكونسيرج، البستاني، الأمن، فني المسبح، Red Coffee، المتجر الصغير",
+           "صندوق الترحيب · تكبير", "صندوق الترحيب من Williams &amp; Harper: أرواب حمّام، مناشف، حلقات مفاتيح، قبعة، قارورة وحلويات"),
+}
+
+
+def replace_brand_figure(main, lang):
+    """Page À propos : le visuel unique « tenues + coffret » laisse place aux deux planches (tenues, coffret)."""
+    m = re.search(r'<figure><a href="([^"]*?)accueil-williams-harper\.webp".*?</figure>', main, flags=re.S)
+    if not m:
+        return main
+    p = m.group(1)
+    c1, a1, c2, a2 = BRAND_FIGURES[lang]
+    fig = (f'<div class="brand-figures">'
+           f'<figure><a aria-label="{c1}" href="{p}tenues-collection.webp?v={VERSION}" rel="noopener" target="_blank"><img alt="{a1}" loading="lazy" src="{p}tenues-collection.webp?v={VERSION}" width="1024" height="1536" decoding="async"></a><figcaption>{c1}</figcaption></figure>'
+           f'<figure><a aria-label="{c2}" href="{p}coffret-bienvenue.webp?v={VERSION}" rel="noopener" target="_blank"><img alt="{a2}" loading="lazy" src="{p}coffret-bienvenue.webp?v={VERSION}" width="1536" height="1024" decoding="async"></a><figcaption>{c2}</figcaption></figure>'
+           f'</div>')
+    return main[:m.start()] + fig + main[m.end():]
+
+
+_MONOGRAM = re.compile(r'<div aria-hidden="true" class="company-monogram"[^>]*>WH</div>\s*<div class="company-signature"[^>]*>.*?</div>', re.S)
+
+
+def replace_monogram(main):
+    """Page À propos : le monogramme WH en lettres laisse place au logo complet à l'écusson."""
+    return _MONOGRAM.sub(f'<img class="company-logo" src="/assets/logo-definitif-duo-fonce.svg?v={VERSION}" alt="Williams &amp; Harper — Private Estates" width="593" height="403">', main, count=1)
+
+
 def transform_body(body, lang, page, home_href):
     # Petites mentions en Arial (style en ligne) alignées sur les autres mentions de la charte
     body = body.replace('<p style="font:11px/1.7 Arial,sans-serif;color:#697168">', '<p class="fine">')
@@ -232,6 +268,9 @@ def transform_body(body, lang, page, home_href):
         main = insert_wood_board(main, lang)
     elif page == "reservation":
         main = main.replace('<div class="reservation-intro">', '<div class="reservation-intro wh-hero--text">', 1)
+    elif page == "apropos":
+        main = replace_brand_figure(main, lang)
+        main = replace_monogram(main)
     elif page == "faq":
         main = main.replace('<section class="villa-faq" id="faq">', '<section class="villa-faq wh-hero--text" id="faq">', 1)
 
