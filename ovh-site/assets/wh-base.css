@@ -285,7 +285,7 @@ main>section.photo-grid{padding-block:0 clamp(2rem,4vw,3rem)}
 .photo-grid figure img{width:100%;height:100%;flex:1;min-height:0;aspect-ratio:4/3;object-fit:cover;transition:transform 1.3s cubic-bezier(.2,.6,.2,1)}
 .photo-grid figure:nth-child(4n+1):not(:only-child) img{aspect-ratio:16/9}
 .photo-grid figure button:hover img,.photo-grid figure a:hover img{transform:scale(1.035)}
-.photo-grid .wrap>.wh-visual-notice{flex-basis:100%}
+.photo-grid .wrap>.wh-visual-notice{flex:0 0 100%;width:100%;max-width:100%;text-align:center}
 @media (max-width:860px){.photo-grid figure{flex-basis:calc((100% - var(--g))/2)}.photo-grid figure:nth-child(4n+1):not(:only-child){flex-basis:100%}}
 @media (max-width:520px){.photo-grid figure,.photo-grid figure:nth-child(4n+1):not(:only-child){flex-basis:100%}.photo-grid figure:nth-child(4n+1):not(:only-child) img{aspect-ratio:4/3}}
 
