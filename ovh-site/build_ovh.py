@@ -10,7 +10,7 @@ import json, re, shutil, sys, pathlib, zipfile, html
 
 HERE = pathlib.Path(__file__).resolve().parent
 REPO = HERE.parent
-VERSION = "wh-base-2026-10-22n"
+VERSION = "wh-base-2026-10-22p"
 LANGS = ["fr", "en", "nl", "ar"]
 
 # Photos ajoutées (vraies vues de Chloé, film du domaine) — copiées depuis le site GitHub Pages.
@@ -286,6 +286,24 @@ def replace_home_discoveries(main):
     return main[:m.start()] + new + main[m.end():]
 
 
+_MAT_INTRO = re.compile(r'<div class="materials-intro wh-hero--text">(.*?)(<nav aria-label="[^"]*" class="material-chapters">.*?</nav>)</div>', re.S)
+
+
+def split_materials_intro(main):
+    """Page Matières : l'entrée texte seule devient deux colonnes (texte à gauche, photo d'intérieur à droite),
+    sommaire des chapitres sur toute la largeur en dessous."""
+    m = _MAT_INTRO.search(main)
+    if not m:
+        return main
+    copy, nav = m.group(1), m.group(2)
+    h1 = re.search(r'<h1[^>]*>(.*?)</h1>', copy, flags=re.S)
+    alt = html.escape(re.sub(r'<br\s*/?>', ' ', re.sub(r'<(?!br)[^>]+>', '', h1.group(1))).strip()) if h1 else "Williams &amp; Harper"
+    new = (f'<div class="materials-intro wh-hero--text wh-split"><div class="wh-split__copy">{copy}</div>'
+           f'<figure class="wh-split__media"><img src="/assets/chloe-sejour-double-hauteur.jpg?v={VERSION}" alt="{alt}" width="1280" height="853" loading="eager" fetchpriority="high" decoding="async"></figure>'
+           f'{nav}</div>')
+    return main[:m.start()] + new + main[m.end():]
+
+
 def transform_body(body, lang, page, home_href):
     # Petites mentions en Arial (style en ligne) alignées sur les autres mentions de la charte
     body = body.replace('<p style="font:11px/1.7 Arial,sans-serif;color:#697168">', '<p class="fine">')
@@ -331,6 +349,7 @@ def transform_body(body, lang, page, home_href):
         main = main.replace('<section class="art-opening">', '<section class="art-opening wh-hero--text">', 1)
     elif page == "matieres-finitions":
         main = main.replace('<div class="materials-intro">', '<div class="materials-intro wh-hero--text">', 1)
+        main = split_materials_intro(main)
         main = insert_wood_board(main, lang)
         main = add_comfort_cta(main, old_header)
         # Planche botanique détourée (fond transparent) à la place du JPEG sur fond blanc
