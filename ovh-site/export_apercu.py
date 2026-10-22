@@ -15,6 +15,8 @@ HERE = pathlib.Path(__file__).resolve().parent
 REPO = HERE.parent
 SRC = pathlib.Path(sys.argv[1]) if len(sys.argv) > 1 else HERE / "dist/Williams_Harper_OVH_Nouvelle_Base"
 OUT = pathlib.Path(sys.argv[2]) if len(sys.argv) > 2 else REPO / "ovh-apercu"
+# chemin public de l'aperçu (pour les url() dans les variables CSS, que Chrome résout par rapport à la feuille de style)
+BASEPATH = sys.argv[3] if len(sys.argv) > 3 else "/williams-harper/ovh-apercu/"
 
 paths = json.loads((SRC / "app/url-paths.json").read_text())
 # adresse du site -> fichier de l'aperçu
@@ -58,6 +60,8 @@ def rewrite(html, depth):
     # ressources écrites dans les scripts ou des attributs data-* : "/assets/…"
     for q in ('"', "'"):
         html = html.replace(f'{q}/assets/', f'{q}{prefix}assets/')
+    # url() dans des variables CSS inline (photos des cartes de villas) : adresse absolue, sinon Chrome la résout depuis assets/
+    html = re.sub(r"url\((['\"]?)(?:\.\./)*assets/", lambda m: f"url({m.group(1)}{BASEPATH}assets/", html)
     return html
 
 n = 0
