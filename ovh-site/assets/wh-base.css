@@ -124,7 +124,7 @@ html[dir=rtl] .wh-scrollcue{right:auto;left:var(--gutter)}
 @media (max-width:860px){.company-hero>.wrap{grid-template-columns:1fr}}
 
 /* ===== Sections génériques ===== */
-main>section,main>div>section,main>article,.art-chapters>section,.lifestyle>section,.residents-group .rental-local{padding-block:clamp(3.5rem,6.5vw,5.5rem)}
+main>section,main>div>section,main>article,.art-chapters>section,.lifestyle>section,.residents-group .rental-local{padding-block:clamp(3rem,5.5vw,4.5rem)}
 main>section>.eyebrow:first-child+h2,main section .eyebrow+h2,main section .eyebrow+h1,main section .eyebrow+h3{margin-bottom:1.3rem}
 main section>h2+p,main section>div>h2+p{color:var(--muted);max-width:60ch}
 main section>p{max-width:60ch;color:var(--muted)}
@@ -553,7 +553,7 @@ html[dir=rtl] body .wh-launch{right:auto;left:28px;padding:0 .45rem 0 1.2rem}
 
 /* ===== Révélation douce ===== */
 @media (prefers-reduced-motion:no-preference){
-  .wh-reveal{opacity:0;transform:translateY(22px);transition:opacity 1s cubic-bezier(.2,.6,.2,1),transform 1s cubic-bezier(.2,.6,.2,1)}
+  .wh-reveal{opacity:0;transform:translateY(14px);transition:opacity .6s cubic-bezier(.2,.6,.2,1),transform .6s cubic-bezier(.2,.6,.2,1)}
   .wh-reveal.in{opacity:1;transform:none}
 }
 
