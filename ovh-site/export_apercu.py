@@ -62,6 +62,8 @@ def rewrite(html, depth):
         html = html.replace(f'{q}/assets/', f'{q}{prefix}assets/')
     # url() dans des variables CSS inline (photos des cartes de villas) : adresse absolue, sinon Chrome la résout depuis assets/
     html = re.sub(r"url\((['\"]?)(?:\.\./)*assets/", lambda m: f"url({m.group(1)}{BASEPATH}assets/", html)
+    # même chose quand l'adresse vient d'un tableau JS : url('${["assets/…", …][i]}')
+    html = re.sub(r"(url\('\$\{\[)(.*?)(\])", lambda m: m.group(1) + re.sub(r'"(?:\.\./)*assets/', '"' + BASEPATH + 'assets/', m.group(2)) + m.group(3), html)
     return html
 
 n = 0
