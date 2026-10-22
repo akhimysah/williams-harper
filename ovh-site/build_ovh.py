@@ -10,7 +10,7 @@ import json, re, shutil, sys, pathlib, zipfile, html
 
 HERE = pathlib.Path(__file__).resolve().parent
 REPO = HERE.parent
-VERSION = "wh-base-2026-10-22j"
+VERSION = "wh-base-2026-10-22k"
 LANGS = ["fr", "en", "nl", "ar"]
 
 # Photos ajoutées (vraies vues de Chloé, film du domaine) — copiées depuis le site GitHub Pages.
@@ -27,6 +27,7 @@ EXTRA_ASSETS = {
     "bois-nobles-palette.webp": HERE / "assets/bois-nobles-palette.webp",
     "tenues-collection.webp": HERE / "assets/tenues-collection.webp",
     "coffret-bienvenue.webp": HERE / "assets/coffret-bienvenue.webp",
+    "domaine-botanique-paysage-sans-fond.webp": HERE / "assets/domaine-botanique-paysage-sans-fond.webp",
 }
 # Écran de téléphone en portrait : film vertical du domaine.
 MOBILE_FILM_MQ = "(max-width: 860px) and (orientation: portrait)"
@@ -297,6 +298,8 @@ def transform_body(body, lang, page, home_href):
         main = main.replace('<div class="materials-intro">', '<div class="materials-intro wh-hero--text">', 1)
         main = insert_wood_board(main, lang)
         main = add_comfort_cta(main, old_header)
+        # Planche botanique détourée (fond transparent) à la place du JPEG sur fond blanc
+        main = main.replace('domaine-botanique-paysage.jpeg', f'domaine-botanique-paysage-sans-fond.webp?v={VERSION}')
     elif page == "reservation":
         main = main.replace('<div class="reservation-intro">', '<div class="reservation-intro wh-hero--text">', 1)
     elif page == "apropos":

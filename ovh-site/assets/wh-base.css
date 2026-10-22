@@ -430,17 +430,18 @@ dialog#detail .close{color:var(--ink)}
 .residents-card h4{margin:1.2rem 0 .5rem}
 .residents-card p{font-size:.92rem;color:var(--muted)}
 @media (max-width:860px){.residents-grid{grid-template-columns:1fr}}
-.rental-local{background:var(--surface);border:1px solid var(--line);padding:clamp(2rem,4vw,3.5rem)!important;margin:0 0 3rem}
+.rental-local{background:var(--surface);border:1px solid var(--line);padding:clamp(2rem,4vw,3.5rem)!important;margin:0 0 3rem;text-align:center}
 .rental-local>h3{font-size:clamp(1.8rem,2.8vw,2.5rem);margin-bottom:1.6rem}
 .rental-local h4{margin:1.8rem 0 .5rem}
-.rental-local p{color:var(--muted);max-width:66ch}
+.rental-local p{color:var(--muted);max-width:66ch;margin-inline:auto;text-wrap:balance}
 .rental-photo{display:none}
-.rental-metrics{display:grid;grid-template-columns:1fr 1fr;gap:2rem;margin:1.6rem 0 .4rem;max-width:560px}
+.rental-metrics{display:grid;grid-template-columns:1fr 1fr;gap:2rem;margin:1.6rem auto .4rem;max-width:560px}
 .rental-metrics strong{display:block;font-family:var(--display);font-size:clamp(2.2rem,3.4vw,3.2rem);line-height:1;font-weight:300;color:var(--green)}
-.rental-metrics>div{font-size:.74rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);border-inline-start:1px solid var(--line);padding-inline-start:1rem}
-.rental-local table{margin:1.4rem 0 .8rem;font-size:.94rem;max-width:720px}
-.rental-local th,.rental-local td{text-align:start;padding:.85rem 0;border-bottom:1px solid var(--line);font-weight:400}
-.rental-local thead th,.rental-local tr:first-child th{font-size:.6rem;letter-spacing:.26em;text-transform:uppercase;color:var(--muted)}
+.rental-metrics>div{font-size:.74rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);border-top:1px solid var(--line);padding-top:1rem}
+.rental-local table{margin:1.4rem auto .8rem;font-size:.94rem;max-width:720px;width:100%}
+.rental-local th,.rental-local td{text-align:center;padding:.85rem .6rem;border-bottom:1px solid var(--line);font-weight:400}
+.rental-local thead th{font-size:.6rem;letter-spacing:.26em;text-transform:uppercase;color:var(--muted)}
+.rental-local tbody th{font-family:var(--display);font-size:1.25rem;font-weight:700;color:var(--ink)}
 .rental-local td{font-family:var(--display);font-size:1.25rem}
 .rental-local .fine{margin-top:.8rem}
 
@@ -616,3 +617,6 @@ html[dir=rtl] .company-logo{margin-inline:0 auto}
 .comfort-editorial .comfort-gate{margin-inline:auto;background:rgba(247,245,240,.06);border-color:rgba(230,189,104,.45);text-align:start}
 .comfort-editorial .comfort-gate p{color:var(--bg)!important}
 .wh-green-block{}
+
+/* Planche botanique détourée : pas de fond blanc ni de bordure autour de l'image transparente */
+.material-board img[src*="sans-fond"]{background:transparent!important;border:0!important;box-shadow:none!important}
