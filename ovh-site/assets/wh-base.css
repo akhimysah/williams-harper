@@ -628,8 +628,9 @@ html[dir=rtl] .company-logo{margin-inline:0 auto}
 .wh-vision__head h2{font-size:clamp(2rem,3.4vw,3.2rem);margin-bottom:1.1rem;text-wrap:balance}
 .wh-vision__head p{color:var(--muted);text-wrap:pretty}
 .wh-vision__grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:clamp(1rem,2.2vw,2rem)}
-.wh-vision__item{margin:0;overflow:hidden;background:var(--line)}
-.wh-vision__item video{display:block;width:100%;aspect-ratio:752/416;height:auto;object-fit:cover}
+.wh-vision__item{margin:0;overflow:hidden;background:transparent;display:grid;gap:.6rem}
+.wh-vision__item img{display:block;width:100%;aspect-ratio:3/2;height:auto;object-fit:cover;background:var(--line)}
+.wh-vision__item video{display:block;width:100%;aspect-ratio:752/416;height:auto;object-fit:cover;background:var(--line)}
 .wh-vision__links{display:flex;flex-wrap:wrap;justify-content:center;gap:1rem 3rem;margin-top:clamp(2rem,3.5vw,3rem)}
 .wh-vision .wh-visual-notice{text-align:center;margin-inline:auto}
 @media (max-width:860px){.wh-vision__grid{grid-template-columns:1fr}}

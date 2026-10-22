@@ -10,7 +10,7 @@ import json, re, shutil, sys, pathlib, zipfile, html
 
 HERE = pathlib.Path(__file__).resolve().parent
 REPO = HERE.parent
-VERSION = "wh-base-2026-10-22p"
+VERSION = "wh-base-2026-10-22q"
 LANGS = ["fr", "en", "nl", "ar"]
 
 # Photos ajoutées (vraies vues de Chloé, film du domaine) — copiées depuis le site GitHub Pages.
@@ -276,7 +276,8 @@ def replace_home_discoveries(main):
     if len(eyebrows) < 2 or len(h2s) < 2 or len(ps) < 2 or len(links) < 2:
         return main
     films = "".join(
-        f'<figure class="wh-vision__item"><video autoplay muted loop playsinline preload="metadata" poster="/assets/vision-{n}-poster.webp?v={VERSION}" aria-hidden="true">'
+        f'<figure class="wh-vision__item"><img src="/assets/vision-{n}-poster.webp?v={VERSION}" alt="" width="1280" height="853" loading="lazy" decoding="async">'
+        f'<video autoplay muted loop playsinline preload="metadata" poster="/assets/vision-{n}-poster.webp?v={VERSION}" aria-hidden="true">'
         f'<source src="/assets/vision-{n}.mp4?v={VERSION}" type="video/mp4"></video></figure>' for n in (1, 2, 3))
     new = (f'<section class="wh-vision" aria-labelledby="art-home-title"><div class="wrap">'
            f'<div class="wh-vision__head"><div class="eyebrow">{eyebrows[1]}</div><h2 id="art-home-title">{h2s[1]}</h2><p>{ps[1]}</p></div>'
