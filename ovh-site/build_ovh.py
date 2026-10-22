@@ -215,6 +215,10 @@ def transform_body(body, lang, page, home_href):
         i = j
     main = "".join(out)
 
+    # --- carte de localisation : recadrage sur la carte seule (sans bandeau ni panneau de brochure) ---
+    if page == "index":
+        main = re.sub(r'(<a href="[^"]*" class="home-domain-card">)(<img [^>]*domaine-localisation[^>]*>)', r'\1<span class="wh-map-crop">\2</span>', main)
+
     # --- photos de l'autre villa remplacées (galerie Chloé) ---
     if page == "chloe":
         for old, new in PHOTO_SWAPS.items():

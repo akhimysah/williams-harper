@@ -163,6 +163,8 @@ figcaption{font-size:.74rem;color:var(--muted);letter-spacing:.03em;line-height:
 .home-domain-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:clamp(1.4rem,3vw,2.6rem)}
 .home-domain-card{display:block;min-width:0}
 .home-domain-card img{aspect-ratio:4/3;object-fit:cover;width:100%;background:var(--line)}
+.home-domain-card .wh-map-crop{display:block;width:100%;position:relative;aspect-ratio:1.3308;overflow:hidden;background:#fff;border:1px solid var(--line);padding:0;font-size:0}
+.home-domain-card .wh-map-crop img{position:absolute;max-width:none;width:156.59%;height:auto;aspect-ratio:auto;left:-45.82%;top:-16.58%;object-fit:fill}
 .home-domain-card h3{font-size:1.7rem;margin:1.2rem 0 .4rem}
 .home-domain-card span{font-size:.66rem;letter-spacing:.3em;text-transform:uppercase;border-bottom:1px solid var(--champagne);padding-bottom:.4rem;display:inline-block}
 .home-domain-more{margin-top:2.6rem}
