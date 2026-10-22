@@ -81,6 +81,10 @@ for extra in ("wh-base.css", "concierge.css", "concierge.js", "concierge-knowled
         for a in re.findall(r'url\((["\']?)(?!data:|http)([^)"\']+)', f.read_text(errors="ignore")):
             needed.add(pathlib.Path(a[1]).name)
 
+# plans PDF (légers) référencés par les pages
+plans = SRC / "www/plans"
+if plans.exists():
+    shutil.copytree(plans, OUT / "plans")
 (OUT / "assets").mkdir()
 copied = skipped = 0
 for name in sorted(needed):
