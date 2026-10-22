@@ -153,7 +153,7 @@ def transform_body(body, lang, page, home_href):
         nav_tmp = links(re.search(r'<nav\b(?![^>]*language-switcher)[^>]*>(.*?)</nav>', old_header, flags=re.S).group(1))
         cta = re.search(r'<a class="button reservation-cta"[^>]*>(.*?)</a>', old_header, flags=re.S)
         domaine = nav_tmp[1] if len(nav_tmp) > 1 else nav_tmp[0]
-        new = (f'<section class="wh-hero wh-hero--home" id="villas"><div class="wh-hero__media"><img src="{HERO_IMAGES["index"]}?v={VERSION}" alt="" fetchpriority="high" decoding="async" width="1672" height="941"></div>'
+        new = (f'<section class="wh-hero wh-hero--home" id="villas"><div class="wh-hero__media"><img src="{HERO_IMAGES["index"]}?v={VERSION}" alt="" fetchpriority="high" width="1672" height="941"></div>'
                f'<div class="wrap"><div class="wh-hero__copy">{content}<div class="wh-hero__actions"><a class="btn btn--light" href="{attr(cta.group(0), "href")}">{cta.group(1)}</a>'
                f'<a class="text-link" href="{domaine[0]}">{domaine[2]}</a></div></div></div>'
                f'<a class="wh-scrollcue" href="#collection">{nav_tmp[0][2]}</a></section>')
@@ -164,7 +164,7 @@ def transform_body(body, lang, page, home_href):
         hero = re.search(r'<section class="gallery-intro">(.*?)</section>', main, flags=re.S)
         content = re.sub(r'<p>(?!<)', '<p class="hero-lead">', hero.group(1), count=1)
         h1 = re.sub(r'<[^>]+>', '', inner(content, "h1"))
-        new = (f'<section class="wh-hero wh-hero--villa"><div class="wh-hero__media"><img src="{HERO_IMAGES[page]}?v={VERSION}" alt="{html.escape(h1)}" fetchpriority="high" decoding="async"></div>'
+        new = (f'<section class="wh-hero wh-hero--villa"><div class="wh-hero__media"><img src="{HERO_IMAGES[page]}?v={VERSION}" alt="{html.escape(h1)}" fetchpriority="high"></div>'
                f'<div class="wrap"><div class="wh-hero__copy">{content}</div></div></section>')
         main = main.replace(hero.group(0), new)
     elif page == "domaine":

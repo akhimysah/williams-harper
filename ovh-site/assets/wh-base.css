@@ -92,9 +92,10 @@ body:not(.wh-photo-hero) main{padding-top:var(--header)}
 /* ===== Héros ===== */
 .wh-hero{position:relative;min-height:min(92svh,980px);display:flex;align-items:flex-end;color:#fff;overflow:hidden;isolation:isolate;background:var(--green-deep)}
 .wh-hero--villa,.wh-hero--domaine{min-height:min(78svh,860px)}
-.wh-hero__media{position:absolute;inset:0;z-index:-2}
+.wh-hero__media{position:absolute;inset:0;z-index:0}
 .wh-hero__media img,.wh-hero__media video{width:100%;height:100%;object-fit:cover}
-.wh-hero::after{content:"";position:absolute;inset:0;z-index:-1;background:linear-gradient(to top,rgba(10,9,7,.66) 0%,rgba(10,9,7,.22) 46%,rgba(10,9,7,.06) 72%,rgba(10,9,7,.3) 100%),linear-gradient(to right,rgba(10,9,7,.42) 0%,rgba(10,9,7,.12) 45%,rgba(10,9,7,0) 70%)}
+.wh-hero>.wrap,.wh-hero__copy,.wh-scrollcue{position:relative;z-index:2}
+.wh-hero::after{content:"";position:absolute;inset:0;z-index:1;background:linear-gradient(to top,rgba(10,9,7,.66) 0%,rgba(10,9,7,.22) 46%,rgba(10,9,7,.06) 72%,rgba(10,9,7,.3) 100%),linear-gradient(to right,rgba(10,9,7,.42) 0%,rgba(10,9,7,.12) 45%,rgba(10,9,7,0) 70%)}
 html[dir=rtl] .wh-hero::after{background:linear-gradient(to top,rgba(10,9,7,.66) 0%,rgba(10,9,7,.22) 46%,rgba(10,9,7,.06) 72%,rgba(10,9,7,.3) 100%),linear-gradient(to left,rgba(10,9,7,.42) 0%,rgba(10,9,7,.12) 45%,rgba(10,9,7,0) 70%)}
 .wh-hero__copy{position:relative;padding:calc(var(--header) + 3rem) 0 clamp(3rem,7vw,6rem);max-width:min(100%,900px)}
 .wh-hero .eyebrow{color:#e6d9bd}
