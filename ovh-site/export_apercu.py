@@ -47,7 +47,15 @@ def rewrite(html, depth):
         if path.startswith("/brochures/"):
             return m.group(0)  # brochures non incluses : lien laissé tel quel
         return f'{attr}="{prefix}{path.lstrip("/")}{tail}"'
-    return ATTR.sub(repl, html)
+    html = ATTR.sub(repl, html)
+    # adresses de pages écrites dans les scripts (cartes des villas de l'accueil, etc.) : "/villa-chloe-marrakech"
+    for key in sorted(page_file, key=len, reverse=True):
+        if key == "/":
+            continue
+        for q in ('"', "'"):
+            html = html.replace(f'{q}{key}{q}', f'{q}{prefix}{page_file[key]}{q}')
+            html = html.replace(f'{q}{key}/{q}', f'{q}{prefix}{page_file[key]}{q}')
+    return html
 
 n = 0
 for lang, pages in paths.items():
