@@ -55,6 +55,9 @@ def rewrite(html, depth):
         for q in ('"', "'"):
             html = html.replace(f'{q}{key}{q}', f'{q}{prefix}{page_file[key]}{q}')
             html = html.replace(f'{q}{key}/{q}', f'{q}{prefix}{page_file[key]}{q}')
+    # ressources écrites dans les scripts ou des attributs data-* : "/assets/…"
+    for q in ('"', "'"):
+        html = html.replace(f'{q}/assets/', f'{q}{prefix}assets/')
     return html
 
 n = 0
