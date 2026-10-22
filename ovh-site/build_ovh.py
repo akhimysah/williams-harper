@@ -10,7 +10,7 @@ import json, re, shutil, sys, pathlib, zipfile, html
 
 HERE = pathlib.Path(__file__).resolve().parent
 REPO = HERE.parent
-VERSION = "wh-base-2026-10-22i"
+VERSION = "wh-base-2026-10-22j"
 LANGS = ["fr", "en", "nl", "ar"]
 
 # Photos ajoutées (vraies vues de Chloé, film du domaine) — copiées depuis le site GitHub Pages.
@@ -221,6 +221,36 @@ def replace_monogram(main):
     return _MONOGRAM.sub(f'<img class="company-logo" src="/assets/logo-definitif-duo-fonce.svg?v={VERSION}" alt="Williams &amp; Harper — Private Estates" width="593" height="403">', main, count=1)
 
 
+def add_comfort_cta(main, header):
+    """Page Matières : sous les six cartes Prestations, un appel à l'action (réservation) et un lien vers les villas,
+    repris de l'en-tête de la page dans la langue courante (en-tête d'origine ou nouvel en-tête)."""
+    if 'class="comfort-cta"' in main or 'class="comfort-cards"' not in main:
+        return main
+    cta = re.search(r'<a class="button reservation-cta"[^>]*>(.*?)</a>', header, flags=re.S)
+    if cta:
+        cta_href, cta_text = attr(cta.group(0), "href"), re.sub(r'<[^>]+>', '', cta.group(1)).strip()
+        nav = re.search(r'<nav\b(?![^>]*language-switcher)[^>]*>(.*?)</nav>', header, flags=re.S)
+        first = links(nav.group(1))[0] if nav else None
+        villas = (first[0], first[2]) if first else None
+    else:
+        m = re.search(r'<a class="wh-cta" href="([^"]+)">([^<]+)</a>', header)
+        if not m:
+            return main
+        cta_href, cta_text = m.group(1), m.group(2)
+        v = re.search(r'<nav class="wh-nav"[^>]*><a href="([^"]+)">([^<]+)</a>', header)
+        villas = (v.group(1), v.group(2)) if v else None
+    html_cta = f'<div class="comfort-cta"><a class="btn btn--light" href="{cta_href}">{cta_text}</a>'
+    if villas:
+        arrow = '←' if '←' in cta_text else '→'
+        html_cta += f'<a class="text-link" href="{villas[0]}">{villas[1]} {arrow}</a>'
+    html_cta += '</div>'
+    i = main.find('class="comfort-cards"')
+    k = main.find('</div>', main.find('</article>', i))
+    while main.find('<article', k, k + 60) != -1:
+        k = main.find('</div>', main.find('</article>', k + 1))
+    return main[:k + 6] + html_cta + main[k + 6:]
+
+
 def transform_body(body, lang, page, home_href):
     # Petites mentions en Arial (style en ligne) alignées sur les autres mentions de la charte
     body = body.replace('<p style="font:11px/1.7 Arial,sans-serif;color:#697168">', '<p class="fine">')
@@ -266,6 +296,7 @@ def transform_body(body, lang, page, home_href):
     elif page == "matieres-finitions":
         main = main.replace('<div class="materials-intro">', '<div class="materials-intro wh-hero--text">', 1)
         main = insert_wood_board(main, lang)
+        main = add_comfort_cta(main, old_header)
     elif page == "reservation":
         main = main.replace('<div class="reservation-intro">', '<div class="reservation-intro wh-hero--text">', 1)
     elif page == "apropos":

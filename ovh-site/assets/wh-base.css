@@ -245,7 +245,7 @@ form .button:hover{background:var(--green-deep);border-color:var(--green-deep);c
 .gallery-teaser p{color:var(--muted)}
 .gallery-teaser .text-link{margin-top:1.6rem}
 @media (max-width:860px){.gallery-teaser .wrap{grid-template-columns:1fr}}
-.guest-room-option{background:var(--surface);border-block:1px solid var(--line)}
+.guest-room-option{background:var(--green);color:var(--bg);border-block:0}
 .guest-room-option .wrap{width:min(820px,100% - 2*var(--gutter));text-align:center}
 .guest-room-option h2{margin-bottom:1.2rem}
 .included-features h2{margin-bottom:2.2rem}
@@ -323,7 +323,7 @@ main>section.photo-grid{padding-block:0 clamp(2rem,4vw,3rem)}
 .celine-materials .wrap{width:min(820px,100% - 2*var(--gutter));text-align:center}
 .celine-materials h2{margin-bottom:1.2rem}
 .celine-links{display:flex;gap:2rem;justify-content:center;flex-wrap:wrap;margin-top:2rem}
-.materials-preview{background:var(--surface);border-block:1px solid var(--line)}
+.materials-preview{background:var(--green);color:var(--bg);border-block:0}
 .materials-preview .wrap{width:min(820px,100% - 2*var(--gutter));text-align:center}
 .materials-preview h2{margin-bottom:1.2rem}
 .materials-preview .text-link{margin-top:1.8rem}
@@ -590,3 +590,29 @@ html[dir=rtl] .company-logo{margin-inline:0 auto}
 /* Cartes résidents : une rangée de deux cartes est centrée (même largeur que dans une rangée de trois) */
 .residents-grid:has(>article:nth-child(2):last-child){grid-template-columns:repeat(2,calc((100% - 2*clamp(1.4rem,3vw,2.6rem))/3));justify-content:center}
 @media (max-width:860px){.residents-grid:has(>article:nth-child(2):last-child){grid-template-columns:1fr}}
+
+/* Blocs sur fond vert forêt : chambre d'hôtes (villas), « Notre approche » (Chloé), Prestations (Matières) */
+.guest-room-option .eyebrow,.materials-preview .eyebrow,.comfort-editorial .eyebrow{color:#e6d9bd}
+.guest-room-option h2,.materials-preview h2,.comfort-editorial h2{color:var(--bg);text-wrap:balance}
+.guest-room-option .wrap>p,.materials-preview .wrap>p,.comfort-editorial .comfort-intro{color:rgba(247,245,240,.8)!important;max-width:60ch;margin-inline:auto;text-wrap:balance}
+.guest-room-option .wrap>p{text-wrap:pretty}
+.materials-preview .text-link{color:var(--bg);border-color:rgba(247,245,240,.6)}
+.materials-preview .text-link:hover{color:var(--gold);border-color:var(--gold)}
+/* Prestations : bandeau vert pleine largeur, cartes ivoire liserées d'or, appel à l'action */
+.comfort-editorial{background:var(--green);color:var(--bg);box-shadow:0 0 0 100vmax var(--green);clip-path:inset(0 -100vmax);padding-block:clamp(3.5rem,7vw,6rem)!important;margin-top:clamp(3rem,6vw,5rem);text-align:center}
+.comfort-editorial .comfort-intro{margin-bottom:clamp(2.4rem,4vw,3.4rem)}
+.comfort-cards{text-align:start}
+.comfort-card{border:1px solid rgba(230,189,104,.45);border-top:1px solid rgba(230,189,104,.45);background:rgba(247,245,240,.05);padding:1.6rem 1.6rem 1.8rem;color:var(--gold);transition:background .4s,transform .4s,border-color .4s}
+.comfort-card:hover{background:rgba(247,245,240,.1);border-color:var(--gold);transform:translateY(-3px)}
+.comfort-card h3{color:var(--bg)}
+.comfort-card p{color:rgba(247,245,240,.78)}
+.comfort-cta{display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:1.2rem 2.4rem;margin-top:clamp(2.4rem,4vw,3.4rem)}
+.comfort-cta .btn--light:hover{color:var(--green)}
+.comfort-cta .text-link{color:var(--bg);border-color:rgba(247,245,240,.6)}
+.comfort-cta .text-link:hover{color:var(--gold);border-color:var(--gold)}
+.comfort-editorial .comfort-construction{margin-inline:auto;text-align:start;border-top-color:rgba(247,245,240,.2)}
+.comfort-editorial .comfort-construction h3{color:var(--bg)}
+.comfort-editorial .comfort-construction p,.comfort-editorial .comfort-note{color:rgba(247,245,240,.78)}
+.comfort-editorial .comfort-gate{margin-inline:auto;background:rgba(247,245,240,.06);border-color:rgba(230,189,104,.45);text-align:start}
+.comfort-editorial .comfort-gate p{color:var(--bg)!important}
+.wh-green-block{}
