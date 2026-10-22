@@ -517,7 +517,7 @@ dialog#detail .close{color:var(--ink)}
 .collection-boards h2{margin-bottom:2.4rem}
 .collection-boards .wh-boards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:clamp(1rem,2.5vw,2rem)}
 .collection-boards figure a{display:block;cursor:zoom-in;border:1px solid var(--line);background:#fff}
-.collection-boards figure img{width:100%;aspect-ratio:3/2;object-fit:cover}
+.collection-boards figure img{display:block;width:auto;max-width:100%;height:auto;max-height:min(90vh,1100px);aspect-ratio:auto;object-fit:contain;margin-inline:auto}
 @media (max-width:860px){.collection-boards .wh-boards{grid-template-columns:1fr}}
 .materials-ending{text-align:center;padding-top:clamp(3rem,6vw,5rem);border-top:1px solid var(--line);margin-top:clamp(3rem,6vw,5rem)}
 .materials-ending p{color:var(--muted);margin-inline:auto;max-width:48ch}
