@@ -660,7 +660,7 @@ html[dir=rtl] .company-logo{margin-inline:0 auto}
 
 /* Sous-navigations sur mobile (galeries des villas, chapitres du domaine et des matières) : une ligne qui défile au doigt */
 @media (max-width:860px){
-  .gallery-switch,.room-links,.domain-contents,.residents-nav,.material-chapters{flex-wrap:nowrap;justify-content:flex-start;gap:0 1.8rem;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding:.9rem var(--gutter);margin-inline:calc(-1*var(--gutter));width:calc(100% + 2*var(--gutter));font-size:.6rem;letter-spacing:.22em;mask-image:linear-gradient(to right,#000 calc(100% - 2.5rem),transparent);-webkit-mask-image:linear-gradient(to right,#000 calc(100% - 2.5rem),transparent)}
+  .gallery-switch,.room-links,.domain-contents,.residents-nav,.material-chapters{flex-wrap:nowrap;justify-content:flex-start;gap:0 1.8rem;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding:.9rem 2.5rem .9rem 0;margin-inline:0;width:100%;font-size:.6rem;letter-spacing:.22em;mask-image:linear-gradient(to right,#000 calc(100% - 2.5rem),transparent);-webkit-mask-image:linear-gradient(to right,#000 calc(100% - 2.5rem),transparent)}
   .gallery-switch::-webkit-scrollbar,.room-links::-webkit-scrollbar,.domain-contents::-webkit-scrollbar,.residents-nav::-webkit-scrollbar,.material-chapters::-webkit-scrollbar{display:none}
   .gallery-switch a,.room-links a,.domain-contents a,.residents-nav a,.material-chapters a{flex:0 0 auto;white-space:nowrap;padding:.4rem 0;opacity:.85}
   .wh-split>.material-chapters{grid-column:1/-1}
