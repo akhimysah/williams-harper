@@ -10,7 +10,7 @@ import json, re, shutil, sys, pathlib, zipfile, html
 
 HERE = pathlib.Path(__file__).resolve().parent
 REPO = HERE.parent
-VERSION = "wh-base-2026-10-23a"
+VERSION = "wh-base-2026-10-23b"
 LANGS = ["fr", "en", "nl", "ar"]
 
 # Photos ajoutées (vraies vues de Chloé, film du domaine) — copiées depuis le site GitHub Pages.
@@ -330,6 +330,9 @@ def transform_body(body, lang, page, home_href):
         main = main.replace('<section aria-label="', '<section id="collection" aria-label="', 1) if 'class="collection"' in main and 'id="collection"' not in main else main
         main = re.sub(r'<section([^>]*)class="collection"', r'<section id="collection"\1class="collection"', main, count=1) if 'id="collection"' not in main else main
         main = replace_home_discoveries(main)
+        # cartes des villas : la photo en fond CSS (qui se répète sur mobile) devient une vraie image
+        main = re.sub(r'<div class="villa-image" role="img" aria-label="([^"]*)" style="--villa-photo:url\(\'(.*?)\'\)"></div>',
+                      r'<img class="villa-image" alt="\1" src="\2" loading="lazy" decoding="async">', main)
     elif page in ("chloe", "celine", "margaux"):
         hero = re.search(r'<section class="gallery-intro">(.*?)</section>', main, flags=re.S)
         content = re.sub(r'<p>(?!<)', '<p class="hero-lead">', hero.group(1), count=1)
