@@ -1,36 +1,33 @@
 #!/bin/bash
-# Dépôt du paquet OVH sur l'hébergement williams-harper.com, par SSH (clé) et rsync.
-#
-# Usage : ovh-site/deploy_ovh.sh [--dry-run]
-#
-# Pré-requis : la clé SSH du Mac déposée chez OVH (ssh-copy-id prvnqzc@ssh.cluster123.hosting.ovh.net),
-#              le paquet généré dans ovh-site/dist/Williams_Harper_OVH_Nouvelle_Base (build_ovh.py).
-# Étapes :     1) sauvegarde distante (tar.gz horodaté dans ~/sauvegardes/) de la racine publique et de app/ ;
-#              2) rsync de www/ vers la racine publique (williams-harper.com/) et de app/ vers ~/app/,
-#                 en conservant app/config.php et toute donnée propre au serveur ;
-#              3) le .htaccess en ligne est conservé en copie (.htaccess.avant-YYYYmmdd) avant remplacement.
+# Dépôt du paquet OVH sur williams-harper.com par SSH (clé) et rsync — structure réelle du serveur (2026-10-23) :
+#   /home/prvnqzc/williams-harper.com  = racine publique ; le moteur PHP est DANS cette racine (williams-harper.com/app/),
+#   protégé par la règle « RewriteRule ^app(?:/|$) - [F,L] » du .htaccess (ajoutée au .htaccess du paquet, qui ne l'a pas),
+#   /home/prvnqzc/app                  = copie non utilisée, mise à jour aussi ; old/ (6,9 Go, ancien site) jamais touché.
+# Pré-requis : clé SSH déposée (ssh-copy-id, ou curl -T ~/.ssh/id_ed25519.pub sftp://ftp.cluster123.hosting.ovh.net/home/prvnqzc/.ssh/authorized_keys),
+#              paquet généré par build_ovh.py. Usage : ovh-site/deploy_ovh.sh
 set -euo pipefail
 HOST="prvnqzc@ssh.cluster123.hosting.ovh.net"
 PKG="$(cd "$(dirname "$0")" && pwd)/dist/Williams_Harper_OVH_Nouvelle_Base"
-PUBLIC="williams-harper.com"   # dossier racine du site (onglet « Mes sites » de l'espace OVH)
-APP="app"                      # dossier app/ hors racine publique (vérifié à la connexion)
-DRY=""; [ "${1:-}" = "--dry-run" ] && DRY="--dry-run"
+T="$(mktemp -d)"
 STAMP=$(date +%Y%m%d-%H%M)
-
-[ -d "$PKG/www" ] && [ -d "$PKG/app" ] || { echo "Paquet introuvable : $PKG"; exit 1; }
-echo "== Connexion et état du serveur =="
-ssh -o BatchMode=yes "$HOST" "echo ok; ls -d $PUBLIC $APP 2>&1; df -h . | tail -1"
-
-echo "== Sauvegarde distante (~/sauvegardes/site-$STAMP.tar.gz) =="
-[ -n "$DRY" ] || ssh -o BatchMode=yes "$HOST" "mkdir -p sauvegardes && tar czf sauvegardes/site-$STAMP.tar.gz $PUBLIC $APP 2>/dev/null; ls -la sauvegardes | tail -3; cp -n $PUBLIC/.htaccess $PUBLIC/.htaccess.avant-$STAMP 2>/dev/null || true"
-
-echo "== Dépôt de www/ → $PUBLIC/ =="
-rsync -az $DRY --itemize-changes --exclude='.DS_Store' "$PKG/www/" "$HOST:$PUBLIC/" | tail -20
-
-echo "== Dépôt de app/ → $APP/ (config.php conservé) =="
-rsync -az $DRY --itemize-changes --exclude='.DS_Store' --exclude='config.php' "$PKG/app/" "$HOST:$APP/" | tail -20
-
-echo "== Vérification =="
-[ -n "$DRY" ] || curl -s -o /dev/null -w "https://williams-harper.com → %{http_code}\n" -H 'Cache-Control: no-cache' https://williams-harper.com/
-[ -n "$DRY" ] || curl -s https://williams-harper.com/ -H 'Cache-Control: no-cache' | grep -o 'wh-base.css?v=[^"]*' | head -1
-echo "Terminé${DRY:+ (simulation)}."
+python3 - "$PKG/www/.htaccess" "$T/htaccess.merged" <<'PY'
+import sys, pathlib
+pkg = pathlib.Path(sys.argv[1]).read_text(); needle = "    RewriteEngine On\n"
+assert pkg.count(needle) == 1
+rule = "    # Moteur PHP, modèles et configuration : jamais accessibles depuis le web\n    RewriteRule ^app(?:/|$) - [F,L]\n"
+pathlib.Path(sys.argv[2]).write_text(pkg if "^app(?:/|$)" in pkg else pkg.replace(needle, needle + rule, 1))
+PY
+echo "== 1. Sauvegarde distante (hors old/) =="
+ssh -o BatchMode=yes "$HOST" "mkdir -p sauvegardes && tar czf sauvegardes/site-$STAMP.tar.gz --exclude=williams-harper.com/old williams-harper.com app && ls -la sauvegardes/site-$STAMP.tar.gz"
+echo "== 2. Simulation rsync (www → williams-harper.com/) =="
+rsync -az --dry-run --stats --exclude='.DS_Store' --exclude='.htaccess' "$PKG/www/" "$HOST:williams-harper.com/" | grep -E "Number of (regular files transferred|created files|deleted)|Total transferred"
+echo "== 3. Dépôt www → williams-harper.com/ (sans suppression, .htaccess à part) =="
+rsync -az --exclude='.DS_Store' --exclude='.htaccess' "$PKG/www/" "$HOST:williams-harper.com/"
+echo "== 4. Dépôt app → williams-harper.com/app/ et ~/app/ (config.php du paquet, site_url renseigné) =="
+rsync -az --exclude='.DS_Store' "$PKG/app/" "$HOST:williams-harper.com/app/"
+rsync -az --exclude='.DS_Store' "$PKG/app/" "$HOST:app/"
+echo "== 5. .htaccess fusionné (règle app conservée) =="
+scp -q -o BatchMode=yes "$T/htaccess.merged" "$HOST:williams-harper.com/.htaccess"
+echo "== 6. Contrôle distant =="
+ssh -o BatchMode=yes "$HOST" "cd williams-harper.com && grep -c 'RewriteRule \^app' .htaccess && grep -o \"site_url' => '[^']*'\" app/config.php && ls assets | grep -c . && ls assets/wh-base.css assets/vision-1.mp4 assets/domaine-film-720.mp4 && du -sh assets brochures"
+echo "TERMINE $STAMP"
