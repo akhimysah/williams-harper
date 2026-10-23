@@ -7,7 +7,7 @@ Par défaut : ovh-site/dist/Williams_Harper_OVH_Nouvelle_Base → ovh-apercu/
 Les 40 gabarits PHP deviennent des pages HTML aux adresses du site (…/villa-chloe-marrakech.html),
 les liens absolus (/assets/…, /demande-reservation-villa) deviennent relatifs, et seuls les fichiers
 réellement référencés sont copiés. Les formulaires et le conseiller (PHP) ne fonctionnent pas dans l'aperçu ;
-les brochures PDF (lourdes) ne sont pas incluses.
+les brochures PDF sont incluses.
 """
 import json, pathlib, re, shutil, sys, urllib.parse
 
@@ -46,8 +46,6 @@ def rewrite(html, depth):
         key = urllib.parse.unquote(path).rstrip("/") or "/"
         if key in page_file:
             return f'{attr}="{prefix}{page_file[key]}{tail}"'
-        if path.startswith("/brochures/"):
-            return m.group(0)  # brochures non incluses : lien laissé tel quel
         return f'{attr}="{prefix}{path.lstrip("/")}{tail}"'
     html = ATTR.sub(repl, html)
     # adresses de pages écrites dans les scripts (cartes des villas de l'accueil, etc.) : "/villa-chloe-marrakech"
@@ -98,6 +96,10 @@ for extra in ("wh-base.css", "concierge.css", "concierge.js", "concierge-knowled
         for a in re.findall(r'url\((["\']?)(?!data:|http)([^)"\']+)', f.read_text(errors="ignore")):
             needed.add(pathlib.Path(a[1]).name)
 
+# brochures PDF (4 × ~32 Mo) et plans
+broch = SRC / "www/brochures"
+if broch.exists():
+    shutil.copytree(broch, OUT / "brochures")
 # plans PDF (légers) référencés par les pages
 plans = SRC / "www/plans"
 if plans.exists():
