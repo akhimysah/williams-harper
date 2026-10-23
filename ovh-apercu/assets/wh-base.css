@@ -664,4 +664,5 @@ html[dir=rtl] .company-logo{margin-inline:0 auto}
   .gallery-switch::-webkit-scrollbar,.room-links::-webkit-scrollbar,.domain-contents::-webkit-scrollbar,.residents-nav::-webkit-scrollbar,.material-chapters::-webkit-scrollbar{display:none}
   .gallery-switch a,.room-links a,.domain-contents a,.residents-nav a,.material-chapters a{flex:0 0 auto;white-space:nowrap;padding:.4rem 0;opacity:.85}
   .wh-split>.material-chapters{grid-column:1/-1}
+  .gallery-switch{padding-inline-start:var(--gutter)}
 }
