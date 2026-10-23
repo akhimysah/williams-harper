@@ -649,3 +649,11 @@ html[dir=rtl] .company-logo{margin-inline:0 auto}
 .wh-split__media img{display:block;width:100%;aspect-ratio:4/5;object-fit:cover}
 .wh-split>.material-chapters{grid-column:1/-1;margin-top:clamp(1.2rem,2.5vw,2rem);gap:.4rem clamp(1.4rem,2.6vw,2.6rem)}
 @media (max-width:860px){.wh-split{grid-template-columns:1fr}.wh-split__media img{aspect-ratio:3/2}}
+
+/* Photos entières sur mobile : plus de format imposé ni de recadrage (le hero plein écran reste couvrant) */
+@media (max-width:860px){
+  main figure img,main .wh-figures img,main .residents-card img,main .home-domain-card img,main .photo-grid img,main .park-feature img,main .material-board img,main .wh-split__media img,main .wh-vision__item img,main .brand-figures img,main .lifestyle-photos img,main .company-portrait img,main .estate-overview img,main .estate-masterplan img,main .estate-map img{aspect-ratio:auto!important;height:auto!important;max-height:none!important;object-fit:contain!important;width:100%}
+  .villa-image-link{aspect-ratio:3/2!important}
+  .villa-image{background-size:contain}
+  .home-discovery-card>a img,.home-discovery-card>img{aspect-ratio:auto;height:auto;object-fit:contain}
+}
