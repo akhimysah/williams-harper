@@ -666,3 +666,8 @@ html[dir=rtl] .company-logo{margin-inline:0 auto}
   .wh-split>.material-chapters{grid-column:1/-1}
   .gallery-switch{padding-inline-start:var(--gutter)}
 }
+
+/* Adresse postale : pied de page et page Contact */
+.wh-footer__address{font-style:normal;font-size:.8rem;line-height:1.7;color:#c9d2c8;margin:-.2rem 0 1.2rem;max-width:30ch}
+.wh-contact-address{display:block;font-style:normal;font-size:.92rem;line-height:1.7;color:var(--muted);margin:-.4rem 0 1.4rem}
+html[dir=rtl] .wh-footer__address,html[dir=rtl] .wh-contact-address{text-align:start}

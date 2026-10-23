@@ -10,8 +10,9 @@ import json, re, shutil, sys, pathlib, zipfile, html
 
 HERE = pathlib.Path(__file__).resolve().parent
 REPO = HERE.parent
-VERSION = "wh-base-2026-10-23h"
+VERSION = "wh-base-2026-10-23i"
 LANGS = ["fr", "en", "nl", "ar"]
+WH_ADDRESS = "Quartier El Ghoul · Projet Warda 5 · Étage 4, n° 29 · Marrakech"
 
 # Photos ajoutées (vraies vues de Chloé, film du domaine) — copiées depuis le site GitHub Pages.
 EXTRA_ASSETS = {
@@ -135,6 +136,7 @@ def build_footer(old_footer, nav_links, cta, lang_links, lang_aria, contact):
     contact_html = ""
     if contact.get("phone"):
         contact_html += f'<a class="contact-phone" href="{contact["phone_href"]}">{contact["phone"]}</a>'
+    contact_html += f'<address class="wh-footer__address" dir="ltr">{WH_ADDRESS}</address>'
     contact_html += '<nav>'
     if contact.get("wa"):
         contact_html += f'<a href="{contact["wa_href"]}" rel="noopener" target="_blank">{contact["wa"]}</a>'
@@ -374,6 +376,7 @@ def transform_body(body, lang, page, home_href):
         # Planche botanique détourée (fond transparent) à la place du JPEG sur fond blanc
         main = main.replace('domaine-botanique-paysage.jpeg', f'domaine-botanique-paysage-sans-fond.webp?v={VERSION}')
     elif page == "reservation":
+        main = re.sub(r'(<a class="contact-phone" href="[^"]*">.*?</a>)', r'\1' + f'<address class="wh-contact-address" dir="ltr">{WH_ADDRESS}</address>', main, count=1, flags=re.S)
         main = main.replace('<div class="reservation-intro">', '<div class="reservation-intro wh-hero--text">', 1)
     elif page == "apropos":
         main = replace_brand_figure(main, lang)
