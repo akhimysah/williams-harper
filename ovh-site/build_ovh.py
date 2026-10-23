@@ -10,7 +10,7 @@ import json, re, shutil, sys, pathlib, zipfile, html
 
 HERE = pathlib.Path(__file__).resolve().parent
 REPO = HERE.parent
-VERSION = "wh-base-2026-10-23g"
+VERSION = "wh-base-2026-10-23h"
 LANGS = ["fr", "en", "nl", "ar"]
 
 # Photos ajoutées (vraies vues de Chloé, film du domaine) — copiées depuis le site GitHub Pages.
@@ -25,6 +25,11 @@ EXTRA_ASSETS = {
     "domaine-film-mobile.mp4": HERE / "assets/domaine-film-mobile.mp4",
     "domaine-film-mobile-poster.jpg": HERE / "assets/domaine-film-mobile-poster.jpg",
     "bois-nobles-palette.webp": HERE / "assets/bois-nobles-palette.webp",
+    "favicon.ico": HERE / "assets/favicon.ico",
+    "favicon-32.png": HERE / "assets/favicon-32.png",
+    "favicon-192.png": HERE / "assets/favicon-192.png",
+    "favicon.svg": HERE / "assets/favicon.svg",
+    "apple-touch-icon.png": HERE / "assets/apple-touch-icon.png",
     "tenues-collection.webp": HERE / "assets/tenues-collection.webp",
     "coffret-bienvenue.webp": HERE / "assets/coffret-bienvenue.webp",
     "domaine-botanique-paysage-sans-fond.webp": HERE / "assets/domaine-botanique-paysage-sans-fond.webp",
@@ -305,6 +310,19 @@ def split_materials_intro(main):
     return main[:m.start()] + new + main[m.end():]
 
 
+_ICON_LINKS = re.compile(r'<link rel="icon"[^>]*>|<link rel="apple-touch-icon"[^>]*>')
+
+
+def fix_icons(head):
+    """Jeu d'icônes complet : .ico (navigateurs anciens, Safari), PNG 32/192, SVG, icône Apple."""
+    links = (f'<link rel="icon" href="/favicon.ico?v={VERSION}" sizes="32x32">'
+             f'<link rel="icon" type="image/svg+xml" href="/assets/favicon.svg?v={VERSION}">'
+             f'<link rel="icon" type="image/png" sizes="192x192" href="/assets/favicon-192.png?v={VERSION}">'
+             f'<link rel="apple-touch-icon" href="/assets/apple-touch-icon.png?v={VERSION}">')
+    head, n = _ICON_LINKS.subn("", head)
+    return head.replace("</head>", links + "</head>", 1) if "</head>" in head else head + links
+
+
 def transform_body(body, lang, page, home_href):
     # Petites mentions en Arial (style en ligne) alignées sur les autres mentions de la charte
     body = body.replace('<p style="font:11px/1.7 Arial,sans-serif;color:#697168">', '<p class="fine">')
@@ -460,6 +478,7 @@ def main():
     # Écusson vert (fond ivoire) pour le bouton du conseiller
     cj = out / "www/assets/concierge.js"
     cj.write_text(cj.read_text().replace("el('img','wh-seal',''),{src:'/assets/logo-definitif-ecusson-clair.svg'", "el('img','wh-seal',''),{src:'/assets/logo-definitif-ecusson-fonce.svg'"))
+    shutil.copy2(HERE / "assets/favicon.ico", out / "www/favicon.ico")
     shutil.copy2(HERE / "assets/wh-base.css", out / "www/assets/wh-base.css")
     shutil.copy2(HERE / "assets/wh-base.js", out / "www/assets/wh-base.js")
     for c in OLD_CSS:
@@ -475,6 +494,7 @@ def main():
             s = f.read_text()
             head, body = s[:s.find("<body")], s[s.find("<body"):]
             head = transform_head(head, lang, page)
+            head = fix_icons(head)
             body = transform_body(body, lang, page, paths[lang]["index"])
             (out / "app/templates" / lang).mkdir(parents=True, exist_ok=True)
             (out / "app/templates" / lang / f"{page}.html").write_text(head + body)
