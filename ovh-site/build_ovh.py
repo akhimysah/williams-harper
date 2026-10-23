@@ -431,8 +431,8 @@ def transform_body(body, lang, page, home_href):
     if photo_hero:
         body = re.sub(r'<body(?: class="([^"]*)")?>', lambda k: f'<body class="{(k.group(1) + " ") if k.group(1) else ""}wh-photo-hero">', body, count=1)
     # cartes des villas (script après <main>) : la photo en fond CSS, qui se répète sur mobile, devient une vraie image
-    body = re.sub(r'<div class="villa-image" role="img" aria-label="([^"]*)" style="--villa-photo:url\\(\\'(.*?)\\'\\)"></div>',
-                  r'<img class="villa-image" alt="\\1" src="\\2" loading="lazy" decoding="async">', body)
+    _CARD = '<div class="villa-image" role="img" aria-label="([^"]*)" style="--villa-photo:url\\(\'(.*?)\'\\)"></div>'
+    body = re.sub(_CARD, '<img class="villa-image" alt="\\1" src="\\2" loading="lazy" decoding="async">', body)
     return body
 
 
