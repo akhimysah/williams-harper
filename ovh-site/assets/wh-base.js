@@ -29,12 +29,16 @@
     setTimeout(function(){pending.forEach(function(el){el.classList.add('in');});pending=[];},2500);
   }
 })();
-/* Film du domaine : version verticale sur téléphone (affiche assortie), jamais sur ordinateur même si le navigateur ignore source[media]. */
+/* Film du domaine : sur téléphone (petit écran ou mobile), toujours la version mobile ; sur ordinateur, toujours la version large.
+   Le choix est forcé par script, sans dépendre de l'orientation ni de la lecture des attributs media par le navigateur. */
 (function(){
-  var v=document.querySelector('video[data-poster-mobile]');if(!v)return;
-  var s=v.querySelector('source[media]');if(!s)return;
-  if(window.matchMedia(s.getAttribute('media')).matches){v.poster=v.getAttribute('data-poster-mobile');return;}
-  var picked=v.currentSrc&&v.currentSrc.indexOf('film-mobile')>-1;
-  s.parentNode.removeChild(s);
-  if(picked){v.load();var p=v.play();if(p&&p.catch)p.catch(function(){});}
+  var v=document.querySelector('video[data-src-mobile]');if(!v)return;
+  var mobile=window.matchMedia('(max-width: 860px)').matches||/Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+  var want=mobile?v.getAttribute('data-src-mobile'):v.getAttribute('data-src-desktop');
+  var poster=mobile?v.getAttribute('data-poster-mobile'):v.getAttribute('data-poster-desktop');
+  if(poster)v.poster=poster;
+  if(!v.currentSrc||v.currentSrc.indexOf(want.split('?')[0])===-1){
+    Array.prototype.slice.call(v.querySelectorAll('source')).forEach(function(s){s.parentNode.removeChild(s);});
+    v.src=want;v.load();var p=v.play();if(p&&p.catch)p.catch(function(){});
+  }
 })();
