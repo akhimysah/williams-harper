@@ -10,7 +10,7 @@ import json, re, shutil, sys, pathlib, zipfile, html
 
 HERE = pathlib.Path(__file__).resolve().parent
 REPO = HERE.parent
-VERSION = "wh-base-2026-10-24b"
+VERSION = "wh-base-2026-10-24c"
 LANGS = ["fr", "en", "nl", "ar"]
 WH_ADDRESS = "Quartier El Ghoul · Projet Warda 5 · Étage 4, n° 29 · Marrakech"
 
