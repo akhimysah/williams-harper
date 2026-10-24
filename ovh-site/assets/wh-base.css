@@ -441,10 +441,10 @@ dialog#detail .close{color:var(--ink)}
 .rental-local table{margin:1.4rem auto .8rem;font-size:.94rem;max-width:720px;width:100%}
 .rental-local th,.rental-local td{text-align:center;padding:.85rem .6rem;border-bottom:1px solid var(--line);font-weight:400}
 .rental-local tbody th,.rental-local tbody td{white-space:nowrap}
-@media (max-width:600px){.rental-local td{font-size:1.08rem}.rental-local tbody th{font-size:1.08rem}.rental-local th,.rental-local td{padding:.8rem .35rem}}
+@media (max-width:600px){.rental-local td,.rental-local tbody th{font-size:.95rem}.rental-local th,.rental-local td{padding:.8rem .35rem}}
 .rental-local thead th{font-size:.6rem;letter-spacing:.26em;text-transform:uppercase;color:var(--muted)}
-.rental-local tbody th{font-family:var(--display);font-size:1.25rem;font-weight:700;color:var(--ink)}
-.rental-local td{font-family:var(--display);font-size:1.25rem}
+.rental-local tbody th{font-family:var(--body);font-size:1rem;font-weight:500;letter-spacing:.02em;color:var(--ink)}
+.rental-local td{font-family:var(--body);font-size:1rem;font-variant-numeric:tabular-nums lining-nums;color:var(--ink)}
 .rental-local .fine{margin-top:.8rem}
 
 /* ===== À propos ===== */
