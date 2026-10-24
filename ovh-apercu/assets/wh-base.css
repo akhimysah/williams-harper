@@ -671,3 +671,12 @@ html[dir=rtl] .company-logo{margin-inline:0 auto}
 .wh-footer__address{font-style:normal;font-size:.8rem;line-height:1.7;color:#c9d2c8;margin:-.2rem 0 1.2rem;max-width:30ch}
 .wh-contact-address{display:block;font-style:normal;font-size:.92rem;line-height:1.7;color:var(--muted);margin:-.4rem 0 1.4rem}
 html[dir=rtl] .wh-footer__address,html[dir=rtl] .wh-contact-address{text-align:start}
+
+/* Hero photo sur téléphone (accueil, villas) : la photo entière en haut, le texte dessous sur fond vert */
+@media (max-width:860px) and (orientation:portrait){
+  .wh-hero--home,.wh-hero--villa{min-height:0!important;display:block;background:var(--green)}
+  .wh-hero--home .wh-hero__media,.wh-hero--villa .wh-hero__media{position:relative;inset:auto;padding-top:var(--header)}
+  .wh-hero--home .wh-hero__media img,.wh-hero--villa .wh-hero__media img{display:block;width:100%;height:auto;aspect-ratio:auto;object-fit:contain}
+  .wh-hero--home::after,.wh-hero--villa::after{display:none}
+  .wh-hero--home .wh-hero__copy,.wh-hero--villa .wh-hero__copy{padding-top:1.8rem;padding-bottom:2.6rem}
+}

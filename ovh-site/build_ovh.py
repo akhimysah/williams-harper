@@ -10,7 +10,7 @@ import json, re, shutil, sys, pathlib, zipfile, html
 
 HERE = pathlib.Path(__file__).resolve().parent
 REPO = HERE.parent
-VERSION = "wh-base-2026-10-23j"
+VERSION = "wh-base-2026-10-24a"
 LANGS = ["fr", "en", "nl", "ar"]
 WH_ADDRESS = "Quartier El Ghoul · Projet Warda 5 · Étage 4, n° 29 · Marrakech"
 
@@ -26,6 +26,7 @@ EXTRA_ASSETS = {
     "domaine-film-mobile.mp4": HERE / "assets/domaine-film-mobile.mp4",
     "domaine-film-mobile-poster.jpg": HERE / "assets/domaine-film-mobile-poster.jpg",
     "bois-nobles-palette.webp": HERE / "assets/bois-nobles-palette.webp",
+    "domaine-entree-og.jpg": HERE / "assets/domaine-entree-og.jpg",
     "favicon.ico": HERE / "assets/favicon.ico",
     "favicon-32.png": HERE / "assets/favicon-32.png",
     "favicon-192.png": HERE / "assets/favicon-192.png",
@@ -482,6 +483,16 @@ def main():
     cj = out / "www/assets/concierge.js"
     cj.write_text(cj.read_text().replace("el('img','wh-seal',''),{src:'/assets/logo-definitif-ecusson-clair.svg'", "el('img','wh-seal',''),{src:'/assets/logo-definitif-ecusson-fonce.svg'"))
     shutil.copy2(HERE / "assets/favicon.ico", out / "www/favicon.ico")
+    # Image de partage (og:image) : la vue aérienne laisse place à la photo de l'entrée du domaine
+    seo_path = out / "app/seo.json"
+    seo = json.loads(seo_path.read_text())
+    alts = {"fr": "Entrée du Domaine Red Stone, Williams & Harper, Marrakech", "en": "Entrance of Domaine Red Stone, Williams & Harper, Marrakech",
+            "nl": "Ingang van Domaine Red Stone, Williams & Harper, Marrakech", "ar": "مدخل دومين ريد ستون، ويليامز آند هاربر، مراكش"}
+    for lang, pages in seo.items():
+        for page, meta in pages.items():
+            if isinstance(meta, dict) and str(meta.get("image", "")).endswith("domaine-vue-aerienne-photo.webp"):
+                meta.update({"image": "assets/domaine-entree-og.jpg", "image_width": 1280, "image_height": 720, "image_alt": alts.get(lang, alts["fr"])})
+    seo_path.write_text(json.dumps(seo, ensure_ascii=False, indent=2))
     shutil.copy2(HERE / "assets/wh-base.css", out / "www/assets/wh-base.css")
     shutil.copy2(HERE / "assets/wh-base.js", out / "www/assets/wh-base.js")
     for c in OLD_CSS:
